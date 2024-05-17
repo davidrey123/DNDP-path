@@ -1,4 +1,3 @@
-import contextlib
 from src import Node
 from src import Link
 from src import Path
@@ -6,7 +5,6 @@ from src import Zone
 from src import Bush
 from src import Params
 from src import PASList
-import math
 
 class Network:
 
@@ -126,10 +124,6 @@ class Network:
 
 
     def readTrips(self,tripsFile,scal_time,scal_flow):
-
-        # **********
-        # Exercise 5(d)
-        # ********** 
         
         file = open(tripsFile, "r")
         
@@ -213,9 +207,6 @@ class Network:
     def getZones(self):
         return self.zones
 
-    # **********
-    # Exercise 5(e)
-    # ********** 
     # find the node with the given id
     def findNode(self, id):
         if id <= 0 or id > len(self.nodes):
@@ -272,35 +263,19 @@ class Network:
             while len(Q) > 0:
 
                 u = self.argmin(Q)
-                #print(f"This is u {u}")
                 Q.remove(u)
-                #outgoing_edges = sortted(u.outgoing, key=lambda e: (e.start.id, e.end.id))
-                #outgoing_edges_list = list(u.outgoing)
-                #outgoing_edges_list.sort(key=lambda e: (e.start.id, e.end.id))
-                #for u in sortted:
 
-
-                #for uv in sorted(u.outgoing, key=lambda edge: (edge.end.id, edge.start.id)):
                 for uv in u.outgoing:
-                #for uv in u.outgoing:
-                      # This will print all the properties and methods of the 'Zone' object
-                    #break 
                     v = uv.end
-
-                    #print(f"this is v {v}")
-                    #print(f"uv.x before {uv.x}")
                     tt = uv.getTravelTime(uv.x, type)
-                    #print("\t\tadjust", uv, uv.x, tt, uv.start.cost, uv.end.cost)
+
                     if u.cost + tt < v.cost:
                         v.cost = u.cost + tt
                         v.pred = uv
-                        #print(v.pred)
 
                         if v.isThruNode():
                             Q.add(v)
             
-    
-
 
     def trace(self, r, s):
         curr = s
@@ -337,15 +312,11 @@ class Network:
             return output
 
     def getSPTree(self, r):
-        self.dijkstras(r, self.type)
-        
-        output = {}
-        
+        self.dijkstras(r, self.type)        
+        output = {}        
         for n in self.nodes:
             if n != r and n.cost < Params.INFTY:
                 output[n] = n.pred
-                
-
         
         return output
     
@@ -490,8 +461,8 @@ class Network:
         self.setY(y)
         self.setType(type)
         
-        print(type)
-        print(y)
+        #print(type)
+        #print(y)
         
         max_iter = 100
         min_gap = 1E-3
@@ -603,18 +574,6 @@ class Network:
             last_iter_gap = gap
             
         return self.getTSTT('UE')
-                
-                
-    def getLx(self, lbd, y):
-        Lx = 0
-        for ij in self.links:
-            Lx += ij.x * ij.getTravelTime(ij.x, 'TT')
-            i = ij.start
-            j = ij.end
-            if (i,j) in y:
-                Lx += lbd[(i,j)]*ij.x
-            
-        return Lx
             
     #def getXDict(self):
     #    output = {}
@@ -651,11 +610,9 @@ class Network:
         return best
         
         
-        
     def equilibratePAS(self, iter):
         output = False
         
-
         for a in self.allPAS.forward:
             for p in self.allPAS.forward[a]:
                 if p.flowShift(self.type, self.params):
