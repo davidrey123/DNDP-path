@@ -8,10 +8,19 @@
 from src import Params
 import contextlib
 from src import Network
+
+
+
+
+
 class PAS:
+    next_id = 0
     def __init__(self):
         self.forwardlinks = []
         self.backwardlinks = []
+        
+        self.id = PAS.next_id
+        PAS.next_id += 1
         
         self.relevant = set()
         self.lastIterFlowShift = 0
@@ -54,6 +63,22 @@ class PAS:
             #print(answer)
             return self.backwardlinks[-1]
         
+    
+    def isEffective(self, type, bush, cost_mu, minflow):
+        forwardcost = self.getForwardCost(type)
+        backwardcost = self.getBackwardCost(type)
+        
+        costcheck = False
+        flow = 0
+        
+        if forwardcost > backwardcost:
+            flow = self.maxForwardBushFlowShift(bush)
+            costcheck = forwardcost - backwardcost > cost_mu * backwardcost
+        else:
+            flow = self.maxBackwardBushFlowShift(bush)
+            costcheck = backwardcost - forwardcost > cost_mu * forwardcost
+            
+        return flow > minflow and costcheck
     
     def isCostEffective(self, type, cost_mu):
         
@@ -221,8 +246,7 @@ class PAS:
         backwardcost = self.getBackwardCost(type)
         
         costdiff = backwardcost - forwardcost
-        
-        
+
         
         backwards = 1
         if backwardcost < forwardcost:
@@ -232,7 +256,7 @@ class PAS:
         
         # maybe the forward and backward costs will be reversed sometimes
         if (backwards == 1 and costdiff < params.pas_cost_epsilon * forwardcost) or (backwards == -1 and -costdiff < params.pas_cost_epsilon * backwardcost):
-        
+
             return False
 
         
@@ -254,8 +278,24 @@ class PAS:
         for b in maxFlowShift:
             overallMaxShift += maxFlowShift[b]
         
-        
+            
         if overallMaxShift < params.pas_flow_mu:
+            '''
+            print("continue shift", overallMaxShift, str(self.relevant), forwardcost, backwardcost)
+            maxfwd = self.maxForwardFlowShift()
+            for ij in maxfwd:
+                print("\t", ij, maxfwd[ij])
+            print("--")
+            
+            maxbwd = self.maxBackwardFlowShift()
+            for ij in maxbwd:
+                print("\t", ij, maxbwd[ij])
+            
+            print("--")
+            for r in self.relevant:
+                print("\t", self.isEffective(type, r.bush, 0.0001, 0.0001))
+            '''
+            
             return False
         
 
@@ -315,6 +355,10 @@ class PAS:
         #print(self.getForwardCost(type), self.getBackwardCost(type), self.getForwardCost(type)-self.getBackwardCost(type))
         #print(bot, overallMaxShift)
         
-        #print("after shift "+str(bot)+" "+str(overallMaxShift)+" "+ str(bot / overallMaxShift*100)+" "+str(self.getTT(0, type)))
+        #if self.id == 2799:
+        #    print("after shift "+str(bot)+" "+str(overallMaxShift)+" "+ str(bot / overallMaxShift*100)+" "+str(self.getTT(0, type)))
         
         return True
+        
+    def __str__(self):
+        return str(self.id)+" "+str(self.forwardlinks)+" - "+str(self.backwardlinks)

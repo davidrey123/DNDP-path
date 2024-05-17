@@ -25,11 +25,16 @@ class Params:
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
         
-        self.PRINT_TAP_ITER = False
+        self.PRINT_TAP_ITER = True
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False
+        
+        
+        self.tapas_max_iter = 100
+        self.min_gap = 1E-4
+        self.msa_max_iter = 500
     
-        self.warmstart = False
+        self.warmstart = True
         
         self.PRINT_BB_INFO = False  

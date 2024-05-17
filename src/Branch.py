@@ -116,7 +116,10 @@ class Branch:
             # trace path and label flows
             augmentedPath = self.bush.tracePath2(start, end)
             
-            
+            if augmentedPath == None:
+                return False
+                
+                
             sendFlow = self.maxflow - assignedFlow
             
             for l in augmentedPath:
@@ -128,7 +131,7 @@ class Branch:
             
             assignedFlow += sendFlow
      
-     
+        return True
            
     def flowShift(self, type):
         avgTT = self.getAvgTT(0, type)

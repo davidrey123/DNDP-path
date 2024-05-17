@@ -44,16 +44,14 @@ class Link:
         if self.y == 0:
             return Params.INFTY
             
+        if type == 'UE':
+            output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
         
-        output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
-        #print(type)
-        
-        #t = tff (1 + a * (x/c)^b)
-        #t' = tff * a * b * (x/c)^b-1 / c
-        
-        if type == 'SO':
+        elif type == 'SO':
+            output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
             output += x * self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
-        
+        else:
+            raise Exception("wrong type "+str(type))
         #if type != 'TT':
         #    output += self.lbdcost
         return output
