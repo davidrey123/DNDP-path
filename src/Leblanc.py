@@ -1,7 +1,7 @@
 import time
 import copy
-from src import Network
 from src import BB_node
+from src import Params
 
 class Leblanc:
 
@@ -15,12 +15,13 @@ class Leblanc:
         self.LB = 0
         self.UB = self.inf
         self.timelimit = timelimit
+        self.params = Params.Params()
         
-        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [])
+        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
         
     def getCandidates(self):
-        return [i for i in self.BB_nodes if i.active==True]
+        return [n for n in self.BB_nodes if n.active==True]
         
     def getLB(self, candidates):
         return min([i.LB for i in candidates])
@@ -29,8 +30,8 @@ class Leblanc:
         return (self.UB - self.LB)/self.UB
     
     def nodeSelection(self, candidates):
-        min_LB = min([i.LB for i in candidates])
-        min_LB_nodes = [i for i in candidates if i.LB==min_LB]
+        min_LB = min([n.LB for n in candidates])
+        min_LB_nodes = [n for n in candidates if n.LB==min_LB]
         return min_LB_nodes[0]
     
     def branch(self, can):
@@ -43,17 +44,16 @@ class Leblanc:
         fixed11.append(can.ybr)
         
         cnt = len(self.BB_nodes) 
-        print(self.BB_nodes,cnt)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01)
+        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+2
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11)
-        n1.solved = True
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
+        n1.score = can.score
         self.BB_nodes.append(n1)
     
         return     
@@ -62,6 +62,7 @@ class Leblanc:
         nBB = 0
         nSO = 0
         nUE = 0
+        yopt = None
  
         t0 = time.time()
     
@@ -75,78 +76,82 @@ class Leblanc:
             integral = False
          
             if status == 'infeasible':
-                print('--> prune by feasibility')
+                if self.params.PRINT_BB_INFO:
+                    print('--> prune by feasibility')
                 prune = True
                  
                 can.LB = self.inf
                 can.UB = self.inf        
                  
             elif status == 'fixed' or status == 'stop':
-                print('--> prune by check',status)
+                if self.params.PRINT_BB_INFO:
+                    print('--> prune by check',status)
                 prune = True
                 integral = True
                  
                 yUB = {}
                 for a in self.network.links2:
-                    if a in can.fixed1:
+                    if a.id in can.fixed1:
                         yUB[a] = 1
-                    elif a in can.fixed0:
+                    elif a.id in can.fixed0:
                         yUB[a] = 0 
                     else:
                         yUB[a] = 0
-                        can.fixed0.append(a)        
+                        can.fixed0.append(a.id)        
                  
             else:
                 if can.solved == False:
                     #---closed link child
                     y = {}
                     for a in self.network.links2:
-                        if a in can.fixed1:
+                        if a.id in can.fixed1:
                             y[a] = 1
-                        elif a in can.fixed0:
+                        elif a.id in can.fixed0:
                             y[a] = 0 
                         else:
                             y[a] = 1
                                         
-                    can.LB = self.network.tapas('SO', y)
+                    can.LB = self.network.tapas('SO',y)
                     nSO += 1
+                    
+                    for a in self.network.links2:
+                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')                    
                  
                 if can.LB >= self.UB:
-                    print('--> prune by optimality')
+                    if self.params.PRINT_BB_INFO:
+                        print('--> prune by optimality')
                     prune = True
                      
                 else:
                     prune = False
-                    
-                    for a in self.network.links2:
-                        can.score[a] = a.x * a.getTravelTime(a.x, 'SO')                        
      
             if integral == True:
                                 
-                can.UB = self.network.tapas('UE', yUB)
+                can.UB = self.network.tapas('UE',yUB)
                 nUE += 1
                 
                 if can.UB < self.UB:            
                     self.UB = can.UB
                     yopt = {}
                     for a in self.network.links2:
-                        if a in can.fixed0:
+                        if a.id in can.fixed0:
                             yopt[a] = 0
                         else:
                             yopt[a] = 1
-                    print('*** update UB ***')
+                    if self.params.PRINT_BB_INFO:
+                        print('*** update UB ***')
                     
-                    for i in self.BB_nodes:                    
-                        if i.active == True and i.LB >= self.UB:
-                            i.active = False      
+                    for n in self.BB_nodes:                    
+                        if n.active == True and n.LB >= self.UB:
+                            n.active = False      
 
-            if prune == False:                
+            if prune == False:
                 fixed = can.fixed0 + can.fixed1
-                free = [a for a in self.network.links2 if a not in fixed]            
+                free = [a.id for a in self.network.links2 if a.id not in fixed]            
                 free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
                 can.ybr = free_sorted[0]
                 
-                self.branch(can)                
+                self.branch(can)
          
             can.active = False
             candidates = self.getCandidates()
@@ -155,27 +160,27 @@ class Leblanc:
                 conv = True
                 self.LB = self.UB
                 gap = 0
-                print('Convergence by inspection')
+                if self.params.PRINT_BB_INFO:
+                    print('Convergence by inspection')
                 break
                 
             else:
                 self.LB = self.getLB(candidates)            
                 gap = self.getGap()
             
-            print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f' % (nBB,nSO,nUE,self.LB,self.UB,gap))
-            
-            if nBB==3:
-                return
+            print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (nBB,nSO,nUE,self.LB,self.UB,100*gap))
             
             if gap <= self.tol:
                 conv = True
                 self.LB = self.UB
                 gap = 0
-                print('Convergence by optimality')
+                if self.params.PRINT_BB_INFO:
+                    print('Convergence by optimality')
                 break
             
             if (time.time() - t0) >= self.timelimit:
-                print('!!! time limit exceeded')
+                if self.params.PRINT_BB_INFO:
+                    print('Time limit exceeded')
                 break
             
             nBB += 1
