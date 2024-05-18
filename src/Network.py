@@ -5,6 +5,7 @@ from src import Zone
 from src import Bush
 from src import Params
 from src import PASList
+from src import Heap
 
 class Network:
 
@@ -224,30 +225,7 @@ class Network:
 
         return None
 
-    # find the node with the smallest cost (node.cost)
-    def argmin1(self, set):
-        best = None
-        min = float("inf")
-
-        for n in set:
-            if n.cost < min:
-                min = n.cost
-                best = n
-
-        return best
-
-
-    # change
-    def argmin(self, set):
-        mincost = 1.0e9
-        node = None
-        
-        for n in set:
-            if n.cost < mincost:
-                mincost = n.cost
-                node = n
-                
-        return node
+    
 
     def dijkstras(self, origin, type):
         #with open('result69.txt', 'a') as file, contextlib.redirect_stdout(file):
@@ -258,13 +236,14 @@ class Network:
 
             origin.cost = 0.0
 
-            Q = {origin}
+            Q = Heap.Heap()
+            Q.insert(origin)
             #print(f"This is Q {Q}")
 
-            while len(Q) > 0:
+            while Q.size() > 0:
 
-                u = self.argmin(Q)
-                Q.remove(u)
+                #u = self.argmin(Q)
+                u = Q.removeMin()
 
                 for uv in u.outgoing:
                     v = uv.end
@@ -275,7 +254,7 @@ class Network:
                         v.pred = uv
 
                         if v.isThruNode():
-                            Q.add(v)
+                            Q.insert(v)
             
 
     def trace(self, r, s):
@@ -325,10 +304,14 @@ class Network:
     def getTSTT(self, type):
         output = 0.0
         for ij in self.links:
+            #if ij.y == 1 or ij.x > len(self.origins) * self.params.flow_epsilon:
             if ij.y == 1:
                 tt = ij.getTravelTime(ij.x, type)
                 output += ij.x * tt
-                #print(ij, ij.y, ij.x, tt)
+                
+            #if ij.y == 0 and ij.x > len(self.origins) * self.params.flow_epsilon * 10:
+            #    print(ij, ij.y, ij.x, tt)
+            #    raise Exception("crash")
         return output
     
     def validateLinkFlows(self):
@@ -612,43 +595,36 @@ class Network:
         if not self.allPAS.containsKey(ij):
             return None
         
-        best = None
-        max = self.params.bush_gap
+        #best = None
+        #max = self.params.bush_gap
         
-        if ij in self.allPAS.forward:
-            for p in self.allPAS.forward[ij]:
-                bwdflow = p.maxBackwardBushFlowShift(bush)
-                fwdflow = p.maxForwardBushFlowShift(bush)
-                bwdcost = p.getBackwardCost(self.type)
-                fwdcost = p.getForwardCost(self.type)
-                
-                if fwdcost > bwdcost:
-                    if fwdflow > max and fwdcost - bwdcost > bwdcost * self.params.pas_cost_mu:
-                        max = fwdflow
-                        best = p
-                else:
-                    if bwdflow > max and bwdcost - fwdcost > fwdcost * self.params.pas_cost_mu:
-                        max = bwdflow
-                        best = p
-                        
         if ij in self.allPAS.backward:
             for p in self.allPAS.backward[ij]:
-                bwdflow = p.maxBackwardBushFlowShift(bush)
-                fwdflow = p.maxForwardBushFlowShift(bush)
+                '''
                 bwdcost = p.getBackwardCost(self.type)
                 fwdcost = p.getForwardCost(self.type)
                 
-                if fwdcost > bwdcost:
-                    if fwdflow > max and fwdcost - bwdcost > bwdcost * self.params.pas_cost_mu:
-                        max = fwdflow
+                if fwdcost > bwdcost * (1 + self.params.pas_cost_mu):
+                    bwdflow = p.maxBackwardBushFlowShift(bush)
+                    fwdflow = p.maxForwardBushFlowShift(bush)
+                    if fwdflow > max:
                         best = p
-                else:
-                    if bwdflow > max and bwdcost - fwdcost > fwdcost * self.params.pas_cost_mu:
-                        max = bwdflow
+                elif bwdcost > fwdcost * (1 + self.params.pas_cost_mu):
+                    bwdflow = p.maxBackwardBushFlowShift(bush)
+                    fwdflow = p.maxForwardBushFlowShift(bush)
+                    if bwdflow > max:
                         best = p
-                    
+                
+                '''
+                if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu):
+                    return p
+                        
+        if ij in self.allPAS.forward:
+            for p in self.allPAS.forward[ij]:
+                if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu):
+                    return p
           
-        return best
+        return None
         
         
     def equilibratePAS(self, iter):

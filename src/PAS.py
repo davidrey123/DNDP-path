@@ -68,17 +68,14 @@ class PAS:
         forwardcost = self.getForwardCost(type)
         backwardcost = self.getBackwardCost(type)
         
-        costcheck = False
-        flow = 0
+
         
-        if forwardcost > backwardcost:
-            flow = self.maxForwardBushFlowShift(bush)
-            costcheck = forwardcost - backwardcost > cost_mu * backwardcost
-        else:
-            flow = self.maxBackwardBushFlowShift(bush)
-            costcheck = backwardcost - forwardcost > cost_mu * forwardcost
-            
-        return flow > minflow and costcheck
+        if forwardcost > backwardcost * (1 + cost_mu):
+            return self.maxForwardBushFlowShift(bush) > minflow
+        elif backwardcost > forwardcost * (1 + cost_mu):
+            return self.maxBackwardBushFlowShift(bush) > minflow
+        
+        return False
     
     def isCostEffective(self, type, cost_mu):
         

@@ -15,6 +15,8 @@ class Node:
         self.top_order = -1
         self.visited = False
         self.in_degree = 0
+        
+        self.heap_idx = -1
     
 
         # pred2 is used by bush when not finding shortest paths
