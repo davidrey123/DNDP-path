@@ -15,7 +15,6 @@ class Link:
         self.y = 1
         self.cost = cost # for DNDP
         
-        
         self.visit_order = -1
         
         if start is not None:
@@ -25,10 +24,6 @@ class Link:
             end.addIncomingLink(self)
             
         self.xstar = 0
-        self.lbdcost = 0
-        
-    def setlbdCost(self, lbdcost):
-        self.lbdcost = lbdcost
 
     # updates the flow to the given value
     def setFlow(self, x):
@@ -36,9 +31,6 @@ class Link:
     
     def __repr__(self):
         return str(self)
-        
-    
-
 
     def getTravelTime(self, x, type):
         if self.y == 0:
@@ -52,10 +44,16 @@ class Link:
             output += x * self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
         else:
             raise Exception("wrong type "+str(type))
-        #if type != 'TT':
-        #    output += self.lbdcost
+
         return output
-        
+
+    def getDerivativeTravelTime(self, x):
+        if self.y == 0:
+            return Params.INFTY
+            
+        output = self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
+
+        return output      
 
     def getCapacity(self):
         return self.C
@@ -63,17 +61,12 @@ class Link:
     def getFlow(self):
         return self.x
         
-    
-        
-
     def __str__(self):
         return "(" + str(self.start.getId()) + ", " + str(self.end.getId()) + ")"
         
-
     def addXstar(self, flow):
         self.xstar += flow
-        #print(xstar)
-        
+        #print(xstar)      
     
     def calculateNewX(self, stepsize):
         #print(str(self.x)+"\t"+ str(self.xstar))
