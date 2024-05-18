@@ -48,12 +48,11 @@ class Link:
         return output
 
     def getDerivativeTravelTime(self, x):
+        
         if self.y == 0:
             return Params.INFTY
             
-        output = self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
-
-        return output      
+        return self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C   
 
     def getCapacity(self):
         return self.C
