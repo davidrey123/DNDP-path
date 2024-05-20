@@ -3,9 +3,7 @@
 
 INFTY = 1.0e9
 
-class Params:
-
-    
+class Params:   
  
     def __init__(self):
         self.bush_gap = 0.01
@@ -25,7 +23,7 @@ class Params:
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
         
-        self.PRINT_TAP_ITER = True
+        self.PRINT_TAP_ITER = False
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False
@@ -38,3 +36,4 @@ class Params:
         self.warmstart = True
         
         self.PRINT_BB_INFO = False  
+        self.BB_timelimit = 600

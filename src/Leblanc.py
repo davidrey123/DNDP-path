@@ -6,7 +6,7 @@ from src import Params
 class Leblanc:
 
     # instantiate Leblanc's branch-and-bound algorithm
-    def __init__(self, network, timelimit):
+    def __init__(self, network):
         self.network = network
         self.BB_nodes = []
         self.inf = 1e+9
@@ -14,7 +14,6 @@ class Leblanc:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
-        self.timelimit = timelimit
         self.params = Params.Params()
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
@@ -110,7 +109,8 @@ class Leblanc:
                             y[a] = 0 
                         else:
                             y[a] = 1
-                                        
+                       
+                    #---LB is obtained from SO-TAP with unfixed links opened
                     can.LB = self.network.tapas('SO',y)
                     nSO += 1
                     
@@ -132,12 +132,7 @@ class Leblanc:
                 
                 if can.UB < self.UB:            
                     self.UB = can.UB
-                    yopt = {}
-                    for a in self.network.links2:
-                        if a.id in can.fixed0:
-                            yopt[a] = 0
-                        else:
-                            yopt[a] = 1
+                    yopt = yUB
                     if self.params.PRINT_BB_INFO:
                         print('*** update UB ***')
                     
@@ -178,7 +173,7 @@ class Leblanc:
                     print('Convergence by optimality')
                 break
             
-            if (time.time() - t0) >= self.timelimit:
+            if (time.time() - t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
                     print('Time limit exceeded')
                 break
