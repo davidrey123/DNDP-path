@@ -14,7 +14,7 @@ class Leblanc:
         self.UB = self.inf
         self.params = Params.Params()
         
-        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False, {})
+        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
         
     def getCandidates(self):
@@ -44,12 +44,12 @@ class Leblanc:
         
         BB_node_id = cnt
         can.children.append(BB_node_id)
-        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False, {})
+        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True, {})
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
         n1.score = can.score
         self.BB_nodes.append(n1)
     
