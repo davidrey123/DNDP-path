@@ -6,7 +6,7 @@ from docplex.mp.model import Model
 
 class FS_NETS:
 
-    # instantiate Leblanc's branch-and-bound algorithm
+    #---instantiate Leblanc's branch-and-bound algorithm
     def __init__(self, network):
         self.network = network
         self.BB_nodes = []
@@ -66,86 +66,66 @@ class FS_NETS:
         
         for a in self.network.links:
         
-            if a.y == 1:
-                
-                #cut['a'][(a.start.id,a.end.id)] = a.x * a.getDerivativeTravelTime(a.x) + a.getTravelTime(a.x,'UE')
-                cut['a'][(a.start.id,a.end.id)] = a.getTravelTime(a.x,'SO')
-                cut['b'][(a.start.id,a.end.id)] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)                
+            if a.y == 1:                
+                cut['a'][a] = a.getTravelTime(a.x,'SO')
+                cut['b'][a] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)                
                 
                 #if self.params.PRINT_BB_INFO:
                 #    print('%s\t\t%.1f\t\t%.3f\t\t%.1f\t\t%.1f\t\t%.1f' 
                 #          % ((a.start.id,a.end.id),a.x,a.getDerivativeTravelTime(a.x),a.getTravelTime(a.x,'SO'),cut['a'][(a.start.id,a.end.id)],cut['b'][(a.start.id,a.end.id)]))
             
             else:
-                cut['a'][(a.start.id,a.end.id)] = 0
-                cut['b'][(a.start.id,a.end.id)] = 0
+                cut['a'][a] = 0
+                cut['b'][a] = 0
                 
         return cut
     
-    def getYvec(self,y):
-        #---transforms a dict of link objects into a dict of pairs of ints
-        yid = {}
-        for a in self.network.links2:
-            yid[(a.start.id,a.end.id)] = y[a]
-        
-        return yid
-    
     def milp_link(self,can):
-        
-        B = self.network.B
-        Q = self.network.TD        
-        D = [i.id for i in self.network.zones]
-        V = [i.id for i in self.network.nodes]
-        A = [(a.start.id,a.end.id) for a in self.network.links]        
-        A2 = [(a.start.id,a.end.id) for a in self.network.links2]
-        g = {(a.start.id,a.end.id):a.cost for a in self.network.links2}
-        
-        d = {(i,s):0 for i in V for s in D}
-        for r in self.network.zones:
-            for s in self.network.zones:
-                d[r.id,s.id] = r.getDemand(s)  
-        for s in D:
-            d[s,s] = - sum(d[j,s] for j in D)
-        
-        l2n = {}
-        for a in self.network.links:
-            l2n[a.id] = (a.start.id,a.end.id)            
         
         #---setup RMP 
         milp = Model()    
         
-        milp.x = {(i,j):milp.continuous_var(lb=0,ub=Q) for (i,j) in A}
-        milp.xc = {(i,j,s):milp.continuous_var() for (i,j) in A for s in D}
-        milp.y = {(i,j):milp.binary_var() for (i,j) in A2}
+        milp.x = {a:milp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
+        milp.xc = {(a,s):milp.continuous_var() for a in self.network.links for s in self.network.zones}
+        milp.y = {a:milp.binary_var() for a in self.network.links2}
         milp.mu = milp.continuous_var(lb=can.LB)
         
-        milp.add_constraint(sum(milp.y[i,j]*g[i,j] for (i,j) in A2) <= B)
+        milp.add_constraint(sum(milp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
         
-        for (i,j) in A2:        
-            milp.add_constraint(milp.x[i,j] <= milp.y[i,j]*Q)
+        for a in self.network.links2:
+            milp.add_constraint(milp.x[a] <= milp.y[a] * self.network.TD)
             
-        for (i,j) in A:
-            milp.add_constraint(sum(milp.xc[i,j,s] for s in D) == milp.x[i,j])           
+        for a in self.network.links:
+            milp.add_constraint(sum(milp.xc[(a,s)] for s in self.network.zones) == milp.x[a])
                 
-        for i in V:
-            for s in D:
-                milp.add_constraint(sum(milp.xc[i,j,s] for j in V if (i,j) in A) 
-                                    - sum(milp.xc[j,i,s] for j in V if (j,i) in A) == d[i,s])       
+        for i in self.network.nodes:                    
+            for s in self.network.zones:            
+                
+                if i.id == s.id:
+                    dem = - sum(r.getDemand(s) for r in self.network.zones)                
+                elif isinstance(i, type(s)) == True:
+                    dem = i.getDemand(s)
+                else:
+                    dem = 0
+                
+                milp.add_constraint(sum(milp.xc[(a,s)] for a in i.outgoing) - sum(milp.xc[(a,s)] for a in i.incoming) == dem)
                         
         for k in self.cuts:
             #---OA cuts
-            milp.add_constraint(milp.mu >= sum(milp.x[a]*self.cuts[k]['a'][a] + self.cuts[k]['b'][a] for a in A))
+            milp.add_constraint(milp.mu >= sum(milp.x[a]*self.cuts[k]['a'][a] + self.cuts[k]['b'][a] for a in self.network.links))
             
         for k in self.yvec:        
             #---Interdiction Cuts
-            milp.add_constraint(sum(milp.y[a] + self.yvec[k][a] - 2*milp.y[a]*self.yvec[k][a] for a in A2) >= 1)
+            milp.add_constraint(sum(milp.y[a] + self.yvec[k][a] - 2*milp.y[a]*self.yvec[k][a] for a in self.network.links2) >= 1)
             
         #---Branch cuts    
-        for a in can.fixed0:
-            milp.add_constraint(milp.y[l2n[a]] == 0)
+        for a in self.network.links2:
+            
+            if a.id in can.fixed0:
+                milp.add_constraint(milp.y[a] == 0)
                                
-        for a in can.fixed1:
-            milp.add_constraint(milp.y[l2n[a]] == 1)        
+            if a.id in can.fixed1:
+                milp.add_constraint(milp.y[a] == 1)
         
         milp.minimize(milp.mu)
         
@@ -160,11 +140,11 @@ class FS_NETS:
             #rt_MILP = milp.solve_details.time
             #gap_MILP = milp.solve_details.gap
              
-            yopt = {} #---this is a dict of link objects
+            yopt = {}
             for a in self.network.links2:
-                yopt[a] = milp.y[(a.start.id,a.end.id)].solution_value
+                yopt[a] = int(milp.y[a].solution_value)
                 
-        return status,LB,yopt
+        return status,LB,yopt    
 
     
     def OA_link(self,can):
@@ -185,7 +165,7 @@ class FS_NETS:
                 return nOA,self.inf,{}
             
             LB_OA = milp_obj
-            self.yvec[len(self.yvec)] = self.getYvec(milp_y)
+            self.yvec[len(self.yvec)] = milp_y
             
             tstt = self.network.tapas('SO',milp_y)
             self.cuts[len(self.cuts)] = self.getOAcut()
@@ -219,10 +199,15 @@ class FS_NETS:
         
 
     def BB(self):
+        
+        print('---FS_NETS---')
+        
         nBB = 0
         nSO = 0
         nUE = 0
         yopt = None
+        
+        self.network.resetTapas()
  
         t0 = time.time()
     
@@ -275,7 +260,7 @@ class FS_NETS:
                     #---LB is obtained from OA algorithm
                     nOA, can.LB, yOA = self.OA_link(can)
                     nSO += nOA
-                    
+                                        
                     for a in self.network.links2:
                         can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')                    
                     
@@ -328,7 +313,7 @@ class FS_NETS:
             if len(candidates) == 0:
                 conv = True
                 self.LB = self.UB
-                gap = 0
+                gap = 0.0
                 if self.params.PRINT_BB_INFO:
                     print('Convergence by inspection')
                 break
@@ -342,7 +327,6 @@ class FS_NETS:
             if gap <= self.tol:
                 conv = True
                 self.LB = self.UB
-                gap = 0
                 if self.params.PRINT_BB_INFO:
                     print('Convergence by optimality')
                 break
@@ -356,7 +340,8 @@ class FS_NETS:
  
         rt = time.time() - t0
  
-        print(conv,rt,nBB,gap,self.UB,yopt)
+        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,nBB,nSO,nUE,self.UB,100*gap))
+        print(yopt)
         
         return
     

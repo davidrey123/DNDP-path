@@ -58,10 +58,15 @@ class Leblanc:
         return     
 
     def BB(self):
+        
+        print('---Leblanc---')        
+        
         nBB = 0
         nSO = 0
         nUE = 0
         yopt = None
+        
+        self.network.resetTapas()
  
         t0 = time.time()
     
@@ -154,7 +159,7 @@ class Leblanc:
             if len(candidates) == 0:
                 conv = True
                 self.LB = self.UB
-                gap = 0
+                gap = 0.0
                 if self.params.PRINT_BB_INFO:
                     print('Convergence by inspection')
                 break
@@ -168,7 +173,6 @@ class Leblanc:
             if gap <= self.tol:
                 conv = True
                 self.LB = self.UB
-                gap = 0
                 if self.params.PRINT_BB_INFO:
                     print('Convergence by optimality')
                 break
@@ -182,7 +186,8 @@ class Leblanc:
  
         rt = time.time() - t0
  
-        print(conv,rt,nBB,gap,self.UB,yopt)
+        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,nBB,nSO,nUE,self.UB,100*gap))
+        print(yopt)
         
         return
     
