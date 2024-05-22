@@ -48,12 +48,12 @@ class FS_NETS:
         
         cnt = len(self.BB_nodes) 
         
-        BB_node_id = cnt+1
+        BB_node_id = cnt
         can.children.append(BB_node_id)
         n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
         self.BB_nodes.append(n0)
         
-        BB_node_id = cnt+2
+        BB_node_id = cnt+1
         can.children.append(BB_node_id)
         n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
         n1.score = can.score
@@ -151,6 +151,7 @@ class FS_NETS:
         nOA = 0
         UB_OA = self.inf
         LB_OA = 0
+        yOA = {}
         
         t0 = time.time()
         
@@ -161,10 +162,18 @@ class FS_NETS:
             
             if milp_status == 'infeasible':
                 if self.params.PRINT_BB_INFO:
-                    print('MILP infeasible')
+                    print('-----------------------------------> MILP infeasible')
                 return nOA,self.inf,{}
             
             LB_OA = milp_obj
+            
+            if LB_OA >= self.UB:
+                conv = True
+                LB_OA = min(LB_OA,UB_OA)
+                if self.params.PRINT_BB_INFO:
+                    print('-----------------------------------> convergence by bounding in OA_link')
+                break
+            
             self.yvec[len(self.yvec)] = milp_y
             
             tstt = self.network.tapas('SO',milp_y)
@@ -172,9 +181,12 @@ class FS_NETS:
             
             if tstt < UB_OA:
                 if self.params.PRINT_BB_INFO:
-                    print('*** update UB in OA_link ***')
+                    print('-----------------------------------> update UB in OA_link')
                 UB_OA = tstt
                 yOA = milp_y
+                
+                for a in self.network.links2:
+                    can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')                
             
             gap = (UB_OA-LB_OA)/UB_OA
             if self.params.PRINT_BB_INFO:
@@ -183,14 +195,13 @@ class FS_NETS:
             if gap <= self.tol:
                 conv = True
                 LB_OA = min(LB_OA,UB_OA)
-                gap = 0
                 if self.params.PRINT_BB_INFO:
-                    print('Convergence by optimality in OA_link')                    
+                    print('-----------------------------------> convergence by optimality gap in OA_link')                    
                 
             if (time.time() - t0) >= self.params.BB_timelimit:
                 LB_OA = min(LB_OA,UB_OA)
                 if self.params.PRINT_BB_INFO:
-                    print('Time limit exceeded in OA_link')
+                    print('-----------------------------------> time limit exceeded in OA_link')
                 break
             
             nOA += 1
@@ -216,6 +227,9 @@ class FS_NETS:
              
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
+            
+            if self.params.PRINT_BB_INFO:
+                print('--> can (before): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))
      
             prune = False
             integral = False
@@ -223,8 +237,7 @@ class FS_NETS:
             if status == 'infeasible':
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by feasibility')
-                prune = True
-                 
+                prune = True                 
                 can.LB = self.inf
                 can.UB = self.inf        
                  
@@ -254,15 +267,15 @@ class FS_NETS:
                         elif a.id in can.fixed0:
                             y[a] = 0 
                         else:
-                            y[a] = 1
-                                        
+                            y[a] = 1                                        
                     
                     #---LB is obtained from OA algorithm
                     nOA, can.LB, yOA = self.OA_link(can)
                     nSO += nOA
-                                        
-                    for a in self.network.links2:
-                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')                    
+                                                                
+                    if self.params.PRINT_BB_INFO:
+                        for a in self.network.links2:
+                            print('--> yOA/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), yOA[a], can.score[a.id]))                        
                     
                     #---solve UE-TAP at root node to get initial UB
                     if nBB == 0:
@@ -273,12 +286,12 @@ class FS_NETS:
                             self.UB = can.UB
                             yopt = yOA
                             if self.params.PRINT_BB_INFO:
-                                print('*** update UB ***')                        
+                                print('--> update UB')                        
                     
                  
                 if can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
-                        print('--> prune by optimality')
+                        print('--> prune by bounding')
                     prune = True
                      
                 else:
@@ -293,7 +306,7 @@ class FS_NETS:
                     self.UB = can.UB
                     yopt = yUB
                     if self.params.PRINT_BB_INFO:
-                        print('*** update UB ***')
+                        print('--> update UB')
                     
                     for n in self.BB_nodes:                    
                         if n.active == True and n.LB >= self.UB:
@@ -305,6 +318,11 @@ class FS_NETS:
                 free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
                 can.ybr = free_sorted[0]
                 
+                if self.params.PRINT_BB_INFO:                    
+                    for a in self.network.links2:
+                        if a.id == can.ybr:
+                            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
+                
                 self.branch(can)
          
             can.active = False
@@ -315,12 +333,15 @@ class FS_NETS:
                 self.LB = self.UB
                 gap = 0.0
                 if self.params.PRINT_BB_INFO:
-                    print('Convergence by inspection')
+                    print('--> convergence by inspection')
                 break
                 
             else:
                 self.LB = self.getLB(candidates)            
                 gap = self.getGap()
+            
+            if self.params.PRINT_BB_INFO:
+                print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))            
             
             print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (nBB,nSO,nUE,self.LB,self.UB,100*gap))
             
@@ -328,12 +349,12 @@ class FS_NETS:
                 conv = True
                 self.LB = self.UB
                 if self.params.PRINT_BB_INFO:
-                    print('Convergence by optimality')
+                    print('--> convergence by optimality gap')
                 break
             
             if (time.time() - t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
-                    print('Time limit exceeded')
+                    print('--> time limit exceeded')
                 break
             
             nBB += 1

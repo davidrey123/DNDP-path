@@ -120,11 +120,14 @@ class Leblanc:
                     nSO += 1
                     
                     for a in self.network.links2:
-                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')                    
+                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO') 
+                        
+                        if self.params.PRINT_BB_INFO:
+                            print('--> y/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), y[a], can.score[a.id]))
                  
                 if can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
-                        print('--> prune by optimality')
+                        print('--> prune by bounding')
                     prune = True
                      
                 else:
@@ -139,7 +142,7 @@ class Leblanc:
                     self.UB = can.UB
                     yopt = yUB
                     if self.params.PRINT_BB_INFO:
-                        print('*** update UB ***')
+                        print('--> update UB')
                     
                     for n in self.BB_nodes:                    
                         if n.active == True and n.LB >= self.UB:
@@ -161,7 +164,7 @@ class Leblanc:
                 self.LB = self.UB
                 gap = 0.0
                 if self.params.PRINT_BB_INFO:
-                    print('Convergence by inspection')
+                    print('--> convergence by inspection')
                 break
                 
             else:
@@ -174,12 +177,12 @@ class Leblanc:
                 conv = True
                 self.LB = self.UB
                 if self.params.PRINT_BB_INFO:
-                    print('Convergence by optimality')
+                    print('--> convergence by optimality gap')
                 break
             
             if (time.time() - t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
-                    print('Time limit exceeded')
+                    print('--> time limit exceeded')
                 break
             
             nBB += 1
