@@ -37,15 +37,14 @@ class Network:
         self.B = self.TC * B_prop # budget
         
         
-        print('Total scaled demand',self.TD)
-        print('Total cost',self.TC,'Budget',self.B)
+        print('Total scaled demand %.1f' % self.TD)
+        print('Total cost %.1f - Budget %.1f' % (self.TC, self.B))
         
     def setType(self, type):
         self.type = type
         
     # read file "/net.txt"
     def readNetwork(self,netFile,scal_time,scal_flow):
-
         
         firstThruNode = 1
         numZones = 0
@@ -224,7 +223,6 @@ class Network:
                 return link
 
         return None
-
     
 
     def dijkstras(self, origin, type):
@@ -390,8 +388,7 @@ class Network:
                     newlinks.append(ij)
             ij.y = y[ij]
             
-        # delete PAS using removedlinks
-        
+        # delete PAS using removedlinks        
         for r in self.origins:
             if r.bush != None:
                 r.bush.addLinks(newlinks)
@@ -401,24 +398,16 @@ class Network:
 
     def msa(self, type, y):
         self.setY(y)
-        self.setType(type)
-        
+        self.setType(type)        
         
         max_iteration = self.params.tapas_max_iter
         min_gap = self.params.min_gap
         
-        for ij in self.links:
-            i = ij.start
-            j = ij.end
-            if (i,j) in y:            
-                ij.setlbdCost(lbd[(i,j)]*y[(i,j)] + self.inf*(1 - y[(i,j)]))
-        
+       
         if self.params.PRINT_TAP_ITER:
             print("Iteration\tTSTT\tSPTT\tgap\tAEC")
         
         
-        
-
         for iteration in range(1, max_iteration + 1):
             self.calculateAON()
             stepsize = self.calculateStepsize(iteration)
