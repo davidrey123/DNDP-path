@@ -1,5 +1,4 @@
 import time
-import copy
 from src import BB_node
 from src import Params
 
@@ -15,7 +14,7 @@ class Leblanc:
         self.UB = self.inf
         self.params = Params.Params()
         
-        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
+        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False, {})
         self.BB_nodes.append(n)
         
     def getCandidates(self):
@@ -33,24 +32,24 @@ class Leblanc:
         return min_LB_nodes[0]
     
     def branch(self, can):
-                             
-        fixed00 = copy.deepcopy(can.fixed0)
+                                     
+        fixed00 = list(can.fixed0)
         fixed00.append(can.ybr)
-        fixed01 = copy.deepcopy(can.fixed1)
-        fixed10 = copy.deepcopy(can.fixed0)
-        fixed11 = copy.deepcopy(can.fixed1)
+        fixed01 = list(can.fixed1)
+        fixed10 = list(can.fixed0)
+        fixed11 = list(can.fixed1)
         fixed11.append(can.ybr)
         
         cnt = len(self.BB_nodes) 
         
         BB_node_id = cnt
         can.children.append(BB_node_id)
-        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
+        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False, {})
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True, {})
         n1.score = can.score
         self.BB_nodes.append(n1)
     
