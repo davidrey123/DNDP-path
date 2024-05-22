@@ -10,7 +10,6 @@ class Leblanc:
         self.network = network
         self.BB_nodes = []
         self.inf = 1e+9
-        self.tol = 1e-2        
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
@@ -44,12 +43,12 @@ class Leblanc:
         
         cnt = len(self.BB_nodes) 
         
-        BB_node_id = cnt+1
+        BB_node_id = cnt
         can.children.append(BB_node_id)
         n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
         self.BB_nodes.append(n0)
         
-        BB_node_id = cnt+2
+        BB_node_id = cnt+1
         can.children.append(BB_node_id)
         n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
         n1.score = can.score
@@ -173,7 +172,7 @@ class Leblanc:
             
             print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (nBB,nSO,nUE,self.LB,self.UB,100*gap))
             
-            if gap <= self.tol:
+            if gap <= self.params.BB_tol:
                 conv = True
                 self.LB = self.UB
                 if self.params.PRINT_BB_INFO:

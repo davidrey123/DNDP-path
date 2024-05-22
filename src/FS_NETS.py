@@ -11,7 +11,7 @@ class FS_NETS:
         self.network = network
         self.BB_nodes = []
         self.inf = 1e+9
-        self.tol = 1e-2        
+        self.OA_tol = 1e-2
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
@@ -163,7 +163,7 @@ class FS_NETS:
             if milp_status == 'infeasible':
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> MILP infeasible')
-                return nOA,self.inf,{}
+                return nOA,self.inf,{},milp_status
             
             LB_OA = milp_obj
             
@@ -192,7 +192,7 @@ class FS_NETS:
             if self.params.PRINT_BB_INFO:
                 print('-----------------------------------> %d\t%.1f\t%.1f\t%.2f%%' % (nOA,LB_OA,UB_OA,100*gap))
             
-            if gap <= self.tol:
+            if gap <= self.OA_tol:
                 conv = True
                 LB_OA = min(LB_OA,UB_OA)
                 if self.params.PRINT_BB_INFO:
@@ -206,7 +206,7 @@ class FS_NETS:
             
             nOA += 1
             
-        return nOA,LB_OA,yOA
+        return nOA,LB_OA,yOA,milp_status
         
 
     def BB(self):
@@ -270,12 +270,13 @@ class FS_NETS:
                             y[a] = 1                                        
                     
                     #---LB is obtained from OA algorithm
-                    nOA, can.LB, yOA = self.OA_link(can)
+                    nOA, can.LB, yOA, OA_status = self.OA_link(can)
                     nSO += nOA
-                                                                
-                    if self.params.PRINT_BB_INFO:
-                        for a in self.network.links2:
-                            print('--> yOA/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), yOA[a], can.score[a.id]))                        
+                                               
+                    if OA_status != 'infeasible':
+                        if self.params.PRINT_BB_INFO:
+                            for a in self.network.links2:
+                                print('--> yOA/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), yOA[a], can.score[a.id]))                        
                     
                     #---solve UE-TAP at root node to get initial UB
                     if nBB == 0:
@@ -345,7 +346,7 @@ class FS_NETS:
             
             print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (nBB,nSO,nUE,self.LB,self.UB,100*gap))
             
-            if gap <= self.tol:
+            if gap <= self.params.BB_tol:
                 conv = True
                 self.LB = self.UB
                 if self.params.PRINT_BB_INFO:

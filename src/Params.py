@@ -33,7 +33,8 @@ class Params:
         self.min_gap = 1E-3
         self.msa_max_iter = 500
     
-        self.warmstart = True
+        self.warmstart = False
         
-        self.PRINT_BB_INFO = False  
+        self.PRINT_BB_INFO = False
         self.BB_timelimit = 600
+        self.BB_tol = 1E-2
