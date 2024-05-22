@@ -1,6 +1,6 @@
 class BB_node:
     
-    def __init__(self, network, id, parent, LB, UB, fixed0, fixed1, solved):
+    def __init__(self, network, id, parent, LB, UB, fixed0, fixed1, solved, OAcuts):
         self.network = network
         self.parent = parent
         self.id = id
@@ -13,6 +13,9 @@ class BB_node:
         self.solved = solved
         self.score = {}
         self.ybr = None
+        
+        self.yvec = {}
+        self.OAcuts = dict(OAcuts)
         
     def check(self):
         status = 'solve'

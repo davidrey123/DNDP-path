@@ -1,5 +1,4 @@
 import time
-import copy
 from src import BB_node
 from src import Params
 from docplex.mp.model import Model
@@ -15,12 +14,9 @@ class FS_NETS:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
-        self.params = Params.Params()
+        self.params = Params.Params()    
         
-        self.yvec = {}
-        self.cuts = {}
-        
-        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
+        n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False, {})
         self.BB_nodes.append(n)
         
     def getCandidates(self):
@@ -38,24 +34,24 @@ class FS_NETS:
         return min_LB_nodes[0]
     
     def branch(self, can):
-                             
-        fixed00 = copy.deepcopy(can.fixed0)
+
+        fixed00 = list(can.fixed0)
         fixed00.append(can.ybr)
-        fixed01 = copy.deepcopy(can.fixed1)
-        fixed10 = copy.deepcopy(can.fixed0)
-        fixed11 = copy.deepcopy(can.fixed1)
-        fixed11.append(can.ybr)
+        fixed01 = list(can.fixed1)
+        fixed10 = list(can.fixed0)
+        fixed11 = list(can.fixed1)
+        fixed11.append(can.ybr)        
         
         cnt = len(self.BB_nodes) 
         
         BB_node_id = cnt
         can.children.append(BB_node_id)
-        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
+        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False, can.OAcuts)
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True, can.OAcuts)
         n1.score = can.score
         self.BB_nodes.append(n1)
     
@@ -110,13 +106,13 @@ class FS_NETS:
                 
                 milp.add_constraint(sum(milp.xc[(a,s)] for a in i.outgoing) - sum(milp.xc[(a,s)] for a in i.incoming) == dem)
                         
-        for k in self.cuts:
+        for k in can.OAcuts:
             #---OA cuts
-            milp.add_constraint(milp.mu >= sum(milp.x[a]*self.cuts[k]['a'][a] + self.cuts[k]['b'][a] for a in self.network.links))
+            milp.add_constraint(milp.mu >= sum(milp.x[a]*can.OAcuts[k]['a'][a] + can.OAcuts[k]['b'][a] for a in self.network.links))
             
-        for k in self.yvec:        
+        for k in can.yvec:        
             #---Interdiction Cuts
-            milp.add_constraint(sum(milp.y[a] + self.yvec[k][a] - 2*milp.y[a]*self.yvec[k][a] for a in self.network.links2) >= 1)
+            milp.add_constraint(sum(milp.y[a] + can.yvec[k][a] - 2*milp.y[a]*can.yvec[k][a] for a in self.network.links2) >= 1)
             
         #---Branch cuts    
         for a in self.network.links2:
@@ -165,7 +161,7 @@ class FS_NETS:
                     print('-----------------------------------> MILP infeasible')
                 return nOA,self.inf,{},milp_status
             
-            LB_OA = milp_obj
+            LB_OA = milp_obj         
             
             if LB_OA >= self.UB:
                 conv = True
@@ -174,10 +170,15 @@ class FS_NETS:
                     print('-----------------------------------> convergence by bounding in OA_link')
                 break
             
-            self.yvec[len(self.yvec)] = milp_y
+            can.yvec[len(can.yvec)] = milp_y
+            
+            #check if milp_y has already been solved
+            
+            #if check==False: solve SO-TAP 
+            #else just grab SO-TSTT because OA cut has already been added
             
             tstt = self.network.tapas('SO',milp_y)
-            self.cuts[len(self.cuts)] = self.getOAcut()
+            can.OAcuts[len(can.OAcuts)] = self.getOAcut()
             
             if tstt < UB_OA:
                 if self.params.PRINT_BB_INFO:
@@ -273,8 +274,9 @@ class FS_NETS:
                     nOA, can.LB, yOA, OA_status = self.OA_link(can)
                     nSO += nOA
                                                
-                    if OA_status != 'infeasible':
+                    if OA_status != 'infeasible' and len(yOA) > 0:
                         if self.params.PRINT_BB_INFO:
+                            print(OA_status)
                             for a in self.network.links2:
                                 print('--> yOA/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), yOA[a], can.score[a.id]))                        
                     
