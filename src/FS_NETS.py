@@ -6,7 +6,7 @@ from docplex.mp.model import Model
 
 class FS_NETS:
 
-    #---instantiate Leblanc's branch-and-bound algorithm
+    #---instantiate FS NETS's branch-and-bound algorithm
     def __init__(self, network):
         self.network = network
         self.BB_nodes = []
@@ -67,20 +67,22 @@ class FS_NETS:
         for a in self.network.links:
         
             if a.y == 1:                
-                cut['a'][a] = a.getTravelTime(a.x,'SO')
-                cut['b'][a] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)                
+                cut['a'][a] = round(a.getTravelTime(a.x,'SO'), 3)
+                cut['b'][a] = round(- pow(a.x, 2) * a.getDerivativeTravelTime(a.x), 3)
                 
                 #if self.params.PRINT_BB_INFO:
                 #    print('%s\t\t%.1f\t\t%.3f\t\t%.1f\t\t%.1f\t\t%.1f' 
                 #          % ((a.start.id,a.end.id),a.x,a.getDerivativeTravelTime(a.x),a.getTravelTime(a.x,'SO'),cut['a'][(a.start.id,a.end.id)],cut['b'][(a.start.id,a.end.id)]))
             
             else:
-                cut['a'][a] = 0
-                cut['b'][a] = 0
+                cut['a'][a] = 0.0
+                cut['b'][a] = 0.0
                 
         return cut
     
     def milp_link(self,can):
+        
+        #---to do: recode such that milp is setup once and only cuts are added at each OA iteration
         
         #---setup RMP 
         milp = Model()    
@@ -181,26 +183,26 @@ class FS_NETS:
                     print('-----------------------------------> convergence by bounding in OA_link')
                 break
             
-            can.yvec.append(milp_y)           
+            can.yvec.append(milp_y)
             
             if self.ydict.hasSO(milp_y) == True:
                 tstt = self.ydict.getSO(milp_y)
                 #print('*** hasSO ***', tstt)
             
             else:            
-                tstt = self.network.tapas('SO',milp_y)
+                tstt = round(self.network.tapas('SO',milp_y), 3)
                 self.ydict.insertSO(milp_y, tstt)
                 self.OAcuts.append(self.getOAcut())
                 nSO_OA += 1
             
             if tstt < UB_OA:
-                if self.params.PRINT_BB_INFO:
-                    print('-----------------------------------> update UB in OA_link')
+                #if self.params.PRINT_BB_INFO:
+                #    print('-----------------------------------> update UB in OA_link')
                 UB_OA = tstt
                 yOA = milp_y
                 
                 for a in self.network.links2:
-                    can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')                
+                    can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
             
             gap = (UB_OA-LB_OA)/UB_OA
             if self.params.PRINT_BB_INFO:
@@ -230,6 +232,7 @@ class FS_NETS:
         nBB = 0
         nSO = 0
         nUE = 0
+        nOA_tot = 0
         yopt = None
         
         self.network.resetTapas()
@@ -238,6 +241,9 @@ class FS_NETS:
     
         conv = False
         while conv == False:
+            
+            #for k in self.ydict.tstt_map:
+            #    print(k,self.ydict.tstt_map[k])            
              
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
@@ -286,16 +292,17 @@ class FS_NETS:
                     #---LB is obtained from OA algorithm
                     nOA, nSO_OA, can.LB, yOA, OA_status = self.OA_link(can)
                     nSO += nSO_OA
+                    nOA_tot += nOA
                                                
                     #if OA_status != 'infeasible' and len(yOA) > 0:
-                    if self.params.PRINT_BB_INFO:
-                        print(OA_status)
-                        for a in self.network.links2:
-                            print('--> yOA/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), yOA[a], can.score[a.id]))
+                    #if self.params.PRINT_BB_INFO:
+                    #    print(OA_status)
+                    #    for a in self.network.links2:
+                    #        print('--> yOA/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), yOA[a], can.score[a.id]))
                     
                     #---solve UE-TAP at root node to get initial UB
                     if nBB == 0:
-                        can.UB = self.network.tapas('UE',yOA)
+                        can.UB = round(self.network.tapas('UE',yOA), 3)
                         nUE += 1
                         
                         if can.UB < self.UB:            
@@ -315,7 +322,7 @@ class FS_NETS:
      
             if integral == True:
                                 
-                can.UB = self.network.tapas('UE',yUB)
+                can.UB = round(self.network.tapas('UE',yUB), 3)
                 nUE += 1
                 
                 if can.UB < self.UB:            
@@ -377,7 +384,7 @@ class FS_NETS:
  
         rt = time.time() - t0
  
-        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,nBB,nSO,nUE,self.UB,100*gap))
+        print('%s\t%.1f\t%d\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,nBB,nOA_tot,nSO,nUE,self.UB,100*gap))
         print(yopt)
         
         return

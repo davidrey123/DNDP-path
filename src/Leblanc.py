@@ -114,11 +114,11 @@ class Leblanc:
                             y[a] = 1
                        
                     #---LB is obtained from SO-TAP with unfixed links opened
-                    can.LB = self.network.tapas('SO',y)
+                    can.LB = round(self.network.tapas('SO',y), 3)
                     nSO += 1
                     
                     for a in self.network.links2:
-                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO') 
+                        can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
                         
                         if self.params.PRINT_BB_INFO:
                             print('--> y/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), y[a], can.score[a.id]))
@@ -133,7 +133,7 @@ class Leblanc:
      
             if integral == True:
                                 
-                can.UB = self.network.tapas('UE',yUB)
+                can.UB = round(self.network.tapas('UE',yUB), 3)
                 nUE += 1
                 
                 if can.UB < self.UB:            
