@@ -12,7 +12,13 @@ class Leblanc:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
+        self.yopt = None
         self.params = Params.Params()
+        
+        self.nBB = 0
+        self.nSO = 0
+        self.nUE = 0
+        self.rt_TAP = 0.0
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
@@ -57,12 +63,7 @@ class Leblanc:
 
     def BB(self):
         
-        print('---Leblanc---')        
-        
-        nBB = 0
-        nSO = 0
-        nUE = 0
-        yopt = None
+        print('---Leblanc---')    
         
         self.network.resetTapas()
  
@@ -114,14 +115,16 @@ class Leblanc:
                             y[a] = 1
                        
                     #---LB is obtained from SO-TAP with unfixed links opened
+                    t0_TAP = time.time()
                     can.LB = round(self.network.tapas('SO',y), 3)
-                    nSO += 1
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.nSO += 1
                     
                     for a in self.network.links2:
                         can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
                         
-                        if self.params.PRINT_BB_INFO:
-                            print('--> y/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), y[a], can.score[a.id]))
+                        #if self.params.PRINT_BB_INFO:
+                        #    print('--> y/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), y[a], can.score[a.id]))
                  
                 if can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
@@ -133,12 +136,14 @@ class Leblanc:
      
             if integral == True:
                                 
+                t0_TAP = time.time()
                 can.UB = round(self.network.tapas('UE',yUB), 3)
-                nUE += 1
+                self.rt_TAP += time.time() - t0_TAP
+                self.nUE += 1
                 
                 if can.UB < self.UB:            
                     self.UB = can.UB
-                    yopt = yUB
+                    self.yopt = yUB
                     if self.params.PRINT_BB_INFO:
                         print('--> update UB')
                     
@@ -169,7 +174,7 @@ class Leblanc:
                 self.LB = self.getLB(candidates)            
                 gap = self.getGap()
             
-            print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (nBB,nSO,nUE,self.LB,self.UB,100*gap))
+            print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*gap))
             
             if gap <= self.params.BB_tol:
                 conv = True
@@ -183,12 +188,12 @@ class Leblanc:
                     print('--> time limit exceeded')
                 break
             
-            nBB += 1
+            self.nBB += 1
  
         rt = time.time() - t0
  
-        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,nBB,nSO,nUE,self.UB,100*gap))
-        print(yopt)
-        
+        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,self.nBB,self.nSO,self.nUE,self.UB,100*gap))
+        print(self.yopt)
+        print(self.rt_TAP)
         return
     
