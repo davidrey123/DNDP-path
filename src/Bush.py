@@ -82,99 +82,45 @@ class Bush:
         #print(self.topologicalSort)
 
     def topologicalSort(self):
-        with open('result22.txt', 'a') as file, contextlib.redirect_stdout(file):
+        
         # Initialize in-degrees and visited flags
-            for n in self.network.nodes:
-                n.in_degree = len(n.getBushIncoming(self))
-                #print(n.in_degree)
+        for n in self.network.nodes:
+            n.in_degree = len(n.getBushIncoming(self))
+            #print(n.in_degree)
 
-                n.visited = False
-                n.top_order = -1
-            
-            # Use a list as a priority queue
-            queue = []
-            heapq.heappush(queue, self.origin.id)  # Assume each node has a unique node_id
-            self.origin.visited = True
-            
-            self.sorted = []
-            idx = 0
-            
-            while queue:
-                #print(queue)
-                # Use heappop for consistent smallest element first
-                vertex_id = heapq.heappop(queue)
-                #print(vertex_id)
-                vertex = self.network.findNode(vertex_id)  # You need to be able to fetch nodes by ID
-                #print(vertex)
-                self.sorted.append(vertex)
-                vertex.top_order = idx
-                idx += 1
-                
-                # Process outgoing edges
-                #with open('result2.txt', 'a') as file, contextlib.redirect_stdout(file):
-                for ij in vertex.getBushOutgoing(self):
-                    #print(f"This is ij{ij}")
-                    j = ij.end
-                    #print(f"This is j{j}")
-                    if not j.visited:
-                        j.in_degree -= 1
-                        if j.in_degree == 0:
-                            heapq.heappush(queue, j.id)
-                            j.visited = True
-            for n in self.network.nodes:
-                if n.in_degree < len(n.getBushIncoming(self)) and not n.visited:
-                    print("NOT DAG")
-
-        #with open('output_topological3.txt', 'w') as file, contextlib.redirect_stdout(file):
-            #for n in self.network.nodes:
-                #print(self.network.nodes)
-                #n.in_degree = len(n.getBushIncoming(self))
-                #print(n.getBushIncoming(self))
-                #print(n.in_degree)
-                #n.visited = False
-                #n.top_order = -1
+            n.visited = False
+            n.top_order = -1
         
+        # Use a list as a priority queue
+        queue = []
+        heapq.heappush(queue, self.origin.id)  # Assume each node has a unique node_id
+        self.origin.visited = True
         
-        #queue = deque()
+        self.sorted = []
+        idx = 0
         
-        #queue.append(self.origin)
-        #print(self.origin)
-        #print(queue.append(self.origin))
-        #self.origin.visited = True
-        
-        #self.sorted = list()
-        #idx = 0
-        #with open('output_topological.txt', 'w') as file, contextlib.redirect_stdout(file):
-            #while len(queue) > 0:
-                #print(queue)
-                #vertex = queue.popleft()
-                #print(vertex)
-                #self.sorted.append(vertex)
-                #vertex.top_order = idx
-                #idx += 1
-                
-                #for ij in vertex.getBushOutgoing(self):
-                
-                    #j = ij.end
-                    
-                    #if not j.visited:
-                        #j.in_degree -= 1
-                        
-                        #if j.in_degree == 0:
-                        
-                            #queue.append(j)
-                            #j.visited = True
-
-
-            # check for nodes that were not completed
-            #for n in self.network.nodes:
+        while queue:
+            #print(queue)
+            # Use heappop for consistent smallest element first
+            vertex_id = heapq.heappop(queue)
+            #print(vertex_id)
+            vertex = self.network.findNode(vertex_id)  # You need to be able to fetch nodes by ID
+            #print(vertex)
+            self.sorted.append(vertex)
+            vertex.top_order = idx
+            idx += 1
             
-                #if n.in_degree < len(n.getBushIncoming(self)) and not n.visited:
-                    #print("NOT DAG")
-
-
-
-    
+            # Process outgoing edges
+            #with open('result2.txt', 'a') as file, contextlib.redirect_stdout(file):
+            for ij in vertex.getBushOutgoing(self):
+                #print(f"This is ij{ij}")
+                j = ij.end
+                #print(f"This is j{j}")
+                if not j.visited:
+                    j.in_degree -= 1
+                    if j.in_degree == 0:
+                        heapq.heappush(queue, j.id)
+                        j.visited = True   
 
     
     def testTopologicalSort(self):
@@ -1067,11 +1013,10 @@ class Bush:
             
             
             # trace firstSimilar to a in min path tree: this is the forward side of the PAS
-            with open('result141.txt', 'a') as file, contextlib.redirect_stdout(file):
-                for l in self.network.traceTree(minPathTree, firstSimilar.start, a.end):
-                    #print(f'tree entry {minPathTree}, r {firstSimilar.start}, s {a.end}')
-                    output.forwardlinks.append(l)
-                    #print(l)
+            for l in self.network.traceTree(minPathTree, firstSimilar.start, a.end):
+                #print(f'tree entry {minPathTree}, r {firstSimilar.start}, s {a.end}')
+                output.forwardlinks.append(l)
+                #print(l)
                     
             if len(output.forwardlinks) == 0:
                 return None
