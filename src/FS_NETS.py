@@ -91,12 +91,15 @@ class FS_NETS:
         
         #---to do: recode such that milp is setup once and only cuts are added at each OA iteration
         
+        print('can.LB',can.LB)
+        
         t0_MILP = time.time()
         milp = Model()    
         
         milp.x = {a:milp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
         milp.xc = {(a,s):milp.continuous_var() for a in self.network.links for s in self.network.zones}
         milp.y = {a:milp.binary_var() for a in self.network.links2}
+        #milp.y = {a:milp.continuous_var(lb=0,ub=1) for a in self.network.links2}
         milp.mu = milp.continuous_var(lb=can.LB)
         
         milp.add_constraint(sum(milp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
@@ -152,8 +155,10 @@ class FS_NETS:
             status = milp.solve_details.status
              
             yopt = {}
+            #ydebug = {(7, 16): 0, (16, 7): 1, (19, 22): 1, (22, 19): 1, (11, 15): 0, (15, 11): 0, (9, 11): 1, (11, 9): 1, (13, 14): 0, (14, 13): 0}
             for a in self.network.links2:
                 yopt[a] = int(milp.y[a].solution_value)
+                #yopt[a] = ydebug[(a.start.id,a.end.id)]
                 
         return status,LB,yopt    
 
@@ -170,6 +175,8 @@ class FS_NETS:
         while conv == False:
             
             milp_status,milp_obj,milp_y = self.milp_link(can)
+                        
+            print(milp_y)
             
             if milp_status == 'infeasible':
                 if nOA == 0:
@@ -285,16 +292,7 @@ class FS_NETS:
                         can.fixed0.append(a.id)        
                  
             else:
-                if can.solved == False:
-                    #---closed link child
-                    y = {}
-                    for a in self.network.links2:
-                        if a.id in can.fixed1:
-                            y[a] = 1
-                        elif a.id in can.fixed0:
-                            y[a] = 0 
-                        else:
-                            y[a] = 1                                        
+                if can.solved == False:                                     
                     
                     #---LB is obtained from OA algorithm
                     nOA, can.LB, yOA, OA_status = self.OA_link(can)

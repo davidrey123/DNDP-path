@@ -22,8 +22,7 @@ class Network:
         self.TC = 0 # total cost
         self.params = Params.Params()
         
-        self.allPAS = PASList.PASList()
-        
+        self.allPAS = PASList.PASList()        
         
         self.inf = 1e+9
         self.tol = 1e-2
@@ -34,8 +33,7 @@ class Network:
         self.readNetwork("data/"+name+"/"+ins+".txt",scal_time,scal_flow)
         self.readTrips("data/"+name+"/trips.txt",scal_time,scal_flow)
         
-        self.B = self.TC * B_prop # budget
-        
+        self.B = self.TC * B_prop # budget        
         
         print('Total scaled demand %.1f' % self.TD)
         print('Total cost %.1f - Budget %.1f' % (self.TC, self.B))
@@ -226,7 +224,6 @@ class Network:
     
 
     def dijkstras(self, origin, type):
-        #with open('result69.txt', 'a') as file, contextlib.redirect_stdout(file):
         
             for n in self.nodes:
                 n.cost = Params.INFTY
@@ -257,34 +254,30 @@ class Network:
 
     def trace(self, r, s):
         curr = s
-        #print(f"s is {s}")
 
         output = Path.Path()
         
         while curr != r and curr is not None:
             ij = curr.pred
-            #print(ij)
 
             if ij is not None:
-                output.addFront(ij)
+                output.add(ij)
                 curr = curr.pred.start
+              
+        #print('trace',r,s,output)
               
         return output
         
     def traceTree(self, tree, r, s):
-        #with open('trace8.txt', 'a') as file, contextlib.redirect_stdout(file):
             curr = s
-            #print(s)
 
             output = []
-            #with open('trace4.txt', 'a') as file, contextlib.redirect_stdout(file):
+
             while curr != r and curr is not None:
                 ij = tree[curr]
-                #print(ij)
 
                 if ij is not None:
                     output.append(ij)
-                    #print(output)
                     curr = ij.start
             
             return output
@@ -372,7 +365,7 @@ class Network:
 
             for s in self.zones:
                 if r.getDemand(s) > 0:
-                    pi_star = self.trace(r, s)
+                    pi_star = self.trace(r,s)
                     pi_star.addHstar(r.getDemand(s))
 
     def setY(self, y):
@@ -463,8 +456,6 @@ class Network:
             if r.bush == None:
                 r.bush = Bush.Bush(self, r)
         
-    #with open('output_tapas21.txt', 'w') as file, contextlib.redirect_stdout(file):
-    #with open('output_tapas11.txt', 'w') as file:
         while iter <= max_iter:
                         
             #custom_x = {link: link.x for link in self.links}
@@ -526,11 +517,7 @@ class Network:
             sptt = self.getSPTT(type)
             gap = (tstt - sptt)/tstt
             aec = (tstt - sptt)/self.TD
-                        
-                        #with open('output_tapas.txt', 'w') as file, contextlib.redirect_stdout(file):
-                        
-                            # The rest of your original code here...
-                        #print(str(iter)+"\tGap: "+str(gap)+"\tAEC: "+str(aec))  # Example print, redirected to file
+
                             
             if self.params.PRINT_TAP_ITER:
                 print(str(iter)+"\t"+str(tstt)+"\t"+str(sptt)+"\t"+str(gap)+"\t"+str(aec))

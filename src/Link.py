@@ -4,8 +4,8 @@ class Link:
 
     # construct this Link with the given parameters
     def __init__(self, id, start, end, t_ff, C, alpha, beta, cost):
-        self.start = start
         self.id = id
+        self.start = start
         self.end = end
         self.t_ff = t_ff
         self.C = C
@@ -24,8 +24,8 @@ class Link:
             end.addIncomingLink(self)
             
         self.xstar = 0
+        self.dual = 0 # for CG
 
-    # updates the flow to the given value
     def setFlow(self, x):
         self.x = x
     
@@ -42,6 +42,10 @@ class Link:
         elif type == 'SO':
             output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
             output += x * self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
+            
+        elif type == 'RC':
+            output = -self.dual
+            
         else:
             raise Exception("wrong type "+str(type))
 
@@ -64,25 +68,18 @@ class Link:
         return "(" + str(self.start.getId()) + ", " + str(self.end.getId()) + ")"
         
     def addXstar(self, flow):
-        self.xstar += flow
-        #print(xstar)      
+        self.xstar += flow   
     
-    def calculateNewX(self, stepsize):
-        #print(str(self.x)+"\t"+ str(self.xstar))
-        
+    def calculateNewX(self, stepsize):        
         self.x = (1 - stepsize) * self.x + stepsize * self.xstar
         self.xstar = 0
-        #print(f"After recalculating, new x = {self.x}, reset xstar = {self.xstar}")
-        #print(self.xstar)
         
     def hasHighReducedCost(self, type, percent):
         reducedCost = self.end.cost - self.start.cost
-        tt = self.getTravelTime(self.x, type)
-        
+        tt = self.getTravelTime(self.x, type)        
         return tt - reducedCost > tt*percent
  
     def getReducedCost(self, type):
         reducedCost = self.end.cost - self.start.cost
         tt = self.getTravelTime(self.x, type)
-        #print(tt, reducedCost)
         return tt - reducedCost

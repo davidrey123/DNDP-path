@@ -16,6 +16,9 @@ class BB_node:
         
         self.yvec = []
         
+        self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
+        self.duals = {}
+        
     def check(self):
         status = 'solve'
         cost = sum(a.cost for a in self.network.links2 if a.id in self.fixed1)
@@ -40,3 +43,12 @@ class BB_node:
                 return status
             
         return status
+
+
+    def getPaths(self):
+        all_paths = []
+        for r in self.network.origins:
+            for s in self.network.zones:
+                for p in self.paths[r][s]:
+                    all_paths.append(p)
+        return all_paths

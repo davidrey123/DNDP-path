@@ -35,6 +35,6 @@ class Params:
     
         self.warmstart = False
         
-        self.PRINT_BB_INFO = False
+        self.PRINT_BB_INFO = True
         self.BB_timelimit = 600
         self.BB_tol = 1E-2
