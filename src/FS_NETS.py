@@ -109,22 +109,35 @@ class FS_NETS:
                 
             return yKNP
         
-    def initOAcuts(self, can):
+    def initOAcuts(self, can, nKNP):
         
-        for n in range(1):
+        if self.params.PRINT_BB_INFO:
+            print('Running knapsack heuristic with',nKNP,'round(s)')        
         
+        best = self.inf
+        yinc = {}
+        for n in range(nKNP):
             yKNP = self.knapsack('capacity',can)
-            #print(yKNP)
                         
             t0_TAP = time.time()
             tstt = round(self.network.tapas('SO',yKNP), 3) 
-            #print(tstt)
             self.ydict.insertSO(yKNP, tstt)
             self.rt_TAP += (time.time() - t0_TAP)
             self.OAcuts.append(self.getOAcut())                            
-            self.nSO += 1
+            self.nSO += 1        
                     
-            can.yvec.append(yKNP)    
+            can.yvec.append(yKNP)      
+            
+            if tstt < best:
+                best = tstt
+                yinc = yKNP
+                
+        t0_TAP = time.time()
+        can.UB = round(self.network.tapas('UE',yinc), 3)
+        self.ydict.insertUE(yinc, can.UB)
+        self.rt_TAP += time.time() - t0_TAP
+        self.nUE += 1
+        self.UB = can.UB           
     
     def milp_link(self,can):
         
@@ -289,7 +302,7 @@ class FS_NETS:
         t0 = time.time()
         
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0])        
+        self.initOAcuts(self.BB_nodes[0],1)        
     
         conv = False
         while conv == False:                   
@@ -355,10 +368,15 @@ class FS_NETS:
                     prune = False
      
             if integral == True:
-                t0_TAP = time.time()          
-                can.UB = round(self.network.tapas('UE',yUB), 3)
-                self.rt_TAP += time.time() - t0_TAP
-                self.nUE += 1
+                if self.ydict.hasUE(yUB) == True:
+                    can.UB = self.ydict.getUE(yUB)
+                
+                else:
+                    t0_TAP = time.time()
+                    can.UB = round(self.network.tapas('UE',yUB), 3)
+                    self.ydict.insertUE(yUB, can.UB)
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.nUE += 1
                 
                 if can.UB < self.UB:            
                     self.UB = can.UB
