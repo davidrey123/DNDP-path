@@ -18,6 +18,7 @@ class BB_node:
         
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
         self.duals = {}
+        self.frac = []
         
     def check(self):
         status = 'solve'

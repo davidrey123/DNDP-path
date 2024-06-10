@@ -4,13 +4,14 @@ from src import Params
 from src import YDict
 from docplex.mp.model import Model
 
-class FS_NETS:
+class BC:
 
     #---instantiate FS NETS's branch-and-bound algorithm
     def __init__(self, network):
         self.network = network
         self.BB_nodes = []
         self.inf = 1e+9
+        self.INT_tol = 1e-4
         self.OA_tol = 1e-4
         self.nit = 0
         self.LB = 0
@@ -23,7 +24,7 @@ class FS_NETS:
         self.nSO = 0
         self.nUE = 0
         self.rt_TAP = 0.0
-        self.rt_MILP = 0.0        
+        self.rt_LP = 0.0        
         
         self.OAcuts = []
         
@@ -62,8 +63,7 @@ class FS_NETS:
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
-        n1.score = can.score
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed10, fixed11, False)
         self.BB_nodes.append(n1)
     
         return
@@ -75,7 +75,7 @@ class FS_NETS:
         
             if a.y == 1:                
                 cut['a'][a] = round(a.getTravelTime(a.x,'SO'), 3)
-                cut['b'][a] = round(- pow(a.x, 2) * a.getDerivativeTravelTime(a.x), 3)
+                cut['b'][a] = round(- pow(a.x, 2) * a.getDerivativeTravelTime(a.x), 3)        
             
             else:
                 cut['a'][a] = 0.0
@@ -111,8 +111,8 @@ class FS_NETS:
         
     def initOAcuts(self, can):
         
-        for n in range(1):
-        
+        for n in range(10):
+            print(n)
             yKNP = self.knapsack('capacity',can)
             #print(yKNP)
                         
@@ -124,29 +124,40 @@ class FS_NETS:
             self.OAcuts.append(self.getOAcut())                            
             self.nSO += 1
                     
-            can.yvec.append(yKNP)    
+            can.yvec.append(yKNP)      
     
-    def milp_link(self,can):
+    def checkIntegral(self, y):
         
-        #---to do: recode such that milp is setup once and only cuts are added at each OA iteration
+        #---check integrality
+        frac = []
+        for a in self.network.links2:
+            if y[a] > self.INT_tol and y[a] < 1 - self.INT_tol:
+                frac.append(a)
         
-        #print('can.LB',can.LB)
+        if len(frac) == 0:
+            return 'integral',frac
+        else:
+            return 'fractional',frac
+    
+    def lp_link(self,can):
         
-        t0_MILP = time.time()
-        milp = Model()    
+        #---to do: recode such that lp is setup once and only cuts are added at each OA iteration
+                
+        t0_LP = time.time()
+        lp = Model()    
         
-        milp.x = {a:milp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
-        milp.xc = {(a,s):milp.continuous_var() for a in self.network.links for s in self.network.zones}
-        milp.y = {a:milp.binary_var() for a in self.network.links2}
-        milp.mu = milp.continuous_var(lb=can.LB)
+        lp.x = {a:lp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
+        lp.xc = {(a,s):lp.continuous_var() for a in self.network.links for s in self.network.zones}
+        lp.y = {a:lp.continuous_var(lb=0,ub=1) for a in self.network.links2}
+        lp.mu = lp.continuous_var(lb=can.LB)
         
-        milp.add_constraint(sum(milp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
+        lp.add_constraint(sum(lp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
         
         for a in self.network.links2:
-            milp.add_constraint(milp.x[a] <= milp.y[a] * self.network.TD)
+            lp.add_constraint(lp.x[a] <= lp.y[a] * self.network.TD)
             
         for a in self.network.links:
-            milp.add_constraint(sum(milp.xc[(a,s)] for s in self.network.zones) == milp.x[a])
+            lp.add_constraint(sum(lp.xc[(a,s)] for s in self.network.zones) == lp.x[a])
                 
         for i in self.network.nodes:                    
             for s in self.network.zones:            
@@ -158,48 +169,50 @@ class FS_NETS:
                 else:
                     dem = 0
                 
-                milp.add_constraint(sum(milp.xc[(a,s)] for a in i.outgoing) - sum(milp.xc[(a,s)] for a in i.incoming) == dem)
+                lp.add_constraint(sum(lp.xc[(a,s)] for a in i.outgoing) - sum(lp.xc[(a,s)] for a in i.incoming) == dem)
                         
         for OAcut in self.OAcuts:
             #---OA cuts
-            milp.add_constraint(milp.mu >= sum(milp.x[a]*OAcut['a'][a] + OAcut['b'][a] for a in self.network.links))
+            lp.add_constraint(lp.mu >= sum(lp.x[a]*OAcut['a'][a] + OAcut['b'][a] for a in self.network.links))
             
         for yv in can.yvec:        
             #---Interdiction Cuts
-            milp.add_constraint(sum(milp.y[a] + yv[a] - 2*milp.y[a]*yv[a] for a in self.network.links2) >= 1)
+            lp.add_constraint(sum(lp.y[a] + yv[a] - 2*lp.y[a]*yv[a] for a in self.network.links2) >= 1)
             
         #---Branch cuts    
         for a in self.network.links2:
             
             if a.id in can.fixed0:
-                milp.add_constraint(milp.y[a] == 0)
+                lp.add_constraint(lp.y[a] == 0)
                                
             if a.id in can.fixed1:
-                milp.add_constraint(milp.y[a] == 1)
+                lp.add_constraint(lp.y[a] == 1)
         
-        milp.minimize(milp.mu)
+        lp.minimize(lp.mu)
         
-        milp.parameters.mip.tolerances.mipgap = self.params.BB_tol
-        milp.solve(log_output=False)
-        
-        #print(milp.solve_details.time,(time.time() - t0_MILP))
-        self.rt_MILP += (time.time() - t0_MILP)
+        lp.solve(log_output=False)
+                
+        #print(lp.solve_details.time,(time.time() - t0_lp))
+        self.rt_LP += (time.time() - t0_LP)
             
-        if milp.solve_details.status == 'infeasible' or milp.solve_details.status == 'integer infeasible':
+        if lp.solve_details.status == 'infeasible':
             return 'infeasible',self.inf,{}
         
         else:
-            MILP_OFV = milp.objective_value
-            MILP_status = milp.solve_details.status
-             
-            yopt = {}
+            LP_OFV = lp.objective_value
+                         
+            yLP = {}
             for a in self.network.links2:
-                yopt[a] = int(milp.y[a].solution_value)
+                yLP[a] = lp.y[a].solution_value
                 
-        return MILP_status,MILP_OFV,yopt    
+            LP_status, can.frac = self.checkIntegral(yLP)
+            
+            #print('XXX',LP_OFV,LP_status,len(self.OAcuts))            
+                
+            return LP_status,LP_OFV,yLP
 
     
-    def OA_link(self,can):
+    def OA_lp_link(self,can):
         nOA = 0
         UB_OA = self.inf
         LB_OA = 0.0 #---value to be returned that will serve as the LB of the BB node
@@ -208,81 +221,98 @@ class FS_NETS:
         t0_OA = time.time()
         
         conv = False
-        while conv == False:
-            
-            MILP_status,MILP_OFV,yMILP = self.milp_link(can)
-            
-            if MILP_status == 'infeasible':
-                if nOA == 0:
-                    print('==========WARNING: MILP infeasible at first iteration===================')
-                    #---milp must be feasible at first iteration since interdiction cuts are reset at each BB node
-                    #   and budget constraint violations are checked before executing OA_link
-                
-                #---search is complete and UB_OA is the optimal OFV
-                conv = True
-                LB_OA = max(can.LB,UB_OA)
-                if self.params.PRINT_BB_INFO:
-                    print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
-                return nOA,LB_OA,yOA,MILP_status
+        while conv == False:            
                         
-            if MILP_OFV >= self.UB:
-                #---search can be stopped and milp obj can be used as the LB of the BB node
-                conv = True
-                LB_OA = max(can.LB,MILP_OFV)
-                if self.params.PRINT_BB_INFO:
-                    print('-----------------------------------> convergence by bounding in OA_link')
-                return nOA,LB_OA,yOA,MILP_status
+            LP_status,LP_OFV,yLP = self.lp_link(can)
             
-            can.LB = MILP_OFV
-            can.yvec.append(yMILP)
-            
-            if self.ydict.hasSO(yMILP) == True:
-                tstt = self.ydict.getSO(yMILP)
-                #print('*** hasSO ***', tstt)
-            
-            else:
-                t0_TAP = time.time()
-                tstt = round(self.network.tapas('SO',yMILP), 3)                
-                self.ydict.insertSO(yMILP, tstt)
-                self.rt_TAP += time.time() - t0_TAP
-                self.OAcuts.append(self.getOAcut())
-                self.nSO += 1
-            
-            if tstt < UB_OA:
-                #if self.params.PRINT_BB_INFO:
-                #    print('-----------------------------------> update UB in OA_link')
-                UB_OA = tstt
-                yOA = yMILP
+            can.LB = LP_OFV
+        
+            if LP_status != 'integral':
                 
-                for a in self.network.links2:
-                    can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
+                conv = True
+                
+                if LP_status == 'infeasible':
+                    if nOA == 0:
+                        print('==========WARNING: LP infeasible at first iteration===================')
+                        #---lp must be feasible at first iteration since interdiction cuts are reset at each BB node
+                        #   and budget constraint violations are checked before executing OA_link
+                    
+                    #---search is complete and UB_OA is the optimal OFV                    
+                    LB_OA = max(can.LB,UB_OA)
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
+                    return nOA,LB_OA,yOA,LP_status
+                
+                else:
+                    #---solution is fractional: stop OA an return LP_OFV as BB node LB                   
+                    LB_OA = LP_OFV                    
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> fractional solution')                        
+                
+                
+            else:
+                #---integral solution, generate OA cut and keep going
+                        
+                if LP_OFV >= self.UB:
+                    #---search can be stopped and lp obj can be used as the LB of the BB node
+                    conv = True
+                    LB_OA = max(can.LB,LP_OFV)
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> convergence by bounding in OA_lp_link')
+                    return nOA,LB_OA,yOA,LP_status
             
-            gap = (UB_OA-MILP_OFV)/UB_OA
+                #---add interdiction cut
+                can.yvec.append(yLP)
+                
+                #---solve SO-TAP to get OA cut
+                if self.ydict.hasSO(yLP) == True:
+                    tstt = self.ydict.getSO(yLP)
+                
+                else:
+                    t0_TAP = time.time()
+                    tstt = round(self.network.tapas('SO',yLP), 3)                
+                    self.ydict.insertSO(yLP, tstt)
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.OAcuts.append(self.getOAcut())
+                    self.nSO += 1
+            
+                if tstt < UB_OA:
+                    #if self.params.PRINT_BB_INFO:
+                    #    print('-----------------------------------> update UB in OA_lp_link')
+                    UB_OA = tstt
+                    yOA = yLP                    
+                
+                
+            for a in self.network.links2:
+                can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
+            
+            gap = (UB_OA-LP_OFV)/UB_OA
             if self.params.PRINT_BB_INFO:
-                print('-----------------------------------> %d\t%.1f\t%.1f\t%.2f%%' % (nOA,MILP_OFV,UB_OA,100*gap))
+                print('-----------------------------------> %d\t%.1f\t%.1f\t%.2f%%' % (nOA,LP_OFV,UB_OA,100*gap))
             
             if gap <= self.OA_tol:
-                #---search can be stopped and the min between milp obj and UB_OA can be used as the LB of the BB node
+                #---search can be stopped and the min between lp obj and UB_OA can be used as the LB of the BB node
                 conv = True
-                LB_OA = max(can.LB,min(MILP_OFV,UB_OA))
+                LB_OA = max(can.LB,min(LP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by optimality gap in OA_link')                    
                 
             if (time.time() - t0_OA) >= self.params.BB_timelimit/2:
-                #---search is stopped and the min between milp obj and UB_OA can be used as the LB of the BB node
-                LB_OA = max(can.LB,min(MILP_OFV,UB_OA))
+                #---search is stopped and the min between lp obj and UB_OA can be used as the LB of the BB node
+                LB_OA = max(can.LB,min(LP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> time limit exceeded in OA_link')
                 break
             
             nOA += 1
+        
             
-        return nOA,LB_OA,yOA,MILP_status
+        return nOA,LB_OA,yOA,LP_status
         
 
     def BB(self):
         
-        print('---FS_NETS---')        
+        print('---BC---')        
         
         self.network.resetTapas()
  
@@ -292,7 +322,7 @@ class FS_NETS:
         self.initOAcuts(self.BB_nodes[0])        
     
         conv = False
-        while conv == False:                   
+        while conv == False:                    
              
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
@@ -327,34 +357,25 @@ class FS_NETS:
                         can.fixed0.append(a.id)        
                  
             else:
-                if can.solved == False:                                     
-                    
-                    #---LB is obtained from OA algorithm
-                    nOA, can.LB, yOA, OA_status = self.OA_link(can)                    
-                    
-                    #---solve UE-TAP at root node to get initial UB
-                    if self.nBB == 0:
-                        t0_TAP = time.time()
-                        can.UB = round(self.network.tapas('UE',yOA), 3)
-                        self.rt_TAP += time.time() - t0_TAP
-                        self.nUE += 1
-                        
-                        if can.UB < self.UB:            
-                            self.UB = can.UB
-                            self.yopt = yOA
-                            if self.params.PRINT_BB_INFO:
-                                print('--> update UB')                        
-                    
-                 
+                #---LB is obtained from LP relaxation of OA master problem
+                nOA, can.LB, yOA, LP_status = self.OA_lp_link(can)
+                
                 if can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
                         print('--> prune by bounding')
+                    prune = True 
+                
+                elif LP_status == 'integral':
+                    if self.params.PRINT_BB_INFO:
+                        print('--> prune by integrality')
+                        print('yOA',yOA)
                     prune = True
-                     
-                else:
-                    prune = False
-     
+                    integral = True
+                    yUB = yOA
+                 
             if integral == True:
+                
+                #---solve UE TAP to get UB
                 t0_TAP = time.time()          
                 can.UB = round(self.network.tapas('UE',yUB), 3)
                 self.rt_TAP += time.time() - t0_TAP
@@ -368,12 +389,12 @@ class FS_NETS:
                     
                     for n in self.BB_nodes:                    
                         if n.active == True and n.LB >= self.UB:
-                            n.active = False      
+                            n.active = False
 
             if prune == False:
-                fixed = can.fixed0 + can.fixed1
-                free = [a.id for a in self.network.links2 if a.id not in fixed]            
-                free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
+                
+                frac = [a.id for a in can.frac]                
+                free_sorted = sorted(frac, key = lambda ele: can.score[ele], reverse = True)
                 can.ybr = free_sorted[0]
                 
                 if self.params.PRINT_BB_INFO:                    
@@ -395,7 +416,7 @@ class FS_NETS:
                 break
                 
             else:
-                self.LB = self.getLB(candidates)            
+                self.LB = self.getLB(candidates)
                 gap = self.getGap()
             
             if self.params.PRINT_BB_INFO:
@@ -421,7 +442,7 @@ class FS_NETS:
  
         print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,self.nBB,self.nSO,self.nUE,self.UB,100*gap))
         print(self.rt_TAP)
-        print(self.rt_MILP)
+        print(self.rt_LP)
         print(self.yopt)
         
         return

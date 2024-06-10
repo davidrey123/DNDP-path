@@ -64,8 +64,7 @@ class BPC:
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
-        n1.score = can.score
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed10, fixed11, False)
         self.BB_nodes.append(n1)
     
         return
