@@ -105,33 +105,53 @@ class BPC:
             return {}
         else:            
             yKNP = {}
-            #ydebug = {(7, 16): 0, (16, 7): 0, (19, 22): 0, (22, 19): 0, (11, 15): 0, (15, 11): 0, (9, 11): 1, (11, 9): 1, (13, 14): 1, (14, 13): 1}
             for a in self.network.links2:
                 yKNP[a] = knp.y[a].solution_value
-                #yKNP[a] = ydebug[(a.start.id,a.end.id)]
                 
             return yKNP
         
-    def initOAcuts(self, can):
+    def initOAcuts(self, can, nKNP):
         
-        for n in range(1):
+        if self.params.PRINT_BB_INFO:
+            print('Running knapsack heuristic with',nKNP,'round(s)')
         
+        best = self.inf
+        yinc = {}
+        for n in range(nKNP):
             yKNP = self.knapsack('capacity',can)
-            print(yKNP)
-            
-            for a in self.network.links2:
-                yKNP[a] = 1
-            print(yKNP)
-            
+                        
             t0_TAP = time.time()
             tstt = round(self.network.tapas('SO',yKNP), 3) 
-            print(tstt)
             self.ydict.insertSO(yKNP, tstt)
             self.rt_TAP += (time.time() - t0_TAP)
             self.OAcuts.append(self.getOAcut())                            
-            self.nSO += 1
+            self.nSO += 1        
                     
-            can.yvec.append(yKNP)
+            can.yvec.append(yKNP)      
+            
+            if tstt < best:
+                best = tstt
+                yinc = yKNP
+                
+        t0_TAP = time.time()
+        can.UB = round(self.network.tapas('UE',yinc), 3)
+        self.ydict.insertUE(yinc, can.UB)
+        self.rt_TAP += time.time() - t0_TAP
+        self.nUE += 1
+        self.UB = can.UB
+    
+    def checkIntegral(self, y):
+        
+        #---check integrality
+        frac = []
+        for a in self.network.links2:
+            if y[a] > self.INT_tol and y[a] < 1 - self.INT_tol:
+                frac.append(a)
+        
+        if len(frac) == 0:
+            return 'integral',frac
+        else:
+            return 'fractional',frac
     
     def initPaths(self, can):
         for a in self.network.links2:
@@ -196,7 +216,6 @@ class BPC:
         rmp = Model()
         
         rmp.x = {a:rmp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
-        #rmp.h = {p:rmp.continuous_var(lb=0) for r in self.network.origins for s in self.network.zones for p in can.paths[r][s]}
         rmp.h = {p:rmp.continuous_var(lb=0) for p in can.getPaths()}
         rmp.mu = rmp.continuous_var(lb=can.LB)
         
@@ -247,7 +266,7 @@ class BPC:
         
         else:
             OFV = rmp.objective_value
-            status_RMP = rmp.solve_details.status
+            RMP_status = rmp.solve_details.status
             
             yopt = {}
             for a in self.network.links2:
@@ -270,7 +289,7 @@ class BPC:
                     
                 can.duals = {'link':dual_link,'dem':dual_dem}
                 
-        return OFV,yopt,status_RMP
+        return RMP_status,OFV,yopt
 
     
     def CG(self, can):
@@ -280,10 +299,10 @@ class BPC:
 
         while conv == False:        
 
-            OFV,yopt,status_RMP = self.rmp_path(can,'LP')
+            RMP_status,OFV,yRMP = self.rmp_path(can,'LP')
     
-            if status_RMP == 'infeasible':
-                status_CG = 'infeasible'
+            if RMP_status == 'infeasible':
+                CG_status = 'infeasible'
                 break
     
             minrc = self.pricing(can)
@@ -299,26 +318,111 @@ class BPC:
             nCG += 1
             
         if conv == True:
-        
-            #---check integrality
-            frac = []
-            for a in self.network.links2:
-                if yopt[a] > self.INT_tol and yopt[a] < 1 - self.INT_tol:
-                    frac.append(a)
             
-            if len(frac) == 0:
-                status_CG = 'integral'       
-            else:
-                status_CG = 'fractional' 
+            CG_status, can.frac = self.checkIntegral(yRMP)
             
             if self.params.PRINT_BB_INFO:
-                print('CG status',status_CG)
+                print('CG status',CG_status)
             
-            return OFV,yopt,status_CG
+            return CG_status,OFV,yRMP
         
         else:
-            return self.inf,yopt,status_CG
+            return CG_status,self.inf,yRMP
               
+
+    def OA_lp_path(self,can):
+        nOA = 0
+        UB_OA = self.inf
+        LB_OA = 0.0 #---value to be returned that will serve as the LB of the BB node
+        yOA = {}
+        
+        t0_OA = time.time()
+        
+        conv = False
+        while conv == False:            
+                        
+            CG_status,CG_OFV,yCG = self.CG(can)
+            
+            can.LB = CG_OFV
+        
+            if CG_status != 'integral':
+                
+                conv = True
+                
+                if CG_status == 'infeasible':
+                    if nOA == 0:
+                        print('==========WARNING: LP infeasible at first iteration===================')
+                        #---lp must be feasible at first iteration since interdiction cuts are reset at each BB node
+                        #   and budget constraint violations are checked before executing OA_link
+                    
+                    #---search is complete and UB_OA is the optimal OFV                    
+                    LB_OA = max(can.LB,UB_OA)
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
+                    return nOA,LB_OA,yOA,CG_status
+                
+                else:
+                    #---solution is fractional: stop OA an return LP_OFV as BB node LB                   
+                    LB_OA = CG_OFV                    
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> fractional solution')                        
+                
+                
+            else:
+                #---integral solution, generate OA cut and keep going
+                        
+                if CG_OFV >= self.UB:
+                    #---search can be stopped and lp obj can be used as the LB of the BB node
+                    conv = True
+                    LB_OA = max(can.LB,CG_OFV)
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> convergence by bounding in OA_lp_path')
+                    return nOA,LB_OA,yOA,CG_status
+            
+                #---add interdiction cut
+                can.yvec.append(yCG)
+                
+                #---solve SO-TAP to get OA cut
+                if self.ydict.hasSO(yCG) == True:
+                    tstt = self.ydict.getSO(yCG)
+                
+                else:
+                    t0_TAP = time.time()
+                    tstt = round(self.network.tapas('SO',yCG), 3)                
+                    self.ydict.insertSO(yCG, tstt)
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.OAcuts.append(self.getOAcut())
+                    self.nSO += 1
+            
+                if tstt < UB_OA:
+                    UB_OA = tstt
+                    yOA = yCG
+                
+            for a in self.network.links2:
+                can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
+            
+            gap = (UB_OA-CG_OFV)/UB_OA
+            if self.params.PRINT_BB_INFO:
+                print('-----------------------------------> %d\t%.1f\t%.1f\t%.2f%%' % (nOA,CG_OFV,UB_OA,100*gap))
+            
+            if gap <= self.OA_tol:
+                #---search can be stopped and the min between lp obj and UB_OA can be used as the LB of the BB node
+                conv = True
+                LB_OA = max(can.LB,min(CG_OFV,UB_OA))
+                if self.params.PRINT_BB_INFO:
+                    print('-----------------------------------> convergence by optimality gap in OA_lp_path')                    
+                
+            if (time.time() - t0_OA) >= self.params.BB_timelimit/2:
+                #---search is stopped and the min between lp obj and UB_OA can be used as the LB of the BB node
+                LB_OA = max(can.LB,min(CG_OFV,UB_OA))
+                if self.params.PRINT_BB_INFO:
+                    print('-----------------------------------> time limit exceeded in OA_lp_path')
+                break
+            
+            nOA += 1
+            
+        return nOA,LB_OA,yOA,CG_status
+        
 
     def BB(self):
         
@@ -328,14 +432,14 @@ class BPC:
  
         t0 = time.time()
         
-        #---initialize root node path for CG
+        #---initialize OA cuts
+        self.initOAcuts(self.BB_nodes[0],10)        
+    
+        #---initialize paths
         self.initPaths(self.BB_nodes[0])
-        
-        #---initialize OA cuts and yvec for root node
-        self.initOAcuts(self.BB_nodes[0])
-        
+    
         conv = False
-        while conv == False:                 
+        while conv == False:                    
              
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
@@ -370,89 +474,34 @@ class BPC:
                         can.fixed0.append(a.id)        
                  
             else:
-                if can.solved == False:                      
-                    
-                    #---LB is obtained from CG+OA algorithms
-                    if self.nBB == 0:
-                        
-                        #--generate many cuts at root node
-                        inc = self.inf
-                        for n in range(1): 
-                            print('----',n)
-                            can.LB,yCG,status_CG = self.CG(can)
-                            
-                            if status_CG != 'integral':
-                                if self.params.PRINT_BB_INFO:
-                                    print('solve RMP as MILP')
-                                OFV,yINT,status_MILP = self.rmp_path(can,'MILP')
-                            else:
-                                yINT = yCG
-                                
-                            if self.params.PRINT_BB_INFO:
-                                print('yINT',yINT)                            
-                              
-                            if self.ydict.hasSO(yINT) == True:
-                                tstt = self.ydict.getSO(yINT)                            
-                            else:
-                                t0_TAP = time.time()
-                                tstt = round(self.network.tapas('SO',yINT), 3)                
-                                self.ydict.insertSO(yINT, tstt)
-                                self.rt_TAP += time.time() - t0_TAP
-                                self.OAcuts.append(self.getOAcut())                            
-                                self.nSO += 1
-                            
-                            if tstt < inc:
-                                print('update yINT',tstt)
-                                inc = tstt
-                                yOA = yINT
-                                
-                            can.yvec.append(yINT)
-                        
-                        #---solve UE-TAP at root node to get initial UB
-                        t0_TAP = time.time()
-                        can.UB = round(self.network.tapas('UE',yOA), 3)
-                        self.rt_TAP += (time.time() - t0_TAP)
-                        self.nUE += 1
-                        
-                        if can.UB < self.UB:            
-                            self.UB = can.UB
-                            self.yopt = yOA
-                            if self.params.PRINT_BB_INFO:
-                                print('--> update UB')
-                                
-                    #---not root node            
-                    else:
-                        can.LB,yCG,status_CG = self.CG(can)
-                        
-                        if status_CG != 'integral':
-                            yINT = self.rmp_path(can,'MILP')
-                        else:
-                            yINT = yCG
-                            
-                        if self.ydict.hasSO(yINT) == True:
-                            tstt = self.ydict.getSO(yINT)                        
-                        else:
-                            t0_TAP = time.time()
-                            tstt = round(self.network.tapas('SO',yINT), 3)                
-                            self.ydict.insertSO(yINT, tstt)
-                            self.rt_TAP += time.time() - t0_TAP
-                            self.OAcuts.append(self.getOAcut())                            
-                            self.nSO += 1                            
-                    
-                 
+                #---LB is obtained from LP relaxation of OA master problem
+                nOA,can.LB,yOA,CG_status = self.OA_lp_path(can)
+                
                 if can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
                         print('--> prune by bounding')
+                    prune = True 
+                
+                elif CG_status == 'integral':
+                    if self.params.PRINT_BB_INFO:
+                        print('--> prune by integrality')
+                        print('yOA',yOA)
                     prune = True
-                     
-                else:
-                    prune = False
-     
+                    integral = True
+                    yUB = yOA
+                 
             if integral == True:
-                t0_TAP = time.time()          
-                can.UB = round(self.network.tapas('UE',yUB), 3)
-                self.rt_TAP += time.time() - t0_TAP
-                self.nUE += 1
+                
+                #---solve UE TAP to get UB
+                if self.ydict.hasUE(yUB) == True:
+                    can.UB = self.ydict.getUE(yUB)
+                
+                else:
+                    t0_TAP = time.time()
+                    can.UB = round(self.network.tapas('UE',yUB), 3)
+                    self.ydict.insertUE(yUB, can.UB)
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.nUE += 1
                 
                 if can.UB < self.UB:            
                     self.UB = can.UB
@@ -462,12 +511,12 @@ class BPC:
                     
                     for n in self.BB_nodes:                    
                         if n.active == True and n.LB >= self.UB:
-                            n.active = False      
+                            n.active = False
 
             if prune == False:
-                fixed = can.fixed0 + can.fixed1
-                free = [a.id for a in self.network.links2 if a.id not in fixed]            
-                free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
+                
+                frac = [a.id for a in can.frac]                
+                free_sorted = sorted(frac, key = lambda ele: can.score[ele], reverse = True)
                 can.ybr = free_sorted[0]
                 
                 if self.params.PRINT_BB_INFO:                    
@@ -489,7 +538,7 @@ class BPC:
                 break
                 
             else:
-                self.LB = self.getLB(candidates)            
+                self.LB = self.getLB(candidates)
                 gap = self.getGap()
             
             if self.params.PRINT_BB_INFO:
@@ -515,8 +564,7 @@ class BPC:
  
         print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,self.nBB,self.nSO,self.nUE,self.UB,100*gap))
         print(self.rt_TAP)
-        print(self.rt_MILP)
+        print(self.rt_RMP)
         print(self.yopt)
         
-        return
     
