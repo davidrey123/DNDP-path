@@ -15,3 +15,9 @@ class Path:
     def addHstar(self, h):
         for a in self.links:
             a.addXstar(h)
+            
+    def getTravelTime(self, type):
+        output = 0
+        for a in self.links:
+            output += a.getTravelTime(a.x, type)
+        return output
