@@ -11,6 +11,7 @@ class BPC:
         self.network = network
         self.BB_nodes = []
         self.INT_tol = 1e-4
+        self.OA_tol = 1e-4
         self.CG_tol = 1e-4
         self.inf = 1e+9
         self.nit = 0
@@ -60,11 +61,13 @@ class BPC:
         BB_node_id = cnt
         can.children.append(BB_node_id)
         n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
+        n0.paths = dict(can.paths)
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
         n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed10, fixed11, False)
+        n1.paths = dict(can.paths)
         self.BB_nodes.append(n1)
     
         return
@@ -95,6 +98,8 @@ class BPC:
         
         if type == 'capacity':
             knp.maximize(sum(knp.y[a] * a.C for a in self.network.links2))
+        elif type == 'x':
+            knp.maximize(sum(knp.y[a] * a.x for a in self.network.links2))                        
         else:
             print('unknown type')
             
@@ -115,10 +120,19 @@ class BPC:
         if self.params.PRINT_BB_INFO:
             print('Running knapsack heuristic with',nKNP,'round(s)')
         
+        yKNP = {}
+        for a in self.network.links2:
+            yKNP[a] = 1
+        
+        t0_TAP = time.time()
+        tstt = round(self.network.tapas('SO',yKNP), 3) 
+        self.ydict.insertSO(yKNP, tstt)
+        self.rt_TAP += (time.time() - t0_TAP)
+        
         best = self.inf
-        yinc = {}
         for n in range(nKNP):
-            yKNP = self.knapsack('capacity',can)
+            #yKNP = self.knapsack('capacity',can)
+            yKNP = self.knapsack('x',can)
                         
             t0_TAP = time.time()
             tstt = round(self.network.tapas('SO',yKNP), 3) 
@@ -131,11 +145,12 @@ class BPC:
             
             if tstt < best:
                 best = tstt
-                yinc = yKNP
+                self.yopt = yKNP
+                
                 
         t0_TAP = time.time()
-        can.UB = round(self.network.tapas('UE',yinc), 3)
-        self.ydict.insertUE(yinc, can.UB)
+        can.UB = round(self.network.tapas('UE',self.yopt), 3)
+        self.ydict.insertUE(self.yopt, can.UB)
         self.rt_TAP += time.time() - t0_TAP
         self.nUE += 1
         self.UB = can.UB
@@ -157,7 +172,7 @@ class BPC:
         for a in self.network.links2:
             a.y = 0
             
-        new = 0        
+        new = 0
         for r in self.network.origins:        
             self.network.dijkstras(r,'UE')
             
@@ -201,7 +216,9 @@ class BPC:
                     if rc < minrc:
                         minrc = rc
             
-        print('pricing',new,minrc)        
+        if self.params.PRINT_BB_INFO:
+            print('pricing',new,minrc)
+            
         self.rt_pricing += (time.time() - t0_pricing)        
         return minrc
     
@@ -210,7 +227,7 @@ class BPC:
         
         #---to do: recode such that lp is setup once and only new paths and cuts are added iteratively
         
-        print('can.LB',can.LB,type)
+        #print('can.LB',can.LB,type)
         
         t0_RMP = time.time()
         rmp = Model()
@@ -245,7 +262,8 @@ class BPC:
             #---Interdiction Cuts - useless unless MILP?
             rmp.add_constraint(sum(rmp.y[a] + yv[a] - 2*rmp.y[a]*yv[a] for a in self.network.links2) >= 1)
             
-        #---Branch cuts    
+        #---Branch cuts
+        
         for a in self.network.links2:
             
             if a.id in can.fixed0:
@@ -312,7 +330,8 @@ class BPC:
                 print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
             
             if minrc >= -self.CG_tol:
-                print('CG converged')
+                if self.params.PRINT_BB_INFO:
+                    print('CG converged')
                 conv = True
             
             nCG += 1
@@ -433,7 +452,7 @@ class BPC:
         t0 = time.time()
         
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0],10)        
+        self.initOAcuts(self.BB_nodes[0],50)        
     
         #---initialize paths
         self.initPaths(self.BB_nodes[0])

@@ -94,6 +94,8 @@ class BC:
         
         if type == 'capacity':
             knp.maximize(sum(knp.y[a] * a.C for a in self.network.links2))
+        elif type == 'x':
+            knp.maximize(sum(knp.y[a] * a.x for a in self.network.links2))                        
         else:
             print('unknown type')
             
@@ -114,10 +116,19 @@ class BC:
         if self.params.PRINT_BB_INFO:
             print('Running knapsack heuristic with',nKNP,'round(s)')
         
+        yKNP = {}
+        for a in self.network.links2:
+            yKNP[a] = 1
+        
+        t0_TAP = time.time()
+        tstt = round(self.network.tapas('SO',yKNP), 3) 
+        self.ydict.insertSO(yKNP, tstt)
+        self.rt_TAP += (time.time() - t0_TAP)
+        
         best = self.inf
-        yinc = {}
         for n in range(nKNP):
-            yKNP = self.knapsack('capacity',can)
+            #yKNP = self.knapsack('capacity',can)
+            yKNP = self.knapsack('x',can)
                         
             t0_TAP = time.time()
             tstt = round(self.network.tapas('SO',yKNP), 3) 
@@ -130,11 +141,12 @@ class BC:
             
             if tstt < best:
                 best = tstt
-                yinc = yKNP
+                self.yopt = yKNP
+                
                 
         t0_TAP = time.time()
-        can.UB = round(self.network.tapas('UE',yinc), 3)
-        self.ydict.insertUE(yinc, can.UB)
+        can.UB = round(self.network.tapas('UE',self.yopt), 3)
+        self.ydict.insertUE(self.yopt, can.UB)
         self.rt_TAP += time.time() - t0_TAP
         self.nUE += 1
         self.UB = can.UB
