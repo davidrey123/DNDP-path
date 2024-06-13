@@ -452,7 +452,7 @@ class BPC:
         t0 = time.time()
         
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0],50)        
+        self.initOAcuts(self.BB_nodes[0],10)        
     
         #---initialize paths
         self.initPaths(self.BB_nodes[0])
