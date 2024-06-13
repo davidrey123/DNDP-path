@@ -33,7 +33,7 @@ class Link:
         return str(self)
 
     def getTravelTime(self, x, type):
-        if self.y == 0:
+        if self.y == 0 and type != 'RC':
             return Params.INFTY
             
         if type == 'UE':
