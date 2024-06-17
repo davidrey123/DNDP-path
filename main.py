@@ -6,31 +6,25 @@ from src import BC
 from src import BPC
 
 net = 'SiouxFalls'
-ins = 'SF_DNDP_10_4'
+ins = 'SF_DNDP_10_1'
+
+network = Network.Network(net,ins,0.5,1e-0,1e-3)
+print(net,ins)
 
 run = 'BPC'
 
 if run == 'BPC':
-    network = Network.Network(net,ins,0.5,1e-0,1e-3)
-    print(net,ins)
     bpc = BPC.BPC(network)
     bpc.BB()
-    print()
+
 elif run == 'BC':
-    network = Network.Network(net,ins,0.5,1e-0,1e-3)
-    print(net,ins)
     bc = BC.BC(network)
     bc.BB()
-    print()
+    
 elif run == 'FS_NETS':
-    network = Network.Network(net,ins,0.5,1e-0,1e-3)
-    print(net,ins)
     fs_nets = FS_NETS.FS_NETS(network)
     fs_nets.BB()
-    print()
+
 elif run == 'Leblanc':
-    network = Network.Network(net,ins,0.5,1e-0,1e-3)
-    print(net,ins)
     leblanc = Leblanc.Leblanc(network)
     leblanc.BB()
-    print()    
