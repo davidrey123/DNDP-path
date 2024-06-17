@@ -197,9 +197,11 @@ class BPC:
         
         for a in self.network.links:
             a.dual = can.duals['link'][a]
+            if a.dual > 0 and a.dual < 1E-7:
+                a.dual = 0
+
         
         for r in self.network.origins:
-        
             self.network.dijkstras(r,'RC')
             
             for s in self.network.zones:
