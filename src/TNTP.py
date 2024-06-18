@@ -15,6 +15,7 @@ class TNTP:
         self.links = []
         self.zones = []
         self.origins = []
+        self.firstThruNode = None
         
         self.links2 = []
         self.TD = 0
@@ -24,9 +25,40 @@ class TNTP:
         
         self.inf = 1e+9
         self.tol = 1e-2
+        
+        self.netLines = {}
             
         self.readTNTPNetwork("data/"+name+"/net.txt")
         self.readTrips("data/"+name+"/trips.txt")
+        
+
+        
+    def writeInstance(self,insName,A2):
+        
+        file = open(insName, "w")
+        
+        file.write("<NUMBER OF ZONES> %d\n" % len(self.zones))
+        file.write("<NUMBER OF NODES> %d\n" % len(self.nodes))
+        file.write("<FIRST THRU NODE> %d\n" % self.firstThruNode)
+        file.write("<NUMBER OF LINKS> %d\n" % (len(self.links) - len(A2)))
+        file.write("<NUMBER OF NEW LINKS> %d\n" % len(A2))
+        file.write("<END OF METADATA>\n\n\n")
+        
+        file.write("~\tInit node\tTerm node\tCapacity\tLength\tFree Flow Time\tB\tPower\tSpeed limit\tToll\tType\tCost\t;\n")
+        
+        for a in self.links:
+            if a in A2: 
+                continue
+            for i in range(len(self.netLines[a])-1):
+                file.write("%s\t" % self.netLines[a][i])
+            file.write("%d\n" % a.cost)
+            
+        for a in A2:
+            for i in range(len(self.netLines[a])-1):
+                file.write("%s\t" % self.netLines[a][i])
+            file.write("%d\n" % a.cost)
+        
+        file.close()
         
 
     def readTNTPNetwork(self,netFile):
@@ -63,6 +95,8 @@ class TNTP:
 
             else:
                 self.nodes.append(Node.Node(i + 1))
+        
+        self.firstThruNode = firstThruNode
 
         line = ""
         id = 0
@@ -87,10 +121,7 @@ class TNTP:
             id = id +1
 
             self.links.append(link)
-            
-            if i >= numLinks:
-                self.links2.append(link)
-
+            self.netLines[link] = line
 
         file.close()
         

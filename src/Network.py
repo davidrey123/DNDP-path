@@ -49,7 +49,6 @@ class Network:
         numNodes = 0
         numLinks = 0
         newLinks = 0
-        #with open('result8.txt', 'a') as file, contextlib.redirect_stdout(file):
         file = open(netFile, "r")
 
         line = ""
@@ -84,7 +83,7 @@ class Network:
         id = 0
         while len(line) == 0:
             line = file.readline().strip()
-        #with open('result6.txt', 'a') as file, contextlib.redirect_stdout(file):
+
         for i in range(0, numLinks + newLinks):
             line = file.readline().split()
             if len(line) == 0:
@@ -101,7 +100,6 @@ class Network:
             
             self.TC += cost
             
-            #with open('result5.txt', 'w') as file, contextlib.redirect_stdout(file):
             link = Link.Link(id, start ,end, t_ff, C, alpha, beta, cost)
             id = id +1
             #print(start,end)
@@ -111,14 +109,7 @@ class Network:
             if i >= numLinks:
                 self.links2.append(link)
             
-            #with open('result6.txt', 'a') as file, contextlib.redirect_stdout(file):
-            #print(f"Start Node: {start}, End Node: {end}")
-            #print(link)
         file.close()
-
-        #with open('result6.txt', 'a') as file, contextlib.redirect_stdout(file):
-            #print(start,end)
-            #print(self.links)
 
 
     def readTrips(self,tripsFile,scal_time,scal_flow):
@@ -145,26 +136,15 @@ class Network:
         #print(splitted)
         
         while len(lines) < line_idx or idx < len(splitted):
-            #print(line_idx)
-            #print(idx)
-            #print(len(lines))This is the total number of line
-            #print()
-        #while lines < len(line_idx) or idx < len(splitted):
 
             next = splitted[idx]
-            #print(next)
+
             if next == "Origin":
                 
                 idx += 1
                 r = self.zones[int(splitted[idx]) - 1]
 
-                #print(int(splitted[idx]))
             else:
-                #print(int(splitted[idx]))
-                #print(line)
-                #print(f"idx: {idx}, splitted[idx]: {splitted[idx]}")
-                #print(f"Length of self.zones: {len(self.zones)}")
-                #print(int(splitted[idx]) - 1)
                 s = self.zones[int(splitted[idx]) - 1]
 
                 #print(s)
@@ -174,9 +154,6 @@ class Network:
                 
                 r.addDemand(s, d)
                 self.TD += d
-
-
-            #if [int(splitted[idx]) - 1] != 343:
 
             idx += 1
 
@@ -233,11 +210,9 @@ class Network:
 
             Q = Heap.Heap()
             Q.insert(origin)
-            #print(f"This is Q {Q}")
 
             while Q.size() > 0:
 
-                #u = self.argmin(Q)
                 u = Q.removeMin()
 
                 for uv in u.outgoing:
@@ -300,9 +275,6 @@ class Network:
                 tt = ij.getTravelTime(ij.x, type)
                 output += ij.x * tt
                 
-            #if ij.y == 0 and ij.x > len(self.origins) * self.params.flow_epsilon * 10:
-            #    print(ij, ij.y, ij.x, tt)
-            #    raise Exception("crash")
         return output
     
     def validateLinkFlows(self):
