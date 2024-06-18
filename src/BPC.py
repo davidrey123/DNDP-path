@@ -296,17 +296,17 @@ class BPC:
             if type == 'LP':
                 dual_link = {} 
                 for a in self.network.links:
-                    dual_link[a] = rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value            
-                    if dual_link[a] < 0: 
-                        print('dual link:',a.id,dual_link[a])
+                    dual_link[a] = max(rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value,0)
+                    #if dual_link[a] < 0: 
+                    #    print('dual link:',a.id,dual_link[a])
             
                 dual_dem = {}
                 for r in self.network.origins:
                     for s in self.network.zones:
                         if r.getDemand(s) > 0:
-                            dual_dem[(r,s)] = rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value
-                            if dual_dem[(r,s)] < 0: 
-                                print('dual dem:',r.id,s.id,dual_dem[(r,s)])
+                            dual_dem[(r,s)] = max(rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0)
+                            #if dual_dem[(r,s)] < 0: 
+                            #    print('dual dem:',r.id,s.id,dual_dem[(r,s)])
                     
                 can.duals = {'link':dual_link,'dem':dual_dem}
                 
