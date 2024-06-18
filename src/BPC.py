@@ -141,12 +141,11 @@ class BPC:
             self.OAcuts.append(self.getOAcut())                            
             self.nSO += 1        
                     
-            can.yvec.append(yKNP)      
+            can.yvec.append(yKNP)
             
             if tstt < best:
                 best = tstt
                 self.yopt = yKNP
-                
                 
         t0_TAP = time.time()
         can.UB = round(self.network.tapas('UE',self.yopt), 3)
@@ -197,9 +196,12 @@ class BPC:
         
         for a in self.network.links:
             a.dual = can.duals['link'][a]
-            if a.dual > 0 and a.dual < 1E-7:
-                a.dual = 0
-
+                        
+            #if a.dual > 0 and a.dual < 1E-7:                
+            #    a.dual = 0
+            #    
+            #elif a.dual > 0:
+            #    print(a.dual)
         
         for r in self.network.origins:
             self.network.dijkstras(r,'RC')
@@ -228,9 +230,7 @@ class BPC:
     def rmp_path(self, can, type):
         
         #---to do: recode such that lp is setup once and only new paths and cuts are added iteratively
-        
-        #print('can.LB',can.LB,type)
-        
+           
         t0_RMP = time.time()
         rmp = Model()
         
@@ -251,10 +251,12 @@ class BPC:
         for r in self.network.origins:
             for s in self.network.zones:
                 if r.getDemand(s) > 0:
-                    rmp.add_constraint(sum(rmp.h[p] for p in can.paths[r][s]) == r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))
+                    #rmp.add_constraint(sum(rmp.h[p] for p in can.paths[r][s]) == r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))
+                    rmp.add_constraint(sum(rmp.h[p] for p in can.paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))
     
         for a in self.network.links:
-            rmp.add_constraint(sum(rmp.h[p] for p in can.getPaths() if a in p.links) == rmp.x[a], 'link_%d_%d' % (a.start.id,a.end.id)) 
+            #rmp.add_constraint(sum(rmp.h[p] for p in can.getPaths() if a in p.links) == rmp.x[a], 'link_%d_%d' % (a.start.id,a.end.id))
+            rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in can.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
                         
         for OAcut in self.OAcuts:
             #---OA cuts
@@ -264,8 +266,7 @@ class BPC:
             #---Interdiction Cuts - useless unless MILP?
             rmp.add_constraint(sum(rmp.y[a] + yv[a] - 2*rmp.y[a]*yv[a] for a in self.network.links2) >= 1)
             
-        #---Branch cuts
-        
+        #---Branch cuts        
         for a in self.network.links2:
             
             if a.id in can.fixed0:
@@ -282,7 +283,7 @@ class BPC:
         self.rt_RMP += (time.time() - t0_RMP)
             
         if rmp.solve_details.status == 'infeasible' or rmp.solve_details.status == 'integer infeasible':
-            return self.inf,{},'infeasible'
+            return 'infeasible',self.inf,{}
         
         else:
             OFV = rmp.objective_value
@@ -296,16 +297,16 @@ class BPC:
                 dual_link = {} 
                 for a in self.network.links:
                     dual_link[a] = rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value            
-                    #if abs(dual_link[a]) > tol: 
-                    #print('dual link:',a.id,dual_link[a])
+                    if dual_link[a] < 0: 
+                        print('dual link:',a.id,dual_link[a])
             
                 dual_dem = {}
                 for r in self.network.origins:
                     for s in self.network.zones:
                         if r.getDemand(s) > 0:
                             dual_dem[(r,s)] = rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value
-                            #if abs(dual_dem[w]) > tol: 
-                            #print('dual dem:',r.id,s.id,dual_dem[(r,s)])
+                            if dual_dem[(r,s)] < 0: 
+                                print('dual dem:',r.id,s.id,dual_dem[(r,s)])
                     
                 can.duals = {'link':dual_link,'dem':dual_dem}
                 
@@ -338,7 +339,7 @@ class BPC:
             
             nCG += 1
             
-        if conv == True:
+        if conv == True:            
             
             CG_status, can.frac = self.checkIntegral(yRMP)
             

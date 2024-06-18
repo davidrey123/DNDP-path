@@ -6,7 +6,7 @@ from docplex.mp.model import Model
 
 class BC:
 
-    #---instantiate FS NETS's branch-and-bound algorithm
+    #---instantiate single search tree branch-and-bound algorithm
     def __init__(self, network):
         self.network = network
         self.BB_nodes = []
@@ -137,12 +137,11 @@ class BC:
             self.OAcuts.append(self.getOAcut())                            
             self.nSO += 1        
                     
-            can.yvec.append(yKNP)      
+            can.yvec.append(yKNP)
             
             if tstt < best:
                 best = tstt
-                self.yopt = yKNP
-                
+                self.yopt = yKNP                
                 
         t0_TAP = time.time()
         can.UB = round(self.network.tapas('UE',self.yopt), 3)
@@ -232,8 +231,6 @@ class BC:
                 
             LP_status, can.frac = self.checkIntegral(yLP)
             
-            #print('XXX',LP_OFV,LP_status,len(self.OAcuts))            
-                
             return LP_status,LP_OFV,yLP
 
     
@@ -320,13 +317,13 @@ class BC:
                 conv = True
                 LB_OA = max(can.LB,min(LP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
-                    print('-----------------------------------> convergence by optimality gap in OA_link')                    
+                    print('-----------------------------------> convergence by optimality gap in OA_lp_link')                    
                 
             if (time.time() - t0_OA) >= self.params.BB_timelimit/2:
                 #---search is stopped and the min between lp obj and UB_OA can be used as the LB of the BB node
                 LB_OA = max(can.LB,min(LP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
-                    print('-----------------------------------> time limit exceeded in OA_link')
+                    print('-----------------------------------> time limit exceeded in OA_lp_link')
                 break
             
             nOA += 1
@@ -344,7 +341,7 @@ class BC:
         t0 = time.time()
         
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0],10)        
+        self.initOAcuts(self.BB_nodes[0],10)
     
         conv = False
         while conv == False:                    

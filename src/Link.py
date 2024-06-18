@@ -44,7 +44,7 @@ class Link:
             output += x * self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
             
         elif type == 'RC':
-            output = -self.dual
+            output = self.dual
             
         else:
             raise Exception("wrong type "+str(type))
