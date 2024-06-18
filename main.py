@@ -8,6 +8,9 @@ from src import BPC
 net = 'SiouxFalls'
 ins = 'SF_DNDP_10_1'
 
+net = 'Anaheim'
+ins = 'A_DNDP_10_1'
+
 network = Network.Network(net,ins,0.5,1e-0,1e-3)
 print(net,ins)
 
