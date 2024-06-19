@@ -26,8 +26,7 @@ class Params:
         self.PRINT_TAP_ITER = False
 
         self.printBushEquilibrate = False
-        self.printReducedCosts = False
-        
+        self.printReducedCosts = False        
         
         self.tapas_max_iter = 100
         self.min_gap = 1E-3
@@ -35,6 +34,9 @@ class Params:
     
         self.warmstart = False
         
-        self.PRINT_BB_INFO = True
-        self.BB_timelimit = 600
+        self.PRINT_BB_INFO = False  #---prints detailed BB info
+        self.PRINT_BB_BASIC = False #---prints only basic BB info
+        
+        self.CPLEX_threads = 4
+        self.BB_timelimit = 3600
         self.BB_tol = 1E-2

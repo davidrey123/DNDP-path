@@ -12,12 +12,14 @@ class Leblanc:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
+        self.gap = self.inf
         self.yopt = None
         self.params = Params.Params()
         
         self.nBB = 0
         self.nSO = 0
         self.nUE = 0
+        self.rt = 0.0
         self.rt_TAP = 0.0
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
@@ -63,7 +65,8 @@ class Leblanc:
 
     def BB(self):
         
-        print('---Leblanc---')    
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('---Leblanc---')    
         
         self.network.resetTapas()
  
@@ -165,18 +168,19 @@ class Leblanc:
             if len(candidates) == 0:
                 conv = True
                 self.LB = self.UB
-                gap = 0.0
+                self.gap = 0.0
                 if self.params.PRINT_BB_INFO:
                     print('--> convergence by inspection')
                 break
                 
             else:
                 self.LB = self.getLB(candidates)            
-                gap = self.getGap()
+                self.gap = self.getGap()
             
-            print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*gap))
+            if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+                print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*self.gap))
             
-            if gap <= self.params.BB_tol:
+            if self.gap <= self.params.BB_tol:
                 conv = True
                 self.LB = self.UB
                 if self.params.PRINT_BB_INFO:
@@ -190,10 +194,10 @@ class Leblanc:
             
             self.nBB += 1
  
-        rt = time.time() - t0
+        self.rt = time.time() - t0
  
-        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,self.nBB,self.nSO,self.nUE,self.UB,100*gap))
-        print(self.yopt)
-        print(self.rt_TAP)
-        return
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))
+            print(self.yopt)
+            print(self.rt_TAP)
     

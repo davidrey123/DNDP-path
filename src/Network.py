@@ -35,8 +35,8 @@ class Network:
         
         self.B = self.TC * B_prop # budget        
         
-        print('Total scaled demand %.1f' % self.TD)
-        print('Total cost %.1f - Budget %.1f' % (self.TC, self.B))
+        #print('Total scaled demand %.1f' % self.TD)
+        #print('Total cost %.1f - Budget %.1f' % (self.TC, self.B))
         
     def setType(self, type):
         self.type = type

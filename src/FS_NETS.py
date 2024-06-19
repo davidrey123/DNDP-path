@@ -15,6 +15,7 @@ class FS_NETS:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
+        self.gap = self.inf
         self.yopt = None
         self.params = Params.Params()
         self.ydict = YDict.YDict()
@@ -22,6 +23,7 @@ class FS_NETS:
         self.nBB = 0
         self.nSO = 0
         self.nUE = 0
+        self.rt = 0.0
         self.rt_TAP = 0.0
         self.rt_MILP = 0.0        
         
@@ -193,6 +195,9 @@ class FS_NETS:
         milp.minimize(milp.mu)
         
         milp.parameters.mip.tolerances.mipgap = self.params.BB_tol
+        milp.parameters.threads = self.params.CPLEX_threads
+        milp.parameters.timelimit = self.params.BB_timelimit
+        
         milp.solve(log_output=False)
         
         #print(milp.solve_details.time,(time.time() - t0_MILP))
@@ -251,7 +256,6 @@ class FS_NETS:
             
             if self.ydict.hasSO(yMILP) == True:
                 tstt = self.ydict.getSO(yMILP)
-                #print('*** hasSO ***', tstt)
             
             else:
                 t0_TAP = time.time()
@@ -262,8 +266,8 @@ class FS_NETS:
                 self.nSO += 1
             
             if tstt < UB_OA:
-                #if self.params.PRINT_BB_INFO:
-                #    print('-----------------------------------> update UB in OA_link')
+                if self.params.PRINT_BB_INFO:
+                    print('-----------------------------------> update UB in OA_link')
                 UB_OA = tstt
                 yOA = yMILP
                 
@@ -295,14 +299,15 @@ class FS_NETS:
 
     def BB(self):
         
-        print('---FS_NETS---')        
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('---FS_NETS---')        
         
         self.network.resetTapas()
  
         t0 = time.time()
         
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0],1)        
+        self.initOAcuts(self.BB_nodes[0],1)
     
         conv = False
         while conv == False:                   
@@ -407,21 +412,22 @@ class FS_NETS:
             if len(candidates) == 0:
                 conv = True
                 self.LB = self.UB
-                gap = 0.0
+                self.gap = 0.0
                 if self.params.PRINT_BB_INFO:
                     print('--> convergence by inspection')
                 break
                 
             else:
                 self.LB = self.getLB(candidates)            
-                gap = self.getGap()
+                self.gap = self.getGap()
             
             if self.params.PRINT_BB_INFO:
                 print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))            
             
-            print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*gap))
+            if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+                print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*self.gap))
             
-            if gap <= self.params.BB_tol:
+            if self.gap <= self.params.BB_tol:
                 conv = True
                 self.LB = self.UB
                 if self.params.PRINT_BB_INFO:
@@ -435,12 +441,12 @@ class FS_NETS:
             
             self.nBB += 1
  
-        rt = time.time() - t0
+        self.rt = time.time() - t0
  
-        print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,rt,self.nBB,self.nSO,self.nUE,self.UB,100*gap))
-        print(self.rt_TAP)
-        print(self.rt_MILP)
-        print(self.yopt)
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))
+            print(self.rt_TAP)
+            print(self.rt_MILP)
+            print(self.yopt)
         
-        return
     
