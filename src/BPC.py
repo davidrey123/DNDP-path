@@ -31,6 +31,7 @@ class BPC:
         self.rt_pricing = 0.0        
         
         self.OAcuts = []
+        self.yvec = [] #---for global interdiction cuts
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
@@ -95,8 +96,18 @@ class BPC:
         knp.y = {a:knp.binary_var() for a in self.network.links2}
         knp.add_constraint(sum(knp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
         
-        for yv in can.yvec:
-            knp.add_constraint(sum(knp.y[a] + yv[a] - 2*knp.y[a]*yv[a] for a in self.network.links2) >= 1)        
+        #---Interdiction cuts
+        for yv in self.yvec:
+            knp.add_constraint(sum(knp.y[a] + yv[a] - 2*knp.y[a]*yv[a] for a in self.network.links2) >= 1)
+            
+        #---Branch cuts
+        for a in self.network.links2:
+            
+            if a.id in can.fixed0:
+                knp.add_constraint(knp.y[a] == 0)
+                               
+            if a.id in can.fixed1:
+                knp.add_constraint(knp.y[a] == 1)
         
         if type == 'capacity':
             knp.maximize(sum(knp.y[a] * a.C for a in self.network.links2))
@@ -108,7 +119,7 @@ class BPC:
         knp.solve(log_output=False)
             
         if knp.solve_details.status == 'infeasible' or knp.solve_details.status == 'integer infeasible':
-            print('infeasible instance')
+            print('infeasible instance?')
             return {}
         else:            
             yKNP = {}
@@ -143,7 +154,7 @@ class BPC:
             self.OAcuts.append(self.getOAcut())                            
             self.nSO += 1        
                     
-            can.yvec.append(yKNP)
+            self.yvec.append(yKNP)
             
             if tstt < best:
                 best = tstt
@@ -259,7 +270,7 @@ class BPC:
             #---OA cuts
             rmp.add_constraint(rmp.mu >= sum(rmp.x[a]*OAcut['a'][a] + OAcut['b'][a] for a in self.network.links))
             
-        for yv in can.yvec:        
+        for yv in self.yvec:        
             #---Interdiction Cuts - useless unless MILP?
             rmp.add_constraint(sum(rmp.y[a] + yv[a] - 2*rmp.y[a]*yv[a] for a in self.network.links2) >= 1)
             
@@ -278,7 +289,9 @@ class BPC:
         
         rmp.solve(log_output=False)
         
-        #print(rmp.solve_details.time,(time.time() - t0_RMP))
+        if self.params.PRINT_BB_INFO:
+            print('nb of paths: %d, cplex time: %.1f, rmp time: %.1f' % (len(can.getPaths()),rmp.solve_details.time,(time.time() - t0_RMP)))
+        
         self.rt_RMP += (time.time() - t0_RMP)
             
         if rmp.solve_details.status == 'infeasible' or rmp.solve_details.status == 'integer infeasible':
@@ -386,8 +399,23 @@ class BPC:
                     #---solution is fractional: stop OA an return LP_OFV as BB node LB                   
                     LB_OA = CG_OFV                    
                     if self.params.PRINT_BB_INFO:
-                        print('-----------------------------------> fractional solution')                        
-                
+                        print('-----------------------------------> fractional solution')                      
+                    
+                    if self.params.KNP:
+                        if self.params.PRINT_BB_INFO:
+                            print('-----------------------------------> solving KNP')                      
+                        
+                        yKNP = self.knapsack('x', can)
+                        
+                        if len(yKNP) > 0:
+                            #---knp is feasible
+                            t0_TAP = time.time()
+                            tstt = round(self.network.tapas('SO',yKNP), 3)                
+                            self.ydict.insertSO(yKNP, tstt)
+                            self.rt_TAP += time.time() - t0_TAP
+                            self.OAcuts.append(self.getOAcut())
+                            self.nSO += 1
+                    
                 
             else:
                 #---integral solution, generate OA cut and keep going
@@ -400,12 +428,13 @@ class BPC:
                         print('-----------------------------------> convergence by bounding in OA_lp_path')
                     return nOA,LB_OA,yOA,CG_status
             
-                #---add interdiction cut
-                can.yvec.append(yCG)
+                #---add interdiction cut: in a single search tree yvec can be global
+                self.yvec.append(yCG)
                 
                 #---solve SO-TAP to get OA cut
                 if self.ydict.hasSO(yCG) == True:
                     tstt = self.ydict.getSO(yCG)
+                    print('\n\nWARNING: with global interdiction cuts, yCG should not have been feasible!!!\n\n')
                 
                 else:
                     t0_TAP = time.time()
@@ -443,7 +472,6 @@ class BPC:
             nOA += 1
             
         return nOA,LB_OA,yOA,CG_status
-        
 
     def BB(self):
         
@@ -466,13 +494,13 @@ class BPC:
              
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
-            
+        
             if self.params.PRINT_BB_INFO:
                 print('--> can (before): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))
      
             prune = False
             integral = False
-         
+                     
             if status == 'infeasible':
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by feasibility')
