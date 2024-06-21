@@ -141,7 +141,7 @@ class FS_NETS:
         self.nUE += 1
         self.UB = can.UB           
     
-    def milp_link(self,can):
+    def milp_link(self,can,):
         
         #---to do: recode such that milp is setup once and only cuts are added at each OA iteration
         
@@ -218,9 +218,14 @@ class FS_NETS:
 
     
     def OA_link(self,can):
+        
+        for n in self.BB_nodes:
+            if n.id == can.parent:
+                LB_OA = n.LB #---value to be returned that will serve as the LB of the BB node
+                break
+        
         nOA = 0
         UB_OA = self.inf
-        LB_OA = 0.0 #---value to be returned that will serve as the LB of the BB node
         yOA = {}
         
         t0_OA = time.time()
@@ -238,7 +243,7 @@ class FS_NETS:
                 
                 #---search is complete and UB_OA is the optimal OFV
                 conv = True
-                LB_OA = max(can.LB,UB_OA)
+                LB_OA = max(LB_OA,UB_OA)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
                 return nOA,LB_OA,yOA,MILP_status
@@ -246,12 +251,12 @@ class FS_NETS:
             if MILP_OFV >= self.UB:
                 #---search can be stopped and milp obj can be used as the LB of the BB node
                 conv = True
-                LB_OA = max(can.LB,MILP_OFV)
+                LB_OA = max(LB_OA,MILP_OFV)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by bounding in OA_link')
                 return nOA,LB_OA,yOA,MILP_status
             
-            can.LB = MILP_OFV
+            can.LB = MILP_OFV #---can.LB is temporarily updated during the OA loop but will be overwritten after exiting OA_link
             can.yvec.append(yMILP)
             
             if self.ydict.hasSO(yMILP) == True:
@@ -281,13 +286,13 @@ class FS_NETS:
             if gap <= self.OA_tol:
                 #---search can be stopped and the min between milp obj and UB_OA can be used as the LB of the BB node
                 conv = True
-                LB_OA = max(can.LB,min(MILP_OFV,UB_OA))
+                LB_OA = max(LB_OA,min(MILP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by optimality gap in OA_link')                    
                 
             if (time.time() - t0_OA) >= self.params.BB_timelimit/2:
                 #---search is stopped and the min between milp obj and UB_OA can be used as the LB of the BB node
-                LB_OA = max(can.LB,min(MILP_OFV,UB_OA))
+                LB_OA = max(LB_OA,min(MILP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> time limit exceeded in OA_link')
                 break
