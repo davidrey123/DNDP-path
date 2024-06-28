@@ -7,18 +7,19 @@ class BB_node:
         self.children = []
         self.LB = LB
         self.UB = UB        
-        self.fixed0 = fixed0 #list of A2 links fixed to 0
-        self.fixed1 = fixed1 #list of A2 links fixed to 1
+        self.fixed0 = fixed0 #---list of A2 links fixed to 0
+        self.fixed1 = fixed1 #---list of A2 links fixed to 1
         self.active = True
         self.solved = solved
         self.score = {}
         self.ybr = None
         
-        self.yvec = []
+        self.yvec = [] #---for local (BB node based) interfiction cuts
         
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
         self.duals = {}
         self.frac = []
+        self.y = {}
         
     def check(self):
         status = 'solve'
