@@ -15,6 +15,7 @@ class FS_NETS:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
+        self.UB_SO_DNDP = self.inf
         self.gap = self.inf
         self.yopt = None
         self.params = Params.Params()
@@ -57,17 +58,40 @@ class FS_NETS:
         
         cnt = len(self.BB_nodes) 
         
+        for a in self.network.links2:
+            if can.ybr == a.id:
+                if self.params.PRINT_BB_INFO:
+                    print('a.id found',a.id,' y =',can.y[a])                
+                break
+            
+        if can.y[a] == 0:
+            solved0 = True
+            solved1 = False
+            UB0 = can.UB
+            UB1 = self.inf
+        else:
+            solved0 = False
+            solved1 = True
+            UB0 = self.inf
+            UB1 = can.UB            
+        
         BB_node_id = cnt
         can.children.append(BB_node_id)
-        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
+        n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, UB0, fixed00, fixed01, solved0)
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
-        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, can.UB, fixed10, fixed11, True)
-        n1.score = can.score
+        n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, UB1, fixed10, fixed11, solved1)
         self.BB_nodes.append(n1)
-    
+
+        if solved0 == True:
+            n0.score = can.score
+            n0.y = can.y
+        else:
+            n1.score = can.score       
+            n1.y = can.y
+        
         return
     
     def getOAcut(self):
@@ -96,6 +120,8 @@ class FS_NETS:
         
         if type == 'capacity':
             knp.maximize(sum(knp.y[a] * a.C for a in self.network.links2))
+        elif type == 'x':
+            knp.maximize(sum(knp.y[a] * a.x for a in self.network.links2))             
         else:
             print('unknown type')
             
@@ -114,12 +140,19 @@ class FS_NETS:
     def initOAcuts(self, can, nKNP):
         
         if self.params.PRINT_BB_INFO:
-            print('Running knapsack heuristic with',nKNP,'round(s)')        
+            print('Running knapsack heuristic with',nKNP,'round(s)')
         
-        best = self.inf
-        yinc = {}
+        yKNP = {}
+        for a in self.network.links2:
+            yKNP[a] = 1
+        
+        t0_TAP = time.time()
+        tstt = round(self.network.tapas('SO',yKNP), 3) 
+        self.ydict.insertSO(yKNP, tstt)
+        self.rt_TAP += (time.time() - t0_TAP)
+        
         for n in range(nKNP):
-            yKNP = self.knapsack('capacity',can)
+            yKNP = self.knapsack('x',can)
                         
             t0_TAP = time.time()
             tstt = round(self.network.tapas('SO',yKNP), 3) 
@@ -128,15 +161,15 @@ class FS_NETS:
             self.OAcuts.append(self.getOAcut())                            
             self.nSO += 1        
                     
-            can.yvec.append(yKNP)      
+            can.yvec.append(yKNP)
             
-            if tstt < best:
-                best = tstt
-                yinc = yKNP
+            if tstt < self.UB_SO_DNDP:
+                self.UB_SO_DNDP = tstt
+                self.yopt = yKNP
                 
         t0_TAP = time.time()
-        can.UB = round(self.network.tapas('UE',yinc), 3)
-        self.ydict.insertUE(yinc, can.UB)
+        can.UB = round(self.network.tapas('UE',self.yopt), 3)
+        self.ydict.insertUE(self.yopt, can.UB)
         self.rt_TAP += time.time() - t0_TAP
         self.nUE += 1
         self.UB = can.UB           
@@ -230,8 +263,8 @@ class FS_NETS:
         
         t0_OA = time.time()
         
-        conv = False
-        while conv == False:
+        conv_OA = False
+        while conv_OA == False:
             
             MILP_status,MILP_OFV,yMILP = self.milp_link(can)
             
@@ -242,7 +275,7 @@ class FS_NETS:
                     #   and budget constraint violations are checked before executing OA_link
                 
                 #---search is complete and UB_OA is the optimal OFV
-                conv = True
+                conv_OA = True
                 LB_OA = max(LB_OA,UB_OA)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
@@ -250,7 +283,7 @@ class FS_NETS:
                         
             if MILP_OFV >= self.UB:
                 #---search can be stopped and milp obj can be used as the LB of the BB node
-                conv = True
+                conv_OA = True
                 LB_OA = max(LB_OA,MILP_OFV)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by bounding in OA_link')
@@ -285,7 +318,7 @@ class FS_NETS:
             
             if gap <= self.OA_tol:
                 #---search can be stopped and the min between milp obj and UB_OA can be used as the LB of the BB node
-                conv = True
+                conv_OA = True
                 LB_OA = max(LB_OA,min(MILP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by optimality gap in OA_link')                    
@@ -353,18 +386,18 @@ class FS_NETS:
                 if can.solved == False:                                     
                     
                     #---LB is obtained from OA algorithm
-                    nOA, can.LB, yOA, OA_status = self.OA_link(can)                    
+                    nOA, can.LB, can.y, OA_status = self.OA_link(can)                    
                     
                     #---solve UE-TAP at root node to get initial UB
                     if self.nBB == 0:
                         t0_TAP = time.time()
-                        can.UB = round(self.network.tapas('UE',yOA), 3)
+                        can.UB = round(self.network.tapas('UE',can.y), 3)
                         self.rt_TAP += time.time() - t0_TAP
                         self.nUE += 1
                         
                         if can.UB < self.UB:            
                             self.UB = can.UB
-                            self.yopt = yOA
+                            self.yopt = can.y
                             if self.params.PRINT_BB_INFO:
                                 print('--> update UB')                        
                     
@@ -406,6 +439,7 @@ class FS_NETS:
                 
                 if self.params.PRINT_BB_INFO:                    
                     for a in self.network.links2:
+                        print(a,can.score[a.id])
                         if a.id == can.ybr:
                             print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
                 
