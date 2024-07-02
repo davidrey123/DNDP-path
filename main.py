@@ -3,24 +3,35 @@ from src import Network
 from src import Leblanc
 from src import FS_NETS
 from src import BC
-from src import BPC
+from src import BPC_singleTree
+from src import BPC_twoPhase
+from src import BPC_nestedTree
 
 net = 'SiouxFalls'
 ins = 'SF_DNDP_10_1'
 
-net = 'Anaheim'
-ins = 'A_DNDP_10_1'
+#net = 'Anaheim'
+#ins = 'A_DNDP_10_1'
 
 network = Network.Network(net,ins,0.5,1e-0,1e-3)
 print(net,ins)
 
-run = 'BPC'
+run = 'BPC_nestedTree'
 
-if run == 'BPC':
-    bpc = BPC.BPC(network)
-    bpc.BB()
+if run == 'BPC_singleTree':
+    bpc_singleTree = BPC_singleTree.BPC_singleTree(network)
+    bpc_singleTree.BB()
+    
+elif run == 'BPC_twoPhase':
+    bpc_twoPhase = BPC_twoPhase.BPC_twoPhase(network)
+    bpc_twoPhase.BB()
+
+elif run == 'BPC_nestedTree':
+    bpc_nestedTree = BPC_nestedTree.BPC_nestedTree(network)
+    bpc_nestedTree.BB() 
 
 elif run == 'BC':
+    print('note: need to check that no UE solution is skipped')    
     bc = BC.BC(network)
     bc.BB()
     
