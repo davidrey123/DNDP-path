@@ -42,3 +42,12 @@ elif run == 'FS_NETS':
 elif run == 'Leblanc':
     leblanc = Leblanc.Leblanc(network)
     leblanc.BB()
+
+
+print('\n-------------------------------------------')
+print('Notes:')
+print('need to rules to control OA cut generation')
+print('if UB > can.LB > UB-SO-DNDP: what can we do?')
+print('interdiction cuts: check usefulness in RMP')
+print('Try Beckmann OA cuts')
+print('-------------------------------------------')
