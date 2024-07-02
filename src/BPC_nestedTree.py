@@ -4,7 +4,7 @@ from src import Params
 from src import YDict
 from docplex.mp.model import Model
 
-class BPC_twoPhase:
+class BPC_nestedTree:
 
     #---instantiate a BPC algorithm
     def __init__(self, network):
@@ -18,6 +18,7 @@ class BPC_twoPhase:
         self.LB = 0
         self.UB = self.inf
         self.UB_SO_DNDP = self.inf
+        self.UB_OABPC = self.inf #---UB that is used in OABPC after outer root node is solved
         self.gap = self.inf
         self.yopt = None
         self.params = Params.Params()
@@ -44,7 +45,7 @@ class BPC_twoPhase:
             for s in self.network.zones:
                 for p in self.paths[r][s]:
                     all_paths.append(p)
-        return all_paths        
+        return all_paths         
         
     def getCandidates(self):
         return [n for n in self.BB_nodes if n.active==True]
@@ -128,13 +129,11 @@ class BPC_twoPhase:
         OABPC_node_id = cnt
         can.children.append(OABPC_node_id)
         n0 = BB_node.BB_node(self.network, OABPC_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
-        #n0.paths = dict(can.paths)
         OABPC_nodes.append(n0)
         
         OABPC_node_id = cnt+1
         can.children.append(OABPC_node_id)
         n1 = BB_node.BB_node(self.network, OABPC_node_id, can.id, can.LB, self.inf, fixed10, fixed11, False)
-        #n1.paths = dict(can.paths)
         OABPC_nodes.append(n1)
     
         return OABPC_nodes      
@@ -258,7 +257,7 @@ class BPC_twoPhase:
                 if r.getDemand(s) > 0:
                 
                     p = self.network.trace(r,s)
-                    self.paths[r][s].append(p)
+                    self.paths[r][s].append(p)                
                     #print(r.id, s.id, p.links)                
                     new += 1
                 
@@ -399,7 +398,7 @@ class BPC_twoPhase:
             minrc = self.pricing(can)
             
             #if self.params.PRINT_BB_INFO:
-            #    npaths = len(can.getPaths())
+            #    npaths = len(self.getPaths())
             #    print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
             
             if minrc >= -self.CG_tol:
@@ -416,6 +415,9 @@ class BPC_twoPhase:
             if self.params.PRINT_BB_INFO:
                 if CG_status != 'fractional':
                     print('CG status',CG_status)
+                    
+            npaths = len(self.getPaths())
+            print('CG: %s\t%d\t%d\t%.1f\t%.2f' % (CG_status,nCG,npaths,OFV,minrc))                    
             
             return CG_status,OFV,yRMP
         
@@ -423,10 +425,10 @@ class BPC_twoPhase:
             return CG_status,self.inf,yRMP
         
     def OABPC(self, can):
-        
+                
        #---single search tree OA-BPC to solve SO-DNDP
 
-       n = BB_node.BB_node(self.network, 0, 0, can.LB, self.inf, can.fixed0, can.fixed1, False)
+       n = BB_node.BB_node(self.network, 0, 0, can.LB, self.UB_OABPC, can.fixed0, can.fixed1, False)
        OABPC_nodes = [n]
        nOABPC = 0
        yOABPC = self.yopt #---check
@@ -440,34 +442,31 @@ class BPC_twoPhase:
            #can_OABPC = self.nodeSelection('depth',candidates_OABPC)
            can_OABPC = self.nodeSelection('bestBound',candidates_OABPC)
            status = can_OABPC.check()
-    
+               
            prune = False
            runSO = False        
                 
            if status == 'infeasible':
                if self.params.PRINT_BB_INFO:
-                   print('--> prune by feasibility')
+                   print('----> prune by feasibility')
                prune = True                 
                can_OABPC.LB = self.inf
                can_OABPC.UB = self.inf        
                 
            elif status == 'fixed' or status == 'stop':
                if self.params.PRINT_BB_INFO:
-                   print('--> prune by check',status)
+                   print('----> prune by check',status)
                prune = True
                #runSO = True #---waste of time if too many OA cuts?
                 
-               yUB = {}
                for a in self.network.links2:
                    if a.id in can_OABPC.fixed1:
-                       yUB[a] = 1
+                       can_OABPC.y[a] = 1
                    elif a.id in can_OABPC.fixed0:
-                       yUB[a] = 0 
+                       can_OABPC.y[a] = 0 
                    else:
-                       yUB[a] = 0
+                       can_OABPC.y[a] = 0
                        can_OABPC.fixed0.append(a.id)
-                       
-               can_OABPC.y = yUB
                 
            else:
                #---LB is obtained from LP relaxation of OA MP
@@ -478,20 +477,21 @@ class BPC_twoPhase:
                    can_OABPC.LB = self.inf
                    can_OABPC.UB = self.inf
                    
-               elif can_OABPC.LB >= self.UB_SO_DNDP:
+               elif can_OABPC.LB >= self.UB_OABPC:
                    if self.params.PRINT_BB_INFO:
-                       print('--> prune by bounding')
+                       print('----> prune by bounding')
                    prune = True                   
                    
                elif CG_status == 'integral':
                    if self.params.PRINT_BB_INFO:
-                       print('--> prune by integrality')
+                       print('----> prune by integrality')
 
                    prune = True
                    runSO = True
 
                    for a in self.network.links2:
                        can_OABPC.y[a] = int(yRMP[a])
+
                                    
            if runSO:
                
@@ -501,7 +501,7 @@ class BPC_twoPhase:
                #---solve SO-TAP to get OA cut
                if self.ydict.hasSO(can_OABPC.y) == True:
                    can_OABPC.UB = self.ydict.getSO(can_OABPC.y)
-                   print('--> has SO')                    
+                   print('----> has SO')                    
                 
                else:
                    t0_TAP = time.time()
@@ -512,15 +512,15 @@ class BPC_twoPhase:
                    self.nSO += 1
 
                #---update UB_OABPC                
-               if can_OABPC.UB < self.UB_SO_DNDP:
-                   self.UB_SO_DNDP = can_OABPC.UB
+               if can_OABPC.UB < self.UB_OABPC:
+                   self.UB_OABPC = can_OABPC.UB
                    yOABPC = can_OABPC.y
                    
                    if self.params.PRINT_BB_INFO:
-                       print('--> update UB OABPC')
+                       print('----> update UB OABPC')
                    
                    for n in OABPC_nodes:                    
-                       if n.active == True and n.LB >= self.UB_SO_DNDP:
+                       if n.active == True and n.LB >= self.UB_OABPC:
                            n.active = False
 
            if prune == False:
@@ -541,29 +541,29 @@ class BPC_twoPhase:
               
            if len(candidates_OABPC) == 0:
                conv_OABPC = True
-               LB_OABPC = self.UB_SO_DNDP
+               LB_OABPC = self.UB_OABPC 
                gap_OABPC = 0.0
                OABPC_status = 'optimal'
                if self.params.PRINT_BB_INFO:
-                   print('--> convergence by inspection')
+                   print('----> convergence by inspection')
                
            else:
                LB_OABPC = self.getLB(candidates_OABPC)
-               gap_OABPC = (self.UB_SO_DNDP - LB_OABPC)/self.UB_SO_DNDP                      
+               gap_OABPC = (self.UB_OABPC - LB_OABPC)/self.UB_OABPC                      
            
            if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-               print('OABPC> %d\t%d\t%.1f\t%.1f\t%.2f%%' % (nOABPC,self.nSO,LB_OABPC,self.UB_SO_DNDP,100*gap_OABPC))
+               print('OABPC> %d\t%d\t%.1f\t%.1f\t%.2f%%' % (nOABPC,self.nSO,LB_OABPC,self.UB_OABPC,100*gap_OABPC))
            
            if gap_OABPC <= self.params.OABPC_tol:
                conv_OABPC = True               
                OABPC_status = 'optimal'
                if self.params.PRINT_BB_INFO:
-                   print('--> convergence by optimality gap')
+                   print('----> convergence by optimality gap')
            
            if (time.time() - t0_OABPC) >= self.params.BB_timelimit:
                OABPC_status = 'timelimit'
                if self.params.PRINT_BB_INFO:
-                   print('--> time limit exceeded')
+                   print('----> time limit exceeded')
                break
            
            nOABPC += 1
@@ -576,7 +576,7 @@ class BPC_twoPhase:
     def BB(self):
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('---BPC_twoPhase---')        
+            print('---BPC_nestedTree---')        
         
         self.network.resetTapas()
  
@@ -625,57 +625,27 @@ class BPC_twoPhase:
                  
             else:
                 
+                #---after outer root node is solved, used UB_DNDP as UB
+                if self.nBB > 0:
+                    self.UB_OABPC = self.UB
+                
+                #---LB is obtained from a single search tree OABPC algorithm
+                OABPC_status,can.LB,can.y = self.OABPC(can)
+                
                 if self.nBB == 0:
-                    #---phase 1
-                    #---LB is obtained from a single search tree OABPC algorithm
-                    
-                    OABPC_status,self.UB_SO_DNDP,can.y = self.OABPC(can)
-                    can.LB = self.UB_SO_DNDP
-                    
-                    print('\nSO-DNDP: phase 1 complete: %.1f\n' % self.UB_SO_DNDP)
-                    
-                    runUE = True
-                
-                else:
-                    #---phase 2
-                    #---LB is obtained by solving SO-TAP                    
-                                       
-                    #---Leblanc
-                    for a in self.network.links2:
-                        if a.id in can.fixed1:
-                            can.y[a] = 1
-                        elif a.id in can.fixed0:
-                            can.y[a] = 0 
-                        else:
-                            can.y[a] = 1
-                    
-                    if can.solved == False:
-
-                        if self.ydict.hasSO(can.y) == True:
-                            sotstt = self.ydict.getSO(can.y)
-                            print('--> has SO')                    
-                        
-                        else:
-                            t0_TAP = time.time()
-                            sotstt = round(self.network.tapas('SO',can.y), 3)                
-                            self.ydict.insertSO(can.y, sotstt)
-                            self.rt_TAP += time.time() - t0_TAP                        
-                            self.nSO += 1
-                            
-                        #---update local LB if improvement
-                        if sotstt > can.LB:
-                            if self.params.PRINT_BB_INFO:
-                                print('--> update LB in phase 2')
-                            can.LB = sotstt
-                    
-                
-                for a in self.network.links2:
-                    can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)                
-                        
+                                        
+                    self.UB_SO_DNDP = can.LB                    
+                    print('\nSO-DNDP: root node solved: %.1f\n' % self.UB_SO_DNDP)                    
+                    runUE = True   
+                                        
                 if can.LB >= self.UB:
+                    print('--> prune by bounding')
                     if self.params.PRINT_BB_INFO:
                         print('--> prune by bounding')
-                    prune = True               
+                    prune = True     
+                    
+                for a in self.network.links2:
+                    can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)                    
                  
             if runUE:
                 
@@ -749,6 +719,6 @@ class BPC_twoPhase:
             print(self.rt_RMP)
             print(self.rt_pricing)
             print(self.yopt)
-                    
+        
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('---BPC_twoPhase end---')        
+            print('---BPC_nestedTree end---')        

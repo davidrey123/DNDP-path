@@ -128,13 +128,11 @@ class BPC_singleTree:
         BB_node_id = cnt
         can.children.append(BB_node_id)
         n0 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed00, fixed01, False)
-        #n0.paths = dict(can.paths)
         self.BB_nodes.append(n0)
         
         BB_node_id = cnt+1
         can.children.append(BB_node_id)
         n1 = BB_node.BB_node(self.network, BB_node_id, can.id, can.LB, self.inf, fixed10, fixed11, False)
-        #n1.paths = dict(can.paths)
         self.BB_nodes.append(n1)
     
         return      
@@ -258,7 +256,6 @@ class BPC_singleTree:
                 if r.getDemand(s) > 0:
                 
                     p = self.network.trace(r,s)
-                    #can.paths[r][s].append(p)
                     self.paths[r][s].append(p)
                     #print(r.id, s.id, p.links)                
                     new += 1
@@ -287,7 +284,6 @@ class BPC_singleTree:
                     
                     if rc <= - self.CG_tol:
                         p = self.network.trace(r,s)
-                        #can.paths[r][s].append(p)
                         self.paths[r][s].append(p)
                         new += 1
                     
@@ -308,7 +304,6 @@ class BPC_singleTree:
         rmp = Model()
         
         rmp.x = {a:rmp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
-        #rmp.h = {p:rmp.continuous_var(lb=0) for p in can.getPaths()}
         rmp.h = {p:rmp.continuous_var(lb=0) for p in self.getPaths()}
         rmp.mu = rmp.continuous_var(lb=can.LB)
         
@@ -402,7 +397,7 @@ class BPC_singleTree:
             minrc = self.pricing(can)
             
             #if self.params.PRINT_BB_INFO:
-            #    npaths = len(can.getPaths())
+            #    npaths = len(self.getPaths())
             #    print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
             
             if minrc >= -self.CG_tol:
@@ -420,7 +415,7 @@ class BPC_singleTree:
                 if CG_status != 'fractional':
                     print('CG status',CG_status)
                     
-            #npaths = len(can.getPaths())
+            #npaths = len(self.getPaths())
             #print('CG: %s\t%d\t%d\t%.1f\t%.2f' % (CG_status,nCG,npaths,OFV,minrc))        
             
             return CG_status,OFV,yRMP
@@ -470,7 +465,7 @@ class BPC_singleTree:
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by check',status)
                 prune = True
-                runSO = True #---waste of time if too many OA cuts?
+                #runSO = True #---waste of time if too many OA cuts?
                 runUE = True
                  
                 for a in self.network.links2:
@@ -502,10 +497,8 @@ class BPC_singleTree:
                         print('--> prune by integrality')
 
                     #---CG solution is integral and better than UB ==> runSO
-
                     prune = True
                     runSO = True
-                    #runUE = True
                     
                     for a in self.network.links2:
                         can.y[a] = int(yCG[a])
@@ -593,7 +586,6 @@ class BPC_singleTree:
                 self.gap = 0.0
                 if self.params.PRINT_BB_INFO:
                     print('--> convergence by inspection')
-                break
                 
             else:
                 self.LB = self.getLB(candidates)
@@ -609,7 +601,6 @@ class BPC_singleTree:
                 conv = True
                 if self.params.PRINT_BB_INFO:
                     print('--> convergence by optimality gap')
-                break
             
             if (time.time() - t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
@@ -626,10 +617,6 @@ class BPC_singleTree:
             print(self.rt_RMP)
             print(self.rt_pricing)
             print(self.yopt)
-            
-        print('To do:')
-        print('if UB > can.LB > UB-SO-DNDP: what can we do?')
-        print('interdiction cuts: check validity w.r.t UE solutions and usefulness?')
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---BPC_singleTree end---')
