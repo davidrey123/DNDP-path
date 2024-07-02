@@ -16,7 +16,7 @@ class BB_node:
         
         self.yvec = [] #---for local (BB node based) interfiction cuts
         
-        self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
+        #self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins} #---commented to move paths as a global variable
         self.duals = {}
         self.frac = []
         self.y = {}
