@@ -5,6 +5,7 @@ from numpy.random import rand
 
 net = 'SiouxFalls'
 net = 'Anaheim'
+net = 'Barcelona'
 
 tntp = TNTP.TNTP(net)
 print(net)
@@ -62,6 +63,19 @@ for n in range(nbInstances):
                 if loss <= 0.1:
                     print('not enough loss %.3f%%' % loss)
                     nbNotEnough += 1
+                    
+                    #---set link flow to 0 to avoid this link being chosen again
+                    for b in tntp.links:
+                        if a.id == b.id:
+                            idx = tntp.links.index(b)                        
+                            TF2 = TF - flows[idx]*TF
+                            flows[idx] = 0
+                            #print('flow set to 0 on link',b.id)
+                            break
+                    
+                    #---update total flow to ensure that sum of flows = 1 and forms a probabilty distribution
+                    flows = [f*TF/TF2 for f in flows]
+                    TF = TF2                    
 
                 allConnected += 1
                 #print('%d\t%d\t%d\t%.1f%%' % (a.id,a.start.id,a.end.id,loss))
@@ -84,7 +98,7 @@ for n in range(nbInstances):
                 TF = TF2
                 break
             
-        if allConnected == newLinks and nbNotEnough <= newLinks/3:
+        if allConnected == newLinks and nbNotEnough <= newLinks/2:
             
             #---test instance with all A2 links closed to check connectivity
             tntp.resetY()
@@ -112,6 +126,18 @@ for n in range(nbInstances):
                         #print(a.id,a.cost)
                     
                     insName = 'A_DNDP_'+str(newLinks)+'_'+str(n+1)+'.txt'
+                    
+                elif net == 'Barcelona':
+                    #---coefs for generating A2 link costs: idea is to generate costs correlated to fftt and C of the order of magniture 1e3
+                    beta_t_ff = 1e3
+                    beta_C = 1/1e1                    
+                    
+                    for a in A2:
+                        scal = 0.8 + (rand(1)[0] * (1.2 - 0.8))
+                        a.cost = round(scal*(beta_t_ff*a.t_ff + beta_C*a.C))
+                        #print(a.id,a.cost)
+                    
+                    insName = 'B_DNDP_'+str(newLinks)+'_'+str(n+1)+'.txt'                    
                 
                 else:
                     print('unknown network')
