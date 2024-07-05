@@ -15,6 +15,7 @@ class Leblanc:
         self.gap = self.inf
         self.yopt = None
         self.params = Params.Params()
+        self.t0 = 0.0
         
         self.nBB = 0
         self.nSO = 0
@@ -61,7 +62,7 @@ class Leblanc:
         n1.score = can.score
         self.BB_nodes.append(n1)
     
-        return     
+        return
 
     def BB(self):
         
@@ -70,7 +71,7 @@ class Leblanc:
         
         self.network.resetTapas()
  
-        t0 = time.time()
+        self.t0 = time.time()
     
         conv = False
         while conv == False:
@@ -187,14 +188,14 @@ class Leblanc:
                     print('--> convergence by optimality gap')
                 break
             
-            if (time.time() - t0) >= self.params.BB_timelimit:
+            if (time.time() - self.t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
                     print('--> time limit exceeded')
                 break
             
             self.nBB += 1
  
-        self.rt = time.time() - t0
+        self.rt = time.time() - self.t0
  
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))

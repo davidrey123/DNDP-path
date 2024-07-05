@@ -23,6 +23,7 @@ class BPC_nestedTree:
         self.yopt = None
         self.params = Params.Params()
         self.ydict = YDict.YDict()
+        self.t0 = 0.0
         
         self.nBB = 0
         self.nSO = 0
@@ -187,7 +188,7 @@ class BPC_nestedTree:
         else:            
             yKNP = {}
             for a in self.network.links2:
-                yKNP[a] = int(knp.y[a].solution_value)
+                yKNP[a] = round(knp.y[a].solution_value)
                 
             return yKNP
         
@@ -347,6 +348,7 @@ class BPC_nestedTree:
         rmp.minimize(rmp.mu)
         
         rmp.parameters.threads = self.params.CPLEX_threads
+        rmp.parameters.timelimit = self.params.BB_timelimit
         
         rmp.solve(log_output=False)
         
@@ -416,8 +418,8 @@ class BPC_nestedTree:
                 if CG_status != 'fractional':
                     print('CG status',CG_status)
                     
-            npaths = len(self.getPaths())
-            print('CG: %s\t%d\t%d\t%.1f\t%.2f' % (CG_status,nCG,npaths,OFV,minrc))                    
+            #npaths = len(self.getPaths())
+            #print('CG: %s\t%d\t%d\t%.1f\t%.2f' % (CG_status,nCG,npaths,OFV,minrc))                    
             
             return CG_status,OFV,yRMP
         
@@ -490,8 +492,7 @@ class BPC_nestedTree:
                    runSO = True
 
                    for a in self.network.links2:
-                       can_OABPC.y[a] = int(yRMP[a])
-
+                       can_OABPC.y[a] = round(yRMP[a])
                                    
            if runSO:
                
@@ -501,7 +502,7 @@ class BPC_nestedTree:
                #---solve SO-TAP to get OA cut
                if self.ydict.hasSO(can_OABPC.y) == True:
                    can_OABPC.UB = self.ydict.getSO(can_OABPC.y)
-                   print('----> has SO')                    
+                   #print('----> has SO')                    
                 
                else:
                    t0_TAP = time.time()
@@ -560,7 +561,7 @@ class BPC_nestedTree:
                if self.params.PRINT_BB_INFO:
                    print('----> convergence by optimality gap')
            
-           if (time.time() - t0_OABPC) >= self.params.BB_timelimit:
+           if (time.time() - self.t0) >= self.params.BB_timelimit:
                OABPC_status = 'timelimit'
                if self.params.PRINT_BB_INFO:
                    print('----> time limit exceeded')
@@ -580,7 +581,7 @@ class BPC_nestedTree:
         
         self.network.resetTapas()
  
-        t0 = time.time()
+        self.t0 = time.time()
         
         #---initialize OA cuts
         nInitCuts = round(len(self.network.links2))
@@ -635,11 +636,10 @@ class BPC_nestedTree:
                 if self.nBB == 0:
                                         
                     self.UB_SO_DNDP = can.LB                    
-                    print('\nSO-DNDP: root node solved: %.1f\n' % self.UB_SO_DNDP)                    
+                    #print('\nSO-DNDP: root node solved: %.1f\n' % self.UB_SO_DNDP)                    
                     runUE = True   
                                         
-                if can.LB >= self.UB:
-                    print('--> prune by bounding')
+                if can.LB >= self.UB:                    
                     if self.params.PRINT_BB_INFO:
                         print('--> prune by bounding')
                     prune = True     
@@ -704,14 +704,14 @@ class BPC_nestedTree:
                 if self.params.PRINT_BB_INFO:
                     print('--> convergence by optimality gap')
             
-            if (time.time() - t0) >= self.params.BB_timelimit:
+            if (time.time() - self.t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
                     print('--> time limit exceeded')
                 break
             
             self.nBB += 1
  
-        self.rt = time.time() - t0
+        self.rt = time.time() - self.t0
 
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))

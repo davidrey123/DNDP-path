@@ -20,6 +20,7 @@ class FS_NETS:
         self.yopt = None
         self.params = Params.Params()
         self.ydict = YDict.YDict()
+        self.t0 = 0.0
         
         self.nBB = 0
         self.nSO = 0
@@ -174,11 +175,9 @@ class FS_NETS:
         self.nUE += 1
         self.UB = can.UB           
     
-    def milp_link(self,can,):
+    def milp_link(self,can):
         
         #---to do: recode such that milp is setup once and only cuts are added at each OA iteration
-        
-        #print('can.LB',can.LB)
         
         t0_MILP = time.time()
         milp = Model()    
@@ -224,15 +223,15 @@ class FS_NETS:
                                
             if a.id in can.fixed1:
                 milp.add_constraint(milp.y[a] == 1)
-        
+                
         milp.minimize(milp.mu)
-        
+                
         milp.parameters.mip.tolerances.mipgap = self.params.BB_tol
         milp.parameters.threads = self.params.CPLEX_threads
         milp.parameters.timelimit = self.params.BB_timelimit
         
         milp.solve(log_output=False)
-        
+                
         #print(milp.solve_details.time,(time.time() - t0_MILP))
         self.rt_MILP += (time.time() - t0_MILP)
             
@@ -245,7 +244,7 @@ class FS_NETS:
              
             yopt = {}
             for a in self.network.links2:
-                yopt[a] = int(milp.y[a].solution_value)
+                yopt[a] = round(milp.y[a].solution_value)
                 
         return MILP_status,MILP_OFV,yopt    
 
@@ -294,6 +293,8 @@ class FS_NETS:
             
             if self.ydict.hasSO(yMILP) == True:
                 tstt = self.ydict.getSO(yMILP)
+                if self.params.PRINT_BB_INFO:
+                    print('hasSO')
             
             else:
                 t0_TAP = time.time()
@@ -323,7 +324,7 @@ class FS_NETS:
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by optimality gap in OA_link')                    
                 
-            if (time.time() - t0_OA) >= self.params.BB_timelimit/2:
+            if (time.time() - self.t0) >= self.params.BB_timelimit:
                 #---search is stopped and the min between milp obj and UB_OA can be used as the LB of the BB node
                 LB_OA = max(LB_OA,min(MILP_OFV,UB_OA))
                 if self.params.PRINT_BB_INFO:
@@ -342,7 +343,7 @@ class FS_NETS:
         
         self.network.resetTapas()
  
-        t0 = time.time()
+        self.t0 = time.time()
         
         #---initialize OA cuts
         self.initOAcuts(self.BB_nodes[0],1)
@@ -353,8 +354,8 @@ class FS_NETS:
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
             
-            if self.params.PRINT_BB_INFO:
-                print('--> can (before): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))
+            #if self.params.PRINT_BB_INFO:
+            #    print('--> can (before): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))
      
             prune = False
             integral = False
@@ -437,11 +438,11 @@ class FS_NETS:
                 free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
                 can.ybr = free_sorted[0]
                 
-                if self.params.PRINT_BB_INFO:                    
-                    for a in self.network.links2:
-                        print(a,can.score[a.id])
-                        if a.id == can.ybr:
-                            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
+                #if self.params.PRINT_BB_INFO:                    
+                #    for a in self.network.links2:
+                #        print(a,can.score[a.id])
+                #        if a.id == can.ybr:
+                #            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
                 
                 self.branch(can)
          
@@ -460,8 +461,8 @@ class FS_NETS:
                 self.LB = self.getLB(candidates)            
                 self.gap = self.getGap()
             
-            if self.params.PRINT_BB_INFO:
-                print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))            
+            #if self.params.PRINT_BB_INFO:
+            #    print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))            
             
             if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
                 print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*self.gap))
@@ -473,14 +474,14 @@ class FS_NETS:
                     print('--> convergence by optimality gap')
                 break
             
-            if (time.time() - t0) >= self.params.BB_timelimit:
+            if (time.time() - self.t0) >= self.params.BB_timelimit:
                 if self.params.PRINT_BB_INFO:
                     print('--> time limit exceeded')
                 break
             
             self.nBB += 1
  
-        self.rt = time.time() - t0
+        self.rt = time.time() - self.t0
  
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))
