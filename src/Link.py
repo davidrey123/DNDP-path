@@ -58,7 +58,11 @@ class Link:
         if self.y == 0:
             return Params.INFTY
             
-        return self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C   
+        if self.beta > 1e-4: # for handling the case of beta = 0
+            return self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
+        
+        else:
+            return 0.0
 
     def getCapacity(self):
         return self.C
