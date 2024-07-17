@@ -63,6 +63,17 @@ class Link:
         
         else:
             return 0.0
+        
+    def getPrimitiveTravelTime(self, x):
+        
+        if self.y == 0:
+            return Params.INFTY
+            
+        if self.beta > 1e-4: # for handling the case of beta = 0
+            return x * self.t_ff + (self.C / (self.beta + 1)) * self.t_ff * self.alpha * pow(x / self.C, self.beta+1)
+        
+        else:
+            return x * self.t_ff       
 
     def getCapacity(self):
         return self.C

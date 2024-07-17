@@ -10,7 +10,7 @@ from src import Heap
 class Network:
 
     # construct this Network with the name; read files associated with network name
-    def __init__(self,name,ins,B_prop,scal_time,scal_flow):
+    def __init__(self,name,ins,B_prop,scal_time,scal_flow,inflate_trips):
         self.nodes = [] 
         self.links = []
         self.zones = []
@@ -31,7 +31,7 @@ class Network:
             ins = "net"
             
         self.readNetwork("data/"+name+"/"+ins+".txt",scal_time,scal_flow)
-        self.readTrips("data/"+name+"/trips.txt",scal_time,scal_flow)
+        self.readTrips("data/"+name+"/trips.txt",scal_time,scal_flow,inflate_trips)
         
         self.B = self.TC * B_prop # budget        
         
@@ -90,7 +90,7 @@ class Network:
                 continue
             start = self.nodes[int(line[0]) - 1]
             end = self.nodes[int(line[1]) - 1]
-            C = float(line[2]) * scal_flow
+            C = float(line[2]) * scal_flow             
 
             t_ff = float(line[4]) * scal_time
             alpha = float(line[5])
@@ -112,7 +112,7 @@ class Network:
         file.close()
 
 
-    def readTrips(self,tripsFile,scal_time,scal_flow):
+    def readTrips(self,tripsFile,scal_time,scal_flow,inflate_trips):
         
         file = open(tripsFile, "r")
         
@@ -151,6 +151,7 @@ class Network:
                 idx += 2
                 next = splitted[idx]
                 d = float(next[0:len(next) - 1]) * scal_flow
+                d = d * inflate_trips
                 
                 r.addDemand(s, d)
                 self.TD += d
@@ -316,7 +317,15 @@ class Network:
     # returns the average excess cost
     def getAEC(self):
         return (self.getTSTT() - self.getSPTT()) / self.getTotalTrips()
-
+    
+    # returns the UE TAP objective function value
+    def getBeckmannOFV(self):
+        output = 0.0
+        for a in self.links:
+            if a.y == 1:
+                output += a.getPrimitiveTravelTime(a.x)                
+                
+        return output
 
     # find the step size for the given iteration number
     def calculateStepsize(self, iteration):
