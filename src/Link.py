@@ -33,6 +33,10 @@ class Link:
         return str(self)
 
     def getTravelTime(self, x, type):
+        
+        if x < 0 and x > -1e-4:
+            x = 0.0        
+        
         if self.y == 0 and type != 'RC':
             return Params.INFTY
             
@@ -55,6 +59,9 @@ class Link:
 
     def getDerivativeTravelTime(self, x):
         
+        if x < 0 and x > -1e-4:
+            x = 0.0
+        
         if self.y == 0:
             return Params.INFTY
             
@@ -65,6 +72,9 @@ class Link:
             return 0.0
         
     def getPrimitiveTravelTime(self, x):
+        
+        if x < 0 and x > -1e-4:
+            x = 0.0        
         
         if self.y == 0:
             return Params.INFTY
