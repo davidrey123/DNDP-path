@@ -4,27 +4,36 @@ from src import Params
 from src import Network
 from src import Leblanc
 from src import FS_NETS
-from src import BC
-from src import BPC
+from src import BPC_singleTree
+from src import BPC_twoPhase
+from src import BPC_nestedTree
 
 t0_exp = time.time()
 
 filename = 'results.txt'
 f = open(filename, "w")
 
-nets = ['SiouxFalls','Anaheim']
-runs = ['BPC','FS_NETS','Leblanc']
-#runs = ['BPC','BC','FS_NETS','Leblanc']
+nets = ['SiouxFalls','Anaheim','Barcelona']
+#nets = ['Anaheim','Barcelona']
+#runs = ['BPC_singleTree','BPC_nestedTree','BPC_twoPhase','FS_NETS','Leblanc']
+runs = ['BPC_singleTree','BPC_nestedTree','BPC_twoPhase']
 bprop = 0.5
+inflate_trips = {'SiouxFalls':1,'Anaheim':4,'Barcelona':2}
 
 f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.2f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().CPLEX_threads))
 f.write("Budget/Total cost: %.2f\n" % (bprop))
+f.write("Trips inflation: %s\n" % (inflate_trips))
 f.write('%s\n' % runs)
 
-if len(runs) == 4:
-    f.write('Instance & UB & Gap (%%) & Time (s) & RMP (s) & Pricing (s) & TAP (s) & SO & UE & UB & Gap (%%) & Time (s) & LP (s) & TAP (s) & SO & UE & UB & Gap (%%) & Time (s) & MILP (s) & TAP (s) & SO & UE & UB & Gap (%%) & Time (s) & TAP (s) & SO & UE\n')
-elif len(runs) == 3:
-    f.write('Instance & UB & Gap (%%) & Time (s) & RMP (s) & Pricing (s) & TAP (s) & SO & UE & UB & Gap (%%) & Time (s) & MILP (s) & TAP (s) & SO & UE & UB & Gap (%%) & Time (s) & TAP (s) & SO & UE\n')
+header = 'Instance '
+header += '& UB & Gap (%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE '
+header += '& UB & Gap (%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE '
+header += '& UB & Gap (%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE '
+#header += '& UB & Gap (%) & Time (s) & MILP (s) & TAP (s) & SO & UE '
+#header += '& UB & Gap (%) & Time (s) & TAP (s) & SO & UE '
+header += '\n'
+f.write(header)
+f.flush()
 
 for net in nets:
     print(net)
@@ -35,9 +44,12 @@ for net in nets:
     elif net == 'Anaheim':
         ins0 = 'A_DNDP'
         
+    elif net == 'Barcelona':
+        ins0 = 'B_DNDP'
+        
     for nA2 in ['10','20']:
         
-        for ID in range(1,2):
+        for ID in range(1,3):
             
             ins = ins0+'_'+nA2+'_'+str(ID)
             print('starting to run',ins)
@@ -49,17 +61,23 @@ for net in nets:
                 print(run)
                 
                 #---reset network object
-                network = Network.Network(net,ins,bprop,1e-0,1e-3)
+                network = Network.Network(net,ins,bprop,1e-0,1e-3,inflate_trips[net])
+                #network = Network.Network(net,ins,bprop,1e-0,1e-3)
                 
-                if run == 'BPC':
-                    bpc = BPC.BPC(network)
+                if run == 'BPC_singleTree':
+                    bpc = BPC_singleTree.BPC_singleTree(network)
+                    bpc.BB()
+                    f.write('& %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %d & %d' % (bpc.UB,100*bpc.gap,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_TAP,bpc.nSO,bpc.nUE))
+                    
+                elif run == 'BPC_twoPhase':
+                    bpc = BPC_twoPhase.BPC_twoPhase(network)
                     bpc.BB()
                     f.write('& %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %d & %d' % (bpc.UB,100*bpc.gap,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_TAP,bpc.nSO,bpc.nUE))
                 
-                elif run == 'BC':
-                    bc = BC.BC(network)
-                    bc.BB()
-                    f.write('& %.1f & %.2f & %.1f & %.1f & %.1f & %d & %d' % (bc.UB,100*bc.gap,bc.rt,bc.rt_LP,bc.rt_TAP,bc.nSO,bc.nUE))
+                elif run == 'BPC_nestedTree':
+                    bpc = BPC_nestedTree.BPC_nestedTree(network)
+                    bpc.BB()
+                    f.write('& %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %d & %d' % (bpc.UB,100*bpc.gap,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_TAP,bpc.nSO,bpc.nUE))
                     
                 elif run == 'FS_NETS':
                     fs_nets = FS_NETS.FS_NETS(network)
@@ -72,6 +90,7 @@ for net in nets:
                     f.write('& %.1f & %.2f & %.1f & %.1f & %d & %d' % (leblanc.UB,100*leblanc.gap,leblanc.rt,leblanc.rt_TAP,leblanc.nSO,leblanc.nUE))
             
             f.write('\\\\\n')
+            f.flush()
             
             total_ins_hours = (time.time() - t0_ins)/3600
             print('instance runs completed in %.2f hours' % total_ins_hours)

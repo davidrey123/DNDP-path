@@ -6,6 +6,7 @@ from numpy.random import rand
 net = 'SiouxFalls'
 net = 'Anaheim'
 net = 'Barcelona'
+net = 'BerlinMitteCenter'
 
 tntp = TNTP.TNTP(net)
 print(net)
@@ -60,7 +61,7 @@ for n in range(nbInstances):
                 #---run UE-TAP to get TSTT and check loss wrt to base TSTT
                 newtstt = tntp.tapas('UE',y)
                 loss = 100*(newtstt - tstt)/tstt
-                if loss <= 0.1:
+                if abs(loss) <= 0.1:
                     print('not enough loss %.3f%%' % loss)
                     nbNotEnough += 1
                     
@@ -98,7 +99,7 @@ for n in range(nbInstances):
                 TF = TF2
                 break
             
-        if allConnected == newLinks and nbNotEnough <= newLinks/2:
+        if allConnected == newLinks and nbNotEnough <= newLinks/3:
             
             #---test instance with all A2 links closed to check connectivity
             tntp.resetY()
@@ -137,7 +138,19 @@ for n in range(nbInstances):
                         a.cost = round(scal*(beta_t_ff*a.t_ff + beta_C*a.C))
                         #print(a.id,a.cost)
                     
-                    insName = 'B_DNDP_'+str(newLinks)+'_'+str(n+1)+'.txt'                    
+                    insName = 'B_DNDP_'+str(newLinks)+'_'+str(n+1)+'.txt'  
+                    
+                elif net == 'BerlinMitteCenter':
+                    #---coefs for generating A2 link costs: idea is to generate costs correlated to fftt and C of the order of magniture 1e3
+                    beta_t_ff = 1e3
+                    beta_C = 1/1e1                    
+                    
+                    for a in A2:
+                        scal = 0.8 + (rand(1)[0] * (1.2 - 0.8))
+                        a.cost = round(scal*(beta_t_ff*a.t_ff + beta_C*a.C))
+                        #print(a.id,a.cost)
+                    
+                    insName = 'BMC_DNDP_'+str(newLinks)+'_'+str(n+1)+'.txt'                      
                 
                 else:
                     print('unknown network')
