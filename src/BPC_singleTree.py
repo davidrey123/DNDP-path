@@ -501,6 +501,7 @@ class BPC_singleTree:
                     #---CG solution is integral and better than UB ==> runSO
                     prune = True
                     runSO = True
+                    runUE = True
                     
                     for a in self.network.links2:
                         can.y[a] = round(yCG[a])
