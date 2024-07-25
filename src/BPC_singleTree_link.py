@@ -535,7 +535,7 @@ class BPC_singleTree_link:
                     #---CG solution is integral and better than UB ==> runSO
                     #prune = True
                     runSO = True
-                    runUE = True #optional
+                    runUE = True #optional needs to be there if interdiction cuts
                     
                     for a in self.network.links2:
                         can.y[a] = round(yCG[a])
@@ -606,7 +606,7 @@ class BPC_singleTree_link:
                             n.active = False
                             
             #---add global interdiction cuts
-            if runSO or runUE:
+            if self.params.useInterdictionCuts and (runUE):
                 self.yvec.append(can.y)
 
             if prune == False:
