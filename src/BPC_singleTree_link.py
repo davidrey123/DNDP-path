@@ -388,7 +388,7 @@ class BPC_singleTree_link:
         if rmp.solve_details.status == 'infeasible' or rmp.solve_details.status == 'integer infeasible':
             return 'infeasible',self.inf,{}
         
-        else:
+        else: 
             OFV = rmp.objective_value
             #print("RMP obj", OFV)
             RMP_status = rmp.solve_details.status
@@ -589,8 +589,8 @@ class BPC_singleTree_link:
                 
                 #---solve UE TAP to get UB 
                 t0_TAP = time.time()
-                #can.UB = self.network.tapas('UE',can.y)
-                can.UB = self.network.tapas_ubstop('UE',can.y, self.UB)
+                can.UB = self.network.tapas('UE',can.y)
+                #can.UB = self.network.tapas_ubstop('UE',can.y, self.UB)
                 self.ydict.insertUE(can.y, can.UB)
                 self.rt_TAP += time.time() - t0_TAP
                 self.nUE += 1     
