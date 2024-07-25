@@ -390,7 +390,7 @@ class BPC_singleTree_link:
         
         else:
             OFV = rmp.objective_value
-            print("RMP obj", OFV)
+            #print("RMP obj", OFV)
             RMP_status = rmp.solve_details.status
             
             yopt = {}
