@@ -1,5 +1,4 @@
 import time
-import math
 from src import BB_node
 from src import Params
 from src import YDict
@@ -349,7 +348,11 @@ class BPC_singleTree_link:
         for r in self.network.origins:
             for s in self.network.zones:
                 if r.getDemand(s) > 0:
-                    rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))                    
+                    rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))
+                    
+                    #---disaggregate linking constraints: not working as expected....very slow?
+                    #for a in self.network.links2:
+                    #    rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s] if a in p.links) <= rmp.y[a] * r.getDemand(s))
     
         for a in self.network.links:
             rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
@@ -388,9 +391,8 @@ class BPC_singleTree_link:
         if rmp.solve_details.status == 'infeasible' or rmp.solve_details.status == 'integer infeasible':
             return 'infeasible',self.inf,{}
         
-        else: 
+        else:
             OFV = rmp.objective_value
-            #print("RMP obj", OFV)
             RMP_status = rmp.solve_details.status
             
             yopt = {}
@@ -501,8 +503,11 @@ class BPC_singleTree_link:
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by check',status)
                 prune = True
-                #runSO = True #---waste of time if too many OA cuts?
                 runUE = True
+                
+                #runSO = True #---waste of time if too many OA cuts?
+                if self.nSO <= nInitCuts: # **2
+                    runSO = True
                  
                 for a in self.network.links2:
                     if a.id in can.fixed1:
@@ -542,8 +547,6 @@ class BPC_singleTree_link:
                         
                     for a in self.network.links2:
                         can.y[a] = round(yCG[a])
-                        
-
                           
             if runSO:
 
@@ -552,9 +555,6 @@ class BPC_singleTree_link:
                         sotstt = self.ydict.getSO(can.y)
                         if self.params.PRINT_BB_INFO:
                             print('--> has SO') 
-
-
-                             
 
                     else:
                         t0_TAP = time.time()
