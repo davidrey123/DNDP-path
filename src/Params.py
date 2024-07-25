@@ -30,12 +30,14 @@ class Params:
         
         self.tapas_max_iter = 100
         self.min_gap = 1E-3
+        self.min_gap_SO = 1E-1
+        
         self.msa_max_iter = 500
     
         self.warmstart = False
         
-        self.PRINT_BB_INFO = False #---prints detailed BB info
-        self.PRINT_BB_BASIC = False #---prints only basic BB info
+        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_BB_BASIC = True #---prints only basic BB info
         
         self.CPLEX_threads = 4
         self.BB_timelimit = 3600
@@ -43,3 +45,8 @@ class Params:
 
         self.OABPC_tol = 1E-2
         self.KNP = False
+        
+        
+    
+        self.useAONcuts = False
+        self.useInterdictionCuts = True
