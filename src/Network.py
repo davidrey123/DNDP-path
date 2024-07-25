@@ -33,6 +33,13 @@ class Network:
         self.readNetwork("data/"+name+"/"+ins+".txt",scal_time,scal_flow)
         self.readTrips("data/"+name+"/trips.txt",scal_time,scal_flow,inflate_trips)
         
+        
+        self.links1 = []
+        
+        for a in self.links:
+            if a not in self.links2:
+                self.links1.append(a)
+        
         self.B = self.TC * B_prop # budget        
         
         #print('Total scaled demand %.1f' % self.TD)
@@ -348,7 +355,35 @@ class Network:
                 if r.getDemand(s) > 0:
                     pi_star = self.trace(r,s)
                     pi_star.addHstar(r.getDemand(s))
+                    
+    def setAON(self, type, y):
+        self.setY(y)
+        
+        for r in self.origins:
+            self.dijkstras(r, type)
 
+            for s in self.zones:
+                if r.getDemand(s) > 0:
+                    pi_star = self.trace(r,s)
+                    pi_star.addHstar(r.getDemand(s))
+                    
+        for ij in self.links:
+            ij.calculateNewX(1)
+            
+        return self.getTSTT('UE')
+    
+    def getFlowMap(self):
+        output = {}
+        
+        for a in self.links:
+            output[a] = a.x
+        
+        return output
+        
+    def setFlows(self, flowmap):
+        for a in self.links:
+            a.x = flowmap[a]
+        
     def setY(self, y):
     
         newlinks = []
@@ -411,8 +446,11 @@ class Network:
         self.params = Params.Params()
         
         self.allPAS = PASList.PASList()
-        
+    
     def tapas(self, type, y):
+        return self.tapas_ubstop(type, y, 1.0E20)
+        
+    def tapas_ubstop(self, type, y, ub):
         if not self.params.warmstart:
             self.resetTapas()
             
@@ -424,7 +462,11 @@ class Network:
         
         iter = 1
         max_iter = self.params.tapas_max_iter
-        min_gap = self.params.min_gap
+        
+        if type == 'SO':
+            min_gap = self.params.min_gap_SO
+        elif type == 'UE':
+            min_gap = self.params.min_gap
         
         #self.params.line_search_gap = pow(10, math.floor(math.log10(self.TD) - 6))
         
@@ -504,7 +546,8 @@ class Network:
                 print(str(iter)+"\t"+str(tstt)+"\t"+str(sptt)+"\t"+str(gap)+"\t"+str(aec))
                 
                 #printLinkFlows();
-                
+            if tstt * (1-gap) > ub:
+                break
             if gap < min_gap:
                 break
                 
