@@ -541,12 +541,14 @@ class Network:
             gap = (tstt - sptt)/tstt
             aec = (tstt - sptt)/self.TD
 
+            #print(iter, sptt)
                             
             if self.params.PRINT_TAP_ITER:
                 print(str(iter)+"\t"+str(tstt)+"\t"+str(sptt)+"\t"+str(gap)+"\t"+str(aec))
                 
                 #printLinkFlows();
-            if tstt * (1-gap) > ub:
+            #if tstt * (1-gap) > ub:
+            if sptt > ub:
                 break
             if gap < min_gap:
                 break
