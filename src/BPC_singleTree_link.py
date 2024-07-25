@@ -537,6 +537,9 @@ class BPC_singleTree_link:
                     runSO = True
                     runUE = True #optional needs to be there if interdiction cuts
                     
+                    if self.params.useInterdictionCuts:
+                        runUE = True
+                        
                     for a in self.network.links2:
                         can.y[a] = round(yCG[a])
                         
@@ -606,7 +609,7 @@ class BPC_singleTree_link:
                             n.active = False
                             
             #---add global interdiction cuts
-            if self.params.useInterdictionCuts and (runUE):
+            if self.params.useInterdictionCuts and (runSO or runUE):
                 self.yvec.append(can.y)
 
             if prune == False:
