@@ -36,7 +36,7 @@ class Params:
     
         self.warmstart = False
         
-        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_BB_INFO = False #---prints detailed BB info
         self.PRINT_BB_BASIC = True #---prints only basic BB info
         
         self.CPLEX_threads = 4
@@ -46,7 +46,7 @@ class Params:
         self.OABPC_tol = 1E-2
         self.KNP = False
         
-        
-    
         self.useAONcuts = False
+        
+        self.runUEifCGIntegral = True
         self.useInterdictionCuts = True

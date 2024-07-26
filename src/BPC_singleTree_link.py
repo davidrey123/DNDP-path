@@ -227,16 +227,14 @@ class BPC_singleTree_link:
                 t0_TAP = time.time()
                 tstt = self.network.setAON('SO', yKNP)
                 self.rt_TAP += (time.time() - t0_TAP)
-                self.OAcuts.append(self.getOAcut())   
-             
-            if self.params.useInterdictionCuts:       
-                self.yvec.append(yKNP)
+                self.OAcuts.append(self.getOAcut())
             
             if tstt < self.UB_SO_DNDP:
                 self.UB_SO_DNDP = tstt
                 self.yopt = yKNP
                 
-                
+            #---interdict to get different y
+            self.yvec.append(self.yopt)
                 
         t0_TAP = time.time()
         can.UB = self.network.tapas('UE',self.yopt)
@@ -245,17 +243,58 @@ class BPC_singleTree_link:
         self.nUE += 1
         self.UB = can.UB
         
-        '''
-        allY = {}
-        for a in self.network.links2:
-            allY[a] = 1
-            
-        sotstt = self.network.tapas('SO',allY) 
-        self.ydict.insertSO(allY, sotstt)
-        self.OAcuts.append(self.getOAcut())
-        self.nSO += 1
-        '''
+        #---reset yvec then add best y for which we ran UE
+        self.yvec = []
+        if self.params.useInterdictionCuts:       
+            self.yvec.append(self.yopt)  
+        
  
+    def initOAcutsUE(self, can, nKNP):
+        
+        if self.params.PRINT_BB_BASIC:
+            print('Running knapsack heuristic with',nKNP,'round(s)')
+        
+        yKNP = {}
+        for a in self.network.links2:
+            yKNP[a] = 1
+        
+        t0_TAP = time.time()
+        tstt = self.network.tapas('UE',yKNP)
+        self.ydict.insertSO(yKNP, tstt)
+        self.OAcuts.append(self.getOAcut()) 
+        self.rt_TAP += (time.time() - t0_TAP)
+        self.nUE += 1
+        
+        self.xvec = self.network.getFlowMap() 
+        
+        for a in self.network.links2:
+            can.score[a.id] = a.x * a.getTravelTime(a.x,'UE') 
+        
+        for n in range(nKNP):
+            yKNP = self.knapsack('x',can)
+                       
+            if not self.params.useAONcuts: 
+                t0_TAP = time.time()
+                tstt = self.network.tapas('UE',yKNP)
+                self.ydict.insertUE(yKNP, tstt)
+                self.rt_TAP += (time.time() - t0_TAP)
+                self.OAcuts.append(self.getOAcut())                            
+                self.nUE += 1
+                
+                if self.params.useInterdictionCuts:       
+                    self.yvec.append(yKNP)
+            
+            if self.params.useAONcuts:
+                t0_TAP = time.time()
+                tstt = self.network.setAON('UE', yKNP)
+                self.rt_TAP += (time.time() - t0_TAP)
+                self.OAcuts.append(self.getOAcut())
+            
+            if tstt < self.UB:
+                self.UB = tstt
+                self.yopt = yKNP
+                
+        can.UB = self.UB  
     
     def checkIntegral(self, y):
         
@@ -473,7 +512,8 @@ class BPC_singleTree_link:
         
         #---initialize OA cuts
         nInitCuts = round(len(self.network.links2))
-        self.initOAcuts(self.BB_nodes[0],nInitCuts)        
+        self.initOAcuts(self.BB_nodes[0],nInitCuts)
+        #self.initOAcutsUE(self.BB_nodes[0],nInitCuts)        
     
         #---initialize paths
         self.initPaths()        
@@ -505,8 +545,8 @@ class BPC_singleTree_link:
                 prune = True
                 runUE = True
                 
-                #runSO = True #---waste of time if too many OA cuts?
-                if self.nSO <= nInitCuts: # **2
+                #---condition to be tuned: idea is to get OA cuts early in the search then stop
+                if self.nSO <= 5*nInitCuts: # **2 *5
                     runSO = True
                  
                 for a in self.network.links2:
@@ -534,15 +574,13 @@ class BPC_singleTree_link:
                     prune = True                    
                    
                 elif CG_status == 'integral':
-                    #if self.params.PRINT_BB_INFO:
-                    #    print('--> prune by integrality')
+                    if self.params.PRINT_BB_INFO:
+                        print('--> CG integral')
 
                     #---CG solution is integral and better than UB ==> runSO
-                    #prune = True
                     runSO = True
-                    runUE = True #optional needs to be there if interdiction cuts
                     
-                    if self.params.useInterdictionCuts:
+                    if self.params.runUEifCGIntegral:
                         runUE = True
                         
                     for a in self.network.links2:
@@ -558,10 +596,10 @@ class BPC_singleTree_link:
 
                     else:
                         t0_TAP = time.time()
-                        sotstt = self.network.tapas('SO',can.y)             
+                        sotstt = self.network.tapas('SO',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
                         self.OAcuts.append(self.getOAcut())
-                        self.rt_TAP += time.time() - t0_TAP                        
+                        self.rt_TAP += time.time() - t0_TAP
                         self.nSO += 1
                     
                 if self.params.useAONcuts:
@@ -575,10 +613,10 @@ class BPC_singleTree_link:
                     
                     #print('solved SO',sotstt)
                     
-                if sotstt < self.UB_SO_DNDP:
-                    self.UB_SO_DNDP = sotstt
-                    if self.params.PRINT_BB_INFO:
-                        print('--> update UB SO DNDP, prune nodes?')                        
+                #if sotstt < self.UB_SO_DNDP:
+                #    self.UB_SO_DNDP = sotstt
+                #    if self.params.PRINT_BB_INFO:
+                #        print('--> update UB SO DNDP, prune nodes?')                        
                  
             if runUE:
                 
@@ -608,11 +646,11 @@ class BPC_singleTree_link:
                         if n.active == True and n.LB >= self.UB:
                             n.active = False
                             
-            #---add global interdiction cuts
-            if self.params.useInterdictionCuts and (runSO or runUE):
+            #---add interdiction cuts
+            if self.params.useInterdictionCuts and runUE:
                 self.yvec.append(can.y)
 
-            if prune == False:
+            if prune == False:  
                 fixed = can.fixed0 + can.fixed1
                 free = [a.id for a in self.network.links2 if a.id not in fixed]
                 
