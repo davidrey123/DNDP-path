@@ -379,10 +379,7 @@ class BPC_singleTree_link:
         elif type == 'MILP':
             rmp.y = {a:rmp.binary_var() for a in self.network.links2}
   
-        rmp.add_constraint(sum(rmp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
-        
-        for a in self.network.links2:
-            rmp.add_constraint(rmp.x[a] <= rmp.y[a] * self.network.TD)
+        rmp.add_constraint(sum(rmp.y[a] * a.cost for a in self.network.links2) <= self.network.B)                   
             
         for r in self.network.origins:
             for s in self.network.zones:
@@ -393,27 +390,33 @@ class BPC_singleTree_link:
                     #for a in self.network.links2:
                     #    rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s] if a in p.links) <= rmp.y[a] * r.getDemand(s))
     
+        nOAcuts = 0        
         for a in self.network.links:
             rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
-                        
-        for OAcut in self.OAcuts:
+           
             #---OA cuts
-            for a in self.network.links:
+            for OAcut in self.OAcuts:                         
                 rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*OAcut['a'][a] + OAcut['b'][a])
+                nOAcuts += 1
         
         if self.params.useInterdictionCuts:
             for yv in self.yvec:        
                 #---Interdiction Cuts - useless unless MILP?
                 rmp.add_constraint(sum(rmp.y[a] + yv[a] - 2*rmp.y[a]*yv[a] for a in self.network.links2) >= 1)
         
-        #---Branch cuts        
+        nBcuts = 0
         for a in self.network.links2:
             
+            rmp.add_constraint(rmp.x[a] <= rmp.y[a] * self.network.TD)
+        
+            #---Branch cuts    
             if a.id in can.fixed0:
                 rmp.add_constraint(rmp.y[a] == 0)
+                nBcuts += 1
                                
             if a.id in can.fixed1:
                 rmp.add_constraint(rmp.y[a] == 1)
+                nBcuts += 1
         
         rmp.minimize(sum(rmp.mu[a] for a in self.network.links))
         
@@ -422,8 +425,8 @@ class BPC_singleTree_link:
         
         rmp.solve(log_output=False)
         
-        #if self.params.PRINT_BB_INFO:
-        #    print('nb of paths: %d, cplex time: %.1f, rmp time: %.1f' % (len(can.getPaths()),rmp.solve_details.time,(time.time() - t0_RMP)))
+        if self.params.PRINT_BB_INFO:
+            print('nPaths: %d, nOAcuts: %d, nBcuts: %d, cplexTime: %.1f, RMPTime: %.1f' % (len(self.getPaths()),nOAcuts,nBcuts,rmp.solve_details.time,(time.time() - t0_RMP)))
         
         self.rt_RMP += (time.time() - t0_RMP)
             
