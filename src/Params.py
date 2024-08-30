@@ -30,7 +30,7 @@ class Params:
         
         self.tapas_max_iter = 100
         self.min_gap = 1E-3
-        self.min_gap_SO = 1E-1
+        self.min_gap_SO_OA_cuts = 1E-1 #---warning should not be used to compute lower bounds on TSTT - only OA cuts
         
         self.msa_max_iter = 500
     
