@@ -201,7 +201,7 @@ class BPC_singleTree_link:
             yKNP[a] = 1
         
         t0_TAP = time.time()
-        tstt = self.network.tapas('SO',yKNP)
+        tstt = self.network.tapas('SO_OA_cuts',yKNP)
         self.ydict.insertSO(yKNP, tstt)
         self.OAcuts.append(self.getOAcut()) 
         self.rt_TAP += (time.time() - t0_TAP)
@@ -217,7 +217,7 @@ class BPC_singleTree_link:
                        
             if not self.params.useAONcuts: 
                 t0_TAP = time.time()
-                tstt = self.network.tapas('SO',yKNP)
+                tstt = self.network.tapas('SO_OA_cuts',yKNP)
                 self.ydict.insertSO(yKNP, tstt)
                 self.rt_TAP += (time.time() - t0_TAP)
                 self.OAcuts.append(self.getOAcut())                            
@@ -596,7 +596,7 @@ class BPC_singleTree_link:
 
                     else:
                         t0_TAP = time.time()
-                        sotstt = self.network.tapas('SO',can.y)                        
+                        sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
                         self.OAcuts.append(self.getOAcut())
                         self.rt_TAP += time.time() - t0_TAP
@@ -664,7 +664,7 @@ class BPC_singleTree_link:
                 
                 #---else look for unfixed variable
                 else:
-                    print('--> branching on unfixed variable')
+                    #print('--> branching on unfixed variable')
                     fsorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)                    
                     can.ybr = fsorted[0]
                     self.branch_unfixed(can)

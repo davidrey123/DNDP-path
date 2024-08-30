@@ -265,7 +265,11 @@ class FS_NETS:
         conv_OA = False
         while conv_OA == False:
             
+            print('x1')
+            
             MILP_status,MILP_OFV,yMILP = self.milp_link(can)
+            
+            print('x2',MILP_status)
             
             if MILP_status == 'infeasible':
                 if nOA == 0:
@@ -297,12 +301,14 @@ class FS_NETS:
                     print('hasSO')
             
             else:
+                print('x3')
                 t0_TAP = time.time()
                 tstt = round(self.network.tapas('SO',yMILP), 3)                
                 self.ydict.insertSO(yMILP, tstt)
                 self.rt_TAP += time.time() - t0_TAP
                 self.OAcuts.append(self.getOAcut())
                 self.nSO += 1
+                print('x4')
             
             if tstt < UB_OA:
                 if self.params.PRINT_BB_INFO:

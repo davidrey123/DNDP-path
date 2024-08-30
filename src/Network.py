@@ -463,10 +463,10 @@ class Network:
         iter = 1
         max_iter = self.params.tapas_max_iter
         
-        if type == 'SO':
-            min_gap = self.params.min_gap_SO
-        elif type == 'UE':
+        if type == 'UE' or type == 'SO':
             min_gap = self.params.min_gap
+        elif type == 'SO_OA_cuts':
+            min_gap = self.params.min_gap_SO_OA_cuts
         
         #self.params.line_search_gap = pow(10, math.floor(math.log10(self.TD) - 6))
         

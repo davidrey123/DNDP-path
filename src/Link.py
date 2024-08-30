@@ -43,7 +43,7 @@ class Link:
         if type == 'UE':
             output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
         
-        elif type == 'SO':
+        elif type == 'SO' or type == 'SO_OA_cuts':
             output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
             
             if self.beta > 1e-4: # for handling the case of beta = 0
