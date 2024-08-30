@@ -24,32 +24,14 @@ net = 'BerlinMitteCenter'
 ins = 'BMC_DNDP_10_1'
 '''
 
+b_prop = 0.25
 inflate_trips = 1
-network = Network.Network(net,ins,0.5,1e-0,1e-3,inflate_trips)
+network = Network.Network(net,ins,b_prop,1e-0,1e-3,inflate_trips)
 print(net,ins)
 
-'''
-import time
-t0 = time.time()
-ytemp = {}
-for a in network.links2:
-    ytemp[a] = 1
-tstt = network.tapas('UE', ytemp)
-runtime = time.time() - t0
-nOD = 0
-for r in network.origins:
-    for s in network.zones:
-        if r.getDemand(s) > 0:
-            nOD += 1
-print(tstt,runtime)
-print(len(network.nodes),len(network.links),nOD)
 
-sotstt = network.tapas('SO', ytemp)
-ueso = 100*(tstt - sotstt)/tstt
-print(sotstt,ueso)
-
-'''
-run = 'BPC_singleTree_link' 
+#run = 'BPC_singleTree_link' 
+run = 'FS_NETS' 
 print(run)
 
 if run == 'BPC_singleTree':
