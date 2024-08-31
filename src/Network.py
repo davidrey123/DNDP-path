@@ -559,8 +559,8 @@ class Network:
             # when the gap is low, increase the flow shift sensitivity
             if (last_iter_gap - gap) / gap < 0.01:
                 
-                for r in self.origins:
-                    r.bush.algBShift()
+                #for r in self.origins:
+                #    r.bush.algBShift()
                 
                 #self.params.bush_gap = max(self.params.bush_gap/10, 1e-5)
                 self.params.line_search_gap = max(self.params.line_search_gap/10, 1e-7)
