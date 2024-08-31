@@ -234,7 +234,7 @@ class BPC_singleTree_link:
                 self.yopt = yKNP
                 
             #---interdict to get different y
-            self.yvec.append(self.yopt)
+            self.yvec.append(yKNP)
                 
         t0_TAP = time.time()
         can.UB = self.network.tapas('UE',self.yopt)
