@@ -67,7 +67,7 @@ class Leblanc:
     def BB(self):
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('---Leblanc---')    
+            print('---'+self.__class__.__name__+'---')   
         
         self.network.resetTapas()
  
@@ -202,3 +202,5 @@ class Leblanc:
             print(self.yopt)
             print(self.rt_TAP)
     
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('---'+self.__class__.__name__+' end---')    
