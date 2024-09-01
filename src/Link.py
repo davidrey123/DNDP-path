@@ -13,7 +13,8 @@ class Link:
         self.beta = beta
         self.x = 0
         self.y = 1
-        self.cost = cost # for DNDP
+        self.cost = cost
+        self.OAcuts = [] #---superfluous if cuts are added directly?
         
         self.visit_order = -1
         
