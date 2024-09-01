@@ -29,8 +29,9 @@ class FS_NETS:
         self.rt_TAP = 0.0
         self.rt_MILP = 0.0        
         
+        self.milp = None
         self.OAcuts = []
-        
+                
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
         
@@ -95,20 +96,34 @@ class FS_NETS:
         
         return
     
+    def addBranchCuts(self,can):
+        
+        #---Branch cuts
+        Bcuts0 = self.milp.add_constraints([self.milp.y[a] == 0 for a in self.network.links2 if a.id in can.fixed0])
+        Bcuts1 = self.milp.add_constraints([self.milp.y[a] == 1 for a in self.network.links2 if a.id in can.fixed1])
+              
+        return Bcuts0,Bcuts1
+    
+    def removeBranchCuts(self,Bcuts0,Bcuts1):
+                       
+        self.milp.remove_constraints(Bcuts0)
+        self.milp.remove_constraints(Bcuts1)
+    
     def getOAcut(self):
-        cut = {'a':{}, 'b':{}}
+        OAcut = {'a':{}, 'b':{}}
         
         for a in self.network.links:
         
             if a.y == 1:                
-                cut['a'][a] = round(a.getTravelTime(a.x,'SO'), 3)
-                cut['b'][a] = round(- pow(a.x, 2) * a.getDerivativeTravelTime(a.x), 3)
+                OAcut['a'][a] = a.getTravelTime(a.x,'SO')
+                OAcut['b'][a] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)
             
             else:
-                cut['a'][a] = 0.0
-                cut['b'][a] = 0.0
+                OAcut['a'][a] = 0.0
+                OAcut['b'][a] = 0.0
                 
-        return cut
+        #---OA cut to MILP
+        self.milp.add_constraint(self.milp.mu >= sum(self.milp.x[a]*OAcut['a'][a] + OAcut['b'][a] for a in self.network.links))
     
     def knapsack(self, type, can):
         
@@ -138,54 +153,52 @@ class FS_NETS:
                 
             return yKNP
         
-    def initOAcuts(self, can, nKNP):
+    def initOAcuts(self, can):
         
         if self.params.PRINT_BB_INFO:
-            print('Running knapsack heuristic with',nKNP,'round(s)')
+            print('Running knapsack heuristic (designed for 1 round only)')
         
         yKNP = {}
         for a in self.network.links2:
             yKNP[a] = 1
         
         t0_TAP = time.time()
-        tstt = round(self.network.tapas('SO',yKNP), 3) 
+        tstt = self.network.tapas('SO',yKNP) 
         self.ydict.insertSO(yKNP, tstt)
         self.rt_TAP += (time.time() - t0_TAP)
+        self.getOAcut()
+        self.nSO += 1
         
-        for n in range(nKNP):
-            yKNP = self.knapsack('x',can)
-                        
-            t0_TAP = time.time()
-            tstt = round(self.network.tapas('SO',yKNP), 3) 
-            self.ydict.insertSO(yKNP, tstt)
-            self.rt_TAP += (time.time() - t0_TAP)
-            self.OAcuts.append(self.getOAcut())                            
-            self.nSO += 1        
+        yKNP = self.knapsack('x',can)
                     
-            can.yvec.append(yKNP)
-            
-            if tstt < self.UB_SO_DNDP:
-                self.UB_SO_DNDP = tstt
-                self.yopt = yKNP
+        t0_TAP = time.time()
+        tstt = self.network.tapas('SO',yKNP) 
+        self.ydict.insertSO(yKNP, tstt)
+        self.rt_TAP += (time.time() - t0_TAP)
+        self.getOAcut()                           
+        self.nSO += 1
+                
+        can.yvec.append(yKNP)
+        
+        if tstt < self.UB_SO_DNDP:
+            self.UB_SO_DNDP = tstt
+            self.yopt = yKNP
                 
         t0_TAP = time.time()
-        can.UB = round(self.network.tapas('UE',self.yopt), 3)
+        can.UB = self.network.tapas('UE',self.yopt)
         self.ydict.insertUE(self.yopt, can.UB)
         self.rt_TAP += time.time() - t0_TAP
         self.nUE += 1
         self.UB = can.UB           
     
-    def milp_link(self,can):
+    def createMILP(self):        
         
-        #---to do: recode such that milp is setup once and only cuts are added at each OA iteration
-        
-        t0_MILP = time.time()
         milp = Model()    
         
         milp.x = {a:milp.continuous_var(lb=0,ub=self.network.TD) for a in self.network.links}
         milp.xc = {(a,s):milp.continuous_var() for a in self.network.links for s in self.network.zones}
         milp.y = {a:milp.binary_var() for a in self.network.links2}
-        milp.mu = milp.continuous_var(lb=can.LB)
+        milp.mu = milp.continuous_var(lb=0,name='mu')
         
         milp.add_constraint(sum(milp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
         
@@ -206,23 +219,6 @@ class FS_NETS:
                     dem = 0
                 
                 milp.add_constraint(sum(milp.xc[(a,s)] for a in i.outgoing) - sum(milp.xc[(a,s)] for a in i.incoming) == dem)
-                        
-        for OAcut in self.OAcuts:
-            #---OA cuts
-            milp.add_constraint(milp.mu >= sum(milp.x[a]*OAcut['a'][a] + OAcut['b'][a] for a in self.network.links))
-            
-        for yv in can.yvec:        
-            #---Interdiction Cuts
-            milp.add_constraint(sum(milp.y[a] + yv[a] - 2*milp.y[a]*yv[a] for a in self.network.links2) >= 1)
-            
-        #---Branch cuts    
-        for a in self.network.links2:
-            
-            if a.id in can.fixed0:
-                milp.add_constraint(milp.y[a] == 0)
-                               
-            if a.id in can.fixed1:
-                milp.add_constraint(milp.y[a] == 1)
                 
         milp.minimize(milp.mu)
                 
@@ -230,21 +226,32 @@ class FS_NETS:
         milp.parameters.threads = self.params.CPLEX_threads
         milp.parameters.timelimit = self.params.BB_timelimit
         
-        milp.solve(log_output=False)
+        if self.params.PRINT_BB_INFO:
+            print('nvars: %d, ncons: %d' % (milp.number_of_variables,milp.number_of_constraints))
+        
+        self.milp = milp        
+        
+    def solveMILP(self,can):
+        
+        t0_MILP = time.time()
+        
+        self.milp.solve(log_output=False)
                 
-        #print(milp.solve_details.time,(time.time() - t0_MILP))
-        self.rt_MILP += (time.time() - t0_MILP)
-            
-        if milp.solve_details.status == 'infeasible' or milp.solve_details.status == 'integer infeasible':
+        if self.milp.solve_details.status == 'infeasible' or self.milp.solve_details.status == 'integer infeasible':
             return 'infeasible',self.inf,{}
         
         else:
-            MILP_OFV = milp.objective_value
-            MILP_status = milp.solve_details.status
+            MILP_OFV = self.milp.objective_value
+            MILP_status = self.milp.solve_details.status
              
             yopt = {}
             for a in self.network.links2:
-                yopt[a] = round(milp.y[a].solution_value)
+                yopt[a] = round(self.milp.y[a].solution_value)
+                
+        self.rt_MILP += (time.time() - t0_MILP)
+                
+        if self.params.PRINT_BB_INFO:
+            print('nvars: %d, ncons: %d, cplexTime: %.1f, MILPTime: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.solve_details.time,(time.time() - t0_MILP)))
                 
         return MILP_status,MILP_OFV,yopt    
 
@@ -259,17 +266,13 @@ class FS_NETS:
         nOA = 0
         UB_OA = self.inf
         yOA = {}
-        
-        t0_OA = time.time()
+        Icuts = []
+               
         
         conv_OA = False
         while conv_OA == False:
             
-            print('x1')
-            
-            MILP_status,MILP_OFV,yMILP = self.milp_link(can)
-            
-            print('x2',MILP_status)
+            MILP_status,MILP_OFV,yMILP = self.solveMILP(can)
             
             if MILP_status == 'infeasible':
                 if nOA == 0:
@@ -292,8 +295,14 @@ class FS_NETS:
                     print('-----------------------------------> convergence by bounding in OA_link')
                 return nOA,LB_OA,yOA,MILP_status
             
-            can.LB = MILP_OFV #---can.LB is temporarily updated during the OA loop but will be overwritten after exiting OA_link
-            can.yvec.append(yMILP)
+            #---update LB of mu
+            #can.LB = MILP_OFV #---can.LB is temporarily updated during the OA loop but will be overwritten after exiting OA_link
+            self.milp.get_var_by_name('mu').lb = MILP_OFV
+            
+            #---update interdiction cuts
+            #can.yvec.append(yMILP) #---superfluous if directly adding cut to MILP?
+            Icut = self.milp.add_constraint(sum(self.milp.y[a] + yMILP[a] - 2*self.milp.y[a]*yMILP[a] for a in self.network.links2) >= 1)
+            Icuts.append(Icut)            
             
             if self.ydict.hasSO(yMILP) == True:
                 tstt = self.ydict.getSO(yMILP)
@@ -301,14 +310,12 @@ class FS_NETS:
                     print('hasSO')
             
             else:
-                print('x3')
                 t0_TAP = time.time()
-                tstt = round(self.network.tapas('SO',yMILP), 3)                
+                tstt = self.network.tapas('SO',yMILP)              
                 self.ydict.insertSO(yMILP, tstt)
                 self.rt_TAP += time.time() - t0_TAP
-                self.OAcuts.append(self.getOAcut())
+                self.getOAcut()
                 self.nSO += 1
-                print('x4')
             
             if tstt < UB_OA:
                 if self.params.PRINT_BB_INFO:
@@ -317,7 +324,7 @@ class FS_NETS:
                 yOA = yMILP
                 
                 for a in self.network.links2:
-                    can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
+                    can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')
             
             gap = (UB_OA-MILP_OFV)/UB_OA
             if self.params.PRINT_BB_INFO:
@@ -339,20 +346,30 @@ class FS_NETS:
             
             nOA += 1
             
+        #---reset LB of mu
+        self.milp.get_var_by_name('mu').lb = LB_OA
+        
+        #---remove local interdiction cuts
+        for Icut in Icuts:
+            self.milp.remove_constraint(Icut)        
+            
         return nOA,LB_OA,yOA,MILP_status
         
 
     def BB(self):
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('---FS_NETS---')        
+            print('---'+self.__class__.__name__+'---')   
         
         self.network.resetTapas()
  
         self.t0 = time.time()
         
+        #---initialize MILP
+        self.createMILP()
+        
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0],1)
+        self.initOAcuts(self.BB_nodes[0])
     
         conv = False
         while conv == False:                   
@@ -390,15 +407,18 @@ class FS_NETS:
                         can.fixed0.append(a.id)        
                  
             else:
-                if can.solved == False:                                     
+                if can.solved == False:
+                    
+                    #---add Branch cuts
+                    Bcuts0,Bcuts1 = self.addBranchCuts(can)
                     
                     #---LB is obtained from OA algorithm
-                    nOA, can.LB, can.y, OA_status = self.OA_link(can)                    
+                    nOA,can.LB,can.y,OA_status = self.OA_link(can)                    
                     
                     #---solve UE-TAP at root node to get initial UB
                     if self.nBB == 0:
                         t0_TAP = time.time()
-                        can.UB = round(self.network.tapas('UE',can.y), 3)
+                        can.UB = self.network.tapas('UE',can.y)
                         self.rt_TAP += time.time() - t0_TAP
                         self.nUE += 1
                         
@@ -406,8 +426,10 @@ class FS_NETS:
                             self.UB = can.UB
                             self.yopt = can.y
                             if self.params.PRINT_BB_INFO:
-                                print('--> update UB')                        
-                    
+                                print('--> update UB')
+                                
+                    #---remove Branch cuts
+                    self.removeBranchCuts(Bcuts0,Bcuts1)                    
                  
                 if can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
@@ -423,7 +445,7 @@ class FS_NETS:
                 
                 else:
                     t0_TAP = time.time()
-                    can.UB = round(self.network.tapas('UE',yUB), 3)
+                    can.UB = self.network.tapas('UE',yUB)
                     self.ydict.insertUE(yUB, can.UB)
                     self.rt_TAP += time.time() - t0_TAP
                     self.nUE += 1
@@ -494,5 +516,6 @@ class FS_NETS:
             print(self.rt_TAP)
             print(self.rt_MILP)
             print(self.yopt)
-        
-    
+
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('---'+self.__class__.__name__+' end---')
