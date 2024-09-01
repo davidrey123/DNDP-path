@@ -33,6 +33,7 @@ class BPC_singleTree_link:
         self.rt_pricing = 0.0        
         
         self.OAcuts = []
+        self.nOAcuts = 0
         self.yvec = [] #---for global interdiction cuts
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
         
@@ -138,20 +139,24 @@ class BPC_singleTree_link:
     
         return      
     
-    def getOAcut(self):
-        cut = {'a':{}, 'b':{}}
-        
-        for a in self.network.links:
-        
-            if a.y == 1:                
-                cut['a'][a] = a.getTravelTime(a.x,'SO')
-                cut['b'][a] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)
-                          
-            else:
-                cut['a'][a] = 0.0
-                cut['b'][a] = 0.0
+    def getOAcuts(self):
                 
-        return cut
+        #cnt = 0
+        for a in self.network.links:
+            
+            OAcut = {}
+            
+            if a.y == 1:                
+                OAcut['a'] = a.getTravelTime(a.x,'SO')
+                OAcut['b'] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)
+                self.nOAcuts += 1
+                
+                a.OAcuts.append(OAcut)
+                
+                #if cnt <= 10:
+                #    print('%d, %.1f, %.1f, %.1f' % (a.id,a.x,cut['a'][a],cut['b'][a]))
+                #cnt += 1
+
     
     def knapsack(self, type, can):
         
@@ -203,7 +208,7 @@ class BPC_singleTree_link:
         t0_TAP = time.time()
         tstt = self.network.tapas('SO_OA_cuts',yKNP)
         self.ydict.insertSO(yKNP, tstt)
-        self.OAcuts.append(self.getOAcut()) 
+        self.getOAcuts()
         self.rt_TAP += (time.time() - t0_TAP)
         self.nSO += 1
         
@@ -220,14 +225,14 @@ class BPC_singleTree_link:
                 tstt = self.network.tapas('SO_OA_cuts',yKNP)
                 self.ydict.insertSO(yKNP, tstt)
                 self.rt_TAP += (time.time() - t0_TAP)
-                self.OAcuts.append(self.getOAcut())                            
+                self.getOAcuts()                           
                 self.nSO += 1        
             
             if self.params.useAONcuts:
                 t0_TAP = time.time()
                 tstt = self.network.setAON('SO', yKNP)
                 self.rt_TAP += (time.time() - t0_TAP)
-                self.OAcuts.append(self.getOAcut())
+                self.getOAcuts()
             
             if tstt < self.UB_SO_DNDP:
                 self.UB_SO_DNDP = tstt
@@ -235,6 +240,7 @@ class BPC_singleTree_link:
                 
             #---interdict to get different y
             self.yvec.append(yKNP)
+            #print(n,yKNP)
                 
         t0_TAP = time.time()
         can.UB = self.network.tapas('UE',self.yopt)
@@ -395,14 +401,16 @@ class BPC_singleTree_link:
             rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
            
             #---OA cuts
-            for OAcut in self.OAcuts:                         
-                rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*OAcut['a'][a] + OAcut['b'][a])
+            for OAcut in a.OAcuts:                         
+                rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*OAcut['a'] + OAcut['b'])
                 nOAcuts += 1
         
+        nIcuts = 0
         if self.params.useInterdictionCuts:
             for yv in self.yvec:        
                 #---Interdiction Cuts - useless unless MILP?
                 rmp.add_constraint(sum(rmp.y[a] + yv[a] - 2*rmp.y[a]*yv[a] for a in self.network.links2) >= 1)
+                nIcuts += 1
         
         nBcuts = 0
         for a in self.network.links2:
@@ -425,8 +433,8 @@ class BPC_singleTree_link:
         
         rmp.solve(log_output=False)
         
-        if self.params.PRINT_BB_INFO:
-            print('nPaths: %d, nOAcuts: %d, nBcuts: %d, cplexTime: %.1f, RMPTime: %.1f' % (len(self.getPaths()),nOAcuts,nBcuts,rmp.solve_details.time,(time.time() - t0_RMP)))
+        if self.params.PRINT_BB_INFO:            
+            print('nvars: %d, ncons: %d, nOAcuts: %d, nIcuts: %d, cplexTime: %.1f, RMPTime: %.1f' % (rmp.number_of_variables,rmp.number_of_constraints,nOAcuts,nIcuts,rmp.solve_details.time,(time.time() - t0_RMP)))
         
         self.rt_RMP += (time.time() - t0_RMP)
             
@@ -437,14 +445,16 @@ class BPC_singleTree_link:
             OFV = rmp.objective_value
             RMP_status = rmp.solve_details.status
             
+            #if self.params.PRINT_BB_INFO:
+            #    print('OFV: %.1f, RMP_status: %s' % (OFV,RMP_status))            
+            
             yopt = {}
             for a in self.network.links2:
                 yopt[a] = rmp.y[a].solution_value
                 maxscore = 0
-                for OAcut in self.OAcuts:
-                    maxscore = max(rmp.x[a].solution_value * OAcut['a'][a] + OAcut['b'][a],maxscore)                    
-                can.score[a.id] = rmp.x[a].solution_value * maxscore                
-
+                for OAcut in a.OAcuts:
+                    maxscore = max(rmp.x[a].solution_value * OAcut['a'] + OAcut['b'],maxscore)                    
+                can.score[a.id] = rmp.x[a].solution_value * maxscore
             
             if type == 'LP':
                 dual_link = {} 
@@ -513,19 +523,18 @@ class BPC_singleTree_link:
  
         self.t0 = time.time()
         
+        #---initialize paths
+        self.initPaths()         
+        
         #---initialize OA cuts
         nInitCuts = round(len(self.network.links2))
         self.initOAcuts(self.BB_nodes[0],nInitCuts)
-        #self.initOAcutsUE(self.BB_nodes[0],nInitCuts)        
-    
-        #---initialize paths
-        self.initPaths()        
+        #self.initOAcutsUE(self.BB_nodes[0],nInitCuts)       
     
         conv = False
         while conv == False:                    
              
             can = self.nodeSelection('bestBound',self.getCandidates())
-            #can = self.nodeSelection('depth',self.getCandidates())
             status = can.check()
         
             #if self.params.PRINT_BB_INFO:
@@ -601,7 +610,7 @@ class BPC_singleTree_link:
                         t0_TAP = time.time()
                         sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
-                        self.OAcuts.append(self.getOAcut())
+                        self.getOAcuts()
                         self.rt_TAP += time.time() - t0_TAP
                         self.nSO += 1
                     
@@ -610,7 +619,7 @@ class BPC_singleTree_link:
                     self.network.setFlows(self.xvec)
                     sotstt = self.network.setAON('SO', can.y) # change to AON
                     self.rt_TAP += (time.time() - t0_TAP)
-                    self.OAcuts.append(self.getOAcut())  
+                    self.getOAcuts() 
                     
                     # !!! can be memoized      
                     
@@ -672,10 +681,12 @@ class BPC_singleTree_link:
                     can.ybr = fsorted[0]
                     self.branch_unfixed(can)
                     
-                #if self.params.PRINT_BB_INFO:                    
-                #    for a in self.network.links2:
-                #        if a.id == can.ybr:
-                #            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))                
+                if self.params.PRINT_BB_INFO:
+                    #print(fixed,frac)
+                    #print(can.score)
+                    for a in self.network.links2:
+                        if a.id == can.ybr:
+                            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))                
                 
             can.active = False
             candidates = self.getCandidates()
