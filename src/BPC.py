@@ -142,25 +142,31 @@ class BPC:
     
     def getOAcuts(self):
         
-        #cnt = 0
         for a in self.network.links:
             OAcut = {}
             
-            #---add rule to check if a.x or a.getTravelTime(a.x,'SO') is sufficiently different from existing OA cuts
-        
-            if a.y == 1:                
-                OAcut['a'] = a.getTravelTime(a.x,'SO')
-                OAcut['b'] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)
-                          
-                a.OAcuts.append(OAcut) #---is it needed to store OA cuts if directly adding to RMP?                               
+            if a.y == 1:
                 
-                #---add OA cut to RMP
-                self.rmp.add_constraint(self.rmp.mu[a] >= self.rmp.x[a]*OAcut['a'] + OAcut['b'])
-                self.nOAcuts += 1
+                addOAcut = True
+                for cut in a.OAcuts: 
+                    
+                    #---check if a.x or a.getTravelTime(a.x,'SO') is sufficiently different from existing OA cuts        
+                    if abs(a.x - cut['x']) <= self.params.OAcut_tol*a.C:
+                        addOAcut = False
+                        break
                 
-                #if cnt <= 10:
-                #    print('%d, %.1f, %.1f, %.1f' % (a.id,a.x,OAcut['a'],OAcut['b']))
-                #cnt += 1
+                if addOAcut == True:
+                    
+                    OAcut['x'] = a.x
+                    OAcut['a'] = a.getTravelTime(a.x,'SO')
+                    OAcut['b'] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)
+                                                  
+                    a.OAcuts.append(OAcut)
+                    
+                    #---add OA cut to RMP
+                    self.rmp.add_constraint(self.rmp.mu[a] >= self.rmp.x[a]*OAcut['a'] + OAcut['b'])
+                    self.nOAcuts += 1
+                
     
     def knapsack(self, type, can):
         
@@ -519,9 +525,10 @@ class BPC:
                 prune = True
                 runUE = True
                 
-                #---condition to be tuned: idea is to get OA cuts early in the search then stop
-                if self.nSO <= 5*nInitCuts: # **2 *5
-                    runSO = True
+                #---condition to be tuned: idea is to get OA cuts early in the search then stop                
+                #if self.nSO <= 5*nInitCuts: # **2 *5
+                
+                runSO = True
                  
                 for a in self.network.links2:
                     if a.id in can.fixed1:
