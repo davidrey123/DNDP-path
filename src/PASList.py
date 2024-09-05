@@ -9,6 +9,9 @@ class PASList:
     
     def containsKey(self, ij):
         return ij in self.forward or ij in self.backward
+        
+    def size(self):
+        return len(self.backward)
     
     def add(self, pas):
         #with open('result49.txt', 'a') as file, contextlib.redirect_stdout(file):
