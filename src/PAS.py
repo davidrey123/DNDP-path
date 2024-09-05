@@ -254,6 +254,7 @@ class PAS:
         # maybe the forward and backward costs will be reversed sometimes
         if (backwards == 1 and costdiff < params.pas_cost_epsilon * forwardcost) or (backwards == -1 and -costdiff < params.pas_cost_epsilon * backwardcost):
 
+            #print("\t", "costdiff is low", costdiff)
             return False
 
         
@@ -293,6 +294,7 @@ class PAS:
                 print("\t", self.isEffective(type, r.bush, 0.0001, 0.0001))
             '''
             
+            #print("\t", "max shift", overallMaxShift)
             return False
         
 
@@ -348,8 +350,9 @@ class PAS:
                 #print(-maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
                 #print(f'-maxFlowShift[r.bush] {-maxFlowShift[r.bush]}, overallMaxShift {overallMaxShift},bot{bot},backwards{backwards}')
                 r.bush.addFlow(l, -maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
-            
-        #print(self.getForwardCost(type), self.getBackwardCost(type), self.getForwardCost(type)-self.getBackwardCost(type))
+        
+
+        #print("\tshift", overallMaxShift, self.getForwardCost(type), self.getBackwardCost(type), self.getForwardCost(type)-self.getBackwardCost(type))
         #print(bot, overallMaxShift)
         
         #if self.id == 2799:
