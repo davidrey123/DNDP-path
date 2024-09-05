@@ -591,20 +591,20 @@ class BPC:
             if runUE:
                 
                 if self.ydict.hasUE(can.y) == True:
-                    can.UB = self.ydict.getSO(can.y)
+                    can.UB = self.ydict.getUE(can.y)
                     if self.params.PRINT_BB_INFO:
                         print('--> has UE')                    
                 
-                #---solve UE TAP to get UB 
-                t0_TAP = time.time()
-                can.UB = self.network.tapas('UE',can.y)
-                #can.UB = self.network.tapas_ubstop('UE',can.y, self.UB)
-                self.ydict.insertUE(can.y, can.UB)
-                self.rt_TAP += time.time() - t0_TAP
-                self.nUE += 1     
+                else:
+                    #---solve UE TAP to get UB 
+                    t0_TAP = time.time()
+                    can.UB = self.network.tapas('UE',can.y)
+                    self.ydict.insertUE(can.y, can.UB)
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.nUE += 1     
                 
                 if self.params.PRINT_BB_INFO:
-                    print('TSTT UE',can.UB)
+                    print('TSTT UE - UB: %.1f, time: %.1f' % (can.UB,time.time() - t0_TAP))
                 
                 if can.UB < self.UB:            
                     self.UB = can.UB

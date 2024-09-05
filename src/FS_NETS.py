@@ -10,8 +10,7 @@ class FS_NETS:
     def __init__(self, network):
         self.network = network
         self.BB_nodes = []
-        self.inf = 1e+9
-        self.OA_tol = 1e-4
+        self.inf = 1e+9        
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
@@ -20,7 +19,8 @@ class FS_NETS:
         self.yopt = None
         self.params = Params.Params()
         self.ydict = YDict.YDict()
-        self.t0 = 0.0
+        self.OA_tol = self.params.BB_tol
+        self.t0 = 0.0        
         
         self.nBB = 0
         self.nSO = 0

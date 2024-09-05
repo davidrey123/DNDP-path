@@ -50,3 +50,5 @@ class Params:
         
         self.runUEifCGIntegral = True
         self.useInterdictionCuts = True
+        
+        self.OAcut_tol = 0.05         
