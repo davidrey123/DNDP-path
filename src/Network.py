@@ -201,8 +201,8 @@ class Network:
         if i is None or j is None:
             return None
 
-        for link in i.getOutgoing():
-            if link.getEnd() == j:
+        for link in i.outgoing:
+            if link.end == j:
                 return link
 
         return None
@@ -498,6 +498,9 @@ class Network:
                     print("checking for PAS", r)
                                 
                 r.bush.checkPAS()
+                
+                if self.params.PRINT_PAS_INFO:
+                    print("num PAS", r, r.bush.relevantPAS.size())
                 # for every link used by the origin which is not part of the tree
                     # if there is an existing effective PAS
                         # make sure the origin is listed as relevant
@@ -564,6 +567,7 @@ class Network:
                 
                 #self.params.bush_gap = max(self.params.bush_gap/10, 1e-5)
                 self.params.line_search_gap = max(self.params.line_search_gap/10, 1e-7)
+                #self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-5)
                     
                 if self.params.PRINT_TAPAS_INFO:
                     print("Adjusting parameters due to small gap "+str(self.params.pas_cost_mu)+" "+str(self.params.line_search_gap))
