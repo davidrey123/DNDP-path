@@ -666,6 +666,9 @@ class Bush:
                 #    if self.origin.id == 14:
                 #        print(l in included, included)
                 
+                #if self.getFlow(l) > self.network.params.flow_epsilon:
+                #    print("\tlink", l, self.origin, self.getFlow(l), l.getReducedCost(self.network.type), l.hasHighReducedCost(self.network.type, self.network.params.bush_gap))
+
                 # check for links with high reduced cost and positive flow, not just links not on the shortest path
                 if l not in included and l.end != self.origin and self.getFlow(l) > self.network.params.flow_epsilon and l.hasHighReducedCost(self.network.type, self.network.params.bush_gap):
                     #print(f"included is {included}")
@@ -678,9 +681,10 @@ class Bush:
                     #System.out.println(l+" "+l.getDest().cost+" "+l.getSource().cost+" "+(l.getDest().cost-l.getSource().cost)+" "+l.getTT());
                     # we need a PAS!
 
-                    #if self.origin.id == 21:
-                    #    print("link", l, self.origin, self.getFlow(l), l.getReducedCost(self.network.type), l.hasHighReducedCost(self.network.type, self.network.params.bush_gap))
+                    if self.network.params.PRINT_PAS_INFO:
+                        print("\tneed PAS for link", l, self.origin, self.getFlow(l), l.getReducedCost(self.network.type), l.hasHighReducedCost(self.network.type, self.network.params.bush_gap))
 
+ 
 
                     if not self.hasRelevantPAS(l):
 
@@ -695,9 +699,10 @@ class Bush:
 
                             if l.start != self.origin:
                                 newPAS = self.createPAS(minPathTree, l, max(self.network.params.flow_epsilon, self.getFlow(l) * self.network.params.pas_flow_mu))
+
                             # this was causing a crash??
-                            #else:
-                            #    newPAS = self.createOriginLinkPAS(minPathTree, l)
+                            else:
+                                newPAS = self.createOriginLinkPAS(minPathTree, l)
 
                             #print(l)
                             
