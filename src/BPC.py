@@ -11,7 +11,6 @@ class BPC:
         self.network = network
         self.BB_nodes = []
         self.INT_tol = 1e-4
-        self.OA_tol = 1e-4
         self.CG_tol = 1e-4
         self.inf = 1e+9
         self.nit = 0
@@ -36,6 +35,7 @@ class BPC:
         self.cntUnscaledInf = 0 
         self.yvec = [] #---for global interdiction cuts --- is it needed to store if directly adding to RMP?
         self.nOAcuts = 0
+        self.nInitKNP = len(self.network.links2)
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
@@ -206,10 +206,10 @@ class BPC:
                 
             return yKNP
         
-    def initOAcuts(self, can, nKNP):
+    def initOAcuts(self, can):
         
-        if self.params.PRINT_BB_BASIC:
-            print('Running knapsack heuristic with',nKNP,'round(s)')
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('Running knapsack heuristic with',self.nInitKNP,'round(s)')
         
         yKNP = {}
         for a in self.network.links2:
@@ -228,7 +228,7 @@ class BPC:
             can.score[a.id] = a.x * a.getTravelTime(a.x,'SO') 
         
         yBest = None
-        for n in range(nKNP):
+        for n in range(self.nInitKNP):
             yKNP = self.knapsack('x',can)
                        
             t0_TAP = time.time()
@@ -496,8 +496,7 @@ class BPC:
         self.createRMP()
     
         #---initialize OA cuts
-        nInitCuts = round(len(self.network.links2))
-        self.initOAcuts(self.BB_nodes[0],nInitCuts)    
+        self.initOAcuts(self.BB_nodes[0])
     
         conv = False
         while conv == False:                    
