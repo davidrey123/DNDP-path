@@ -79,6 +79,9 @@ class Leblanc:
             can = self.nodeSelection(self.getCandidates())
             status = can.check()
      
+            #if self.params.PRINT_BB_INFO:
+            #    print('--> can (before): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))        
+     
             prune = False
             integral = False
          
@@ -117,15 +120,15 @@ class Leblanc:
                             y[a] = 0 
                         else:
                             y[a] = 1
-                       
+                        
                     #---LB is obtained from SO-TAP with unfixed links opened
-                    t0_TAP = time.time()
-                    can.LB = round(self.network.tapas('SO',y), 3)
+                    t0_TAP = time.time()                    
+                    can.LB = self.network.tapas('SO',y)
                     self.rt_TAP += time.time() - t0_TAP
                     self.nSO += 1
                     
                     for a in self.network.links2:
-                        can.score[a.id] = round(a.x * a.getTravelTime(a.x,'SO'), 3)
+                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')
                         
                         #if self.params.PRINT_BB_INFO:
                         #    print('--> y/score: %d\t%s\t%d\t%.1f' % (a.id, (a.start.id,a.end.id), y[a], can.score[a.id]))
@@ -141,7 +144,7 @@ class Leblanc:
             if integral == True:
                                 
                 t0_TAP = time.time()
-                can.UB = round(self.network.tapas('UE',yUB), 3)
+                can.UB = self.network.tapas('UE',yUB)
                 self.rt_TAP += time.time() - t0_TAP
                 self.nUE += 1
                 
@@ -177,6 +180,9 @@ class Leblanc:
             else:
                 self.LB = self.getLB(candidates)            
                 self.gap = self.getGap()
+                
+            #if self.params.PRINT_BB_INFO:
+            #    print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))                            
             
             if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
                 print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*self.gap))

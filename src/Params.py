@@ -28,7 +28,7 @@ class Params:
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
         
-        self.tapas_max_iter = 10
+        self.tapas_max_iter = INFTY 
         self.min_gap = 1E-3
         self.min_gap_SO_OA_cuts = 1E-1 #---warning should not be used to compute lower bounds on TSTT - only OA cuts
         
@@ -37,9 +37,9 @@ class Params:
         self.warmstart = False
         
         self.PRINT_BB_INFO = True #---prints detailed BB info
-        self.PRINT_BB_BASIC = True #---prints only basic BB info
+        self.PRINT_BB_BASIC = False #---prints only basic BB info
         
-        self.CPLEX_threads = 4
+        self.CPLEX_threads = 1
         self.BB_timelimit = 3600
         self.BB_tol = 1E-2
 
@@ -51,4 +51,4 @@ class Params:
         self.runUEifCGIntegral = True
         self.useInterdictionCuts = True
         
-        self.OAcut_tol = 0.05         
+        self.OAcut_tol = 0.01
