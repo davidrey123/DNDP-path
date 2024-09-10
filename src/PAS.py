@@ -352,7 +352,9 @@ class PAS:
                 r.bush.addFlow(l, -maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
         
 
-        #print("\tshift", overallMaxShift, self.getForwardCost(type), self.getBackwardCost(type), self.getForwardCost(type)-self.getBackwardCost(type))
+        
+        if params.PRINT_PAS_INFO:
+            print("\tshift", bot, overallMaxShift, self.getForwardCost(type), self.getBackwardCost(type), self.getForwardCost(type)-self.getBackwardCost(type))
         #print(bot, overallMaxShift)
         
         #if self.id == 2799:
