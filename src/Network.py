@@ -566,7 +566,7 @@ class Network:
                 #    r.bush.algBShift()
                 
                 #self.params.bush_gap = max(self.params.bush_gap/10, 1e-5)
-                self.params.line_search_gap = max(self.params.line_search_gap/10, 1e-7)
+                self.params.line_search_gap = max(self.params.line_search_gap/10, self.params.min_line_search_gap)
                 #self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-5)
                     
                 if self.params.PRINT_TAPAS_INFO:
