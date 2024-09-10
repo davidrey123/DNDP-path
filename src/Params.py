@@ -7,14 +7,15 @@ class Params:
  
     def __init__(self):
         self.bush_gap = 0.01
-        self.pas_cost_mu = 0.001
+        self.pas_cost_mu = 0.01
         
-        self.pas_cost_epsilon = 0.000001
+        self.pas_cost_epsilon = 0.001
 
         self.pas_flow_mu = 0.01
         self.flow_epsilon = 0.000001
         
-        self.line_search_gap = 1E-7
+        self.line_search_gap = 1E-5
+        self.min_line_search_gap = 1E-5
         self.tapas_equilibrate_iter = 3
     
         self.DEBUG_CHECKS = True
@@ -28,7 +29,7 @@ class Params:
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
         
-        self.tapas_max_iter = INFTY 
+        self.tapas_max_iter = 60 
         self.min_gap = 1E-3
         self.min_gap_SO_OA_cuts = 1E-1 #---warning should not be used to compute lower bounds on TSTT - only OA cuts
         
