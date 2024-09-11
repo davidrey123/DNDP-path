@@ -241,6 +241,7 @@ class Bush:
         
         for l in newlinks:
             if l not in included and l.end != self.origin and l.hasHighReducedCost(self.network.type, self.network.params.bush_gap):
+                self.network.params.good_bush_gap += 1
                 #print(f"included is {included}")
                 #print(f"l.end is {l.end} and l.start is {l.start}")
                 #print(f"self.flow of l is {self.flow}")
@@ -257,7 +258,7 @@ class Bush:
                     if fromNetwork is None:
 
                         if self.network.params.PRINT_PAS_INFO:
-                            print("\nCreate PAS for " + str(l) + " for origin " + str(self.origin))
+                            print("\n\tCreate PAS for " + str(l) + " for origin " + str(self.origin))
 
                         newPAS = None
                         
@@ -578,9 +579,12 @@ class Bush:
     
     def branchShifts(self):
 
+        if self.network.params.PRINT_TAPAS_INFO and len(self.branches) > 0:
+            print("starting branch shifts", self.origin.id)
+        
         for b in self.branches:
             if self.network.params.PRINT_BRANCH_INFO:
-                print("shift branch with flow",self.getFlow(b.endlink))
+                print("\tshift branch with flow",self.getFlow(b.endlink))
                 
             if self.getFlow(b.endlink) > self.network.params.flow_epsilon:
                 if b.init():
@@ -670,7 +674,8 @@ class Bush:
                 #    print("\tlink", l, self.origin, self.getFlow(l), l.getReducedCost(self.network.type), l.hasHighReducedCost(self.network.type, self.network.params.bush_gap))
 
                 # check for links with high reduced cost and positive flow, not just links not on the shortest path
-                if l not in included and l.end != self.origin and self.getFlow(l) > self.network.params.flow_epsilon and l.hasHighReducedCost(self.network.type, self.network.params.bush_gap):
+                if l not in included and l.end != self.origin and self.getFlow(l) > self.network.params.bush_gap * self.origin.totaldemand and l.hasHighReducedCost(self.network.type, self.network.params.bush_gap):
+                    
                     #print(f"included is {included}")
                     #print(f"l.end is {l.end} and l.start is {l.start}")
                     #print(f"self.flow of l is {self.flow}")
@@ -691,9 +696,10 @@ class Bush:
                         # should check if we can borrow one from network
                         fromNetwork = self.network.findPAS(l, self)
                         if fromNetwork is None:
-
+                            self.network.params.good_bush_gap += 1
+                            
                             if self.network.params.PRINT_PAS_INFO:
-                                print("\nCreate PAS for " + str(l) + " for origin " + str(self.origin))
+                                print("\n\tCreate PAS for " + str(l) + " for origin " + str(self.origin))
 
                             newPAS = None
 
@@ -706,8 +712,7 @@ class Bush:
 
                             #print(l)
                             
-                            #if self.origin.id == 14:
-                            #    print("newPAS", newPAS)
+                            
 
                             #if newPAS != None:
                                 #print(l.getReducedCost(self.network.type))
@@ -716,18 +721,18 @@ class Bush:
                                 
                             #newPAS = None
                             
-                            if newPAS is None or not newPAS.isFlowEffective(self.network.params.pas_flow_mu, self.network.params.pas_flow_mu * self.origin.getProductions(), self.network.type) or not newPAS.isCostEffective(self.network.type, self.network.params.pas_cost_mu):
-                                if l.start != self.origin:
-                                    # branch shift
-                                    if self.network.params.PRINT_BRANCH_INFO:
-                                        print("branch shift!")
+                            if l.start != self.origin and (newPAS is None or not newPAS.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu, self.network.params)):
+                                
+                                # branch shift
+                                if self.network.params.PRINT_BRANCH_INFO:
+                                    print("\t\tbranch shift!")
 
-                                    branch = self.createBranch(l)
-                                    if branch is not None:
-                                        self.branches.append(branch)
-                                    else:
-                                        if self.network.params.PRINT_BRANCH_INFO:
-                                            print("branch is null")
+                                branch = self.createBranch(l)
+                                if branch is not None:
+                                    self.branches.append(branch)
+                                else:
+                                    if self.network.params.PRINT_BRANCH_INFO:
+                                        print("branch is null")
 
                             else:
                                 
@@ -735,9 +740,8 @@ class Bush:
                                 for ij in newPAS.backwardlinks:
                                     included.add(ij)
                         else:
-                            #if self.network.params.PRINT_PAS_INFO:
-                            #if self.origin.id == 14:
-                            #    print("Take PAS for " + str(l))
+                            if self.network.params.PRINT_PAS_INFO:
+                                print("\t\tSAVE PAS")
 
                             fromNetwork.addRelevantOrigin(self.origin)
                             self.relevantPAS.add(fromNetwork)
@@ -768,7 +772,7 @@ class Bush:
                 #print(f"a is {a}")
                 for p in self.relevantPAS.forward[a]:
                     #if p.isCostEffective(self.network.type, self.network.params.pas_cost_mu) and p.maxForwardBushFlowShift(self) > self.network.params.pas_flow_mu * self.origin.getProductions():
-                    if p.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu * self.origin.getProductions()): 
+                    if p.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu * self.origin.getProductions(), self.network.params): 
                         #if self.origin.id == 21:
                             #print(p, "maxshift", str(p.relevant), p.maxForwardBushFlowShift(self), "check with", self.network.params.pas_flow_mu * self.origin.getProductions(), p.isCostEffective(self.network.type, self.network.params.pas_cost_mu))
                         return True
@@ -777,7 +781,7 @@ class Bush:
                 #print(a)     
                 for p in self.relevantPAS.backward[a]:
                     #if p.isCostEffective(self.network.type, self.network.params.pas_cost_mu) and p.maxBackwardBushFlowShift(self) > self.network.params.pas_flow_mu * self.origin.getProductions():
-                    if p.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu * self.origin.getProductions()):    
+                    if p.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu * self.origin.getProductions(), self.network.params):    
                         #if self.origin.id == 21:
                         #    print(p, "maxshift", str(p.relevant), p.maxBackwardBushFlowShift(self), "check with", self.network.params.pas_flow_mu * self.origin.getProductions(), p.isCostEffective(self.network.type, self.network.params.pas_cost_mu))
                             
@@ -942,7 +946,7 @@ class Bush:
         output.end = a.end
 
         if self.network.params.PRINT_PAS_INFO:
-            print("PAS is "+str(output))
+            print("\t\tPAS is "+str(output))
                 
         return output
     
@@ -955,7 +959,7 @@ class Bush:
             minPath = self.getPathAsNodeSet(minPathTree, self.origin, a.end)
             #print(self.origin)
             if self.network.params.PRINT_PAS_INFO:
-                print("minPath is "+str(minPath)+" for "+str(a.end))
+                print("\t\tminPath is "+str(minPath)+" for "+str(a.end))
             
             #with open('result147.txt', 'a') as file, contextlib.redirect_stdout(file):
         # store trace to avoid repeating breadth first search
@@ -994,9 +998,9 @@ class Bush:
             
             
             
-            if self.network.params.PRINT_PAS_INFO:
-                print("firstSimilar is "+str(firstSimilar))
-                print(str(trace)+" "+str(minflow)+" "+str(self.getFlow(a))+" "+str(firstSimilar))
+            #if self.network.params.PRINT_PAS_INFO:
+                #print("\tfirstSimilar is "+str(firstSimilar))
+                #print(str(trace)+" "+str(minflow)+" "+str(self.getFlow(a))+" "+str(firstSimilar))
             
             if firstSimilar is None:
                 return None
@@ -1030,7 +1034,7 @@ class Bush:
             output.end = a.end
             
             if self.network.params.PRINT_PAS_INFO:
-                print("PAS is "+str(output))
+                print("\t\tPAS is "+str(output))
             
             output.addRelevantOrigin(self.origin)
             #print(self.origin)
