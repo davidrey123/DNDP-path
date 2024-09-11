@@ -14,11 +14,7 @@ class Params:
         # if this is too large, then we avoid flow shifting in PAS
         # if this is too small, we waste time shifting in PAS that is useless
         self.pas_cost_epsilon = 0.01
-
-        
         self.line_search_gap = 1E-2
-        
-        
         
         
     def __init__(self):
@@ -34,7 +30,6 @@ class Params:
         self.resetPAS()
         
         self.flow_epsilon = 0.000001
-        
         
         self.min_line_search_gap = 1E-6
         self.tapas_equilibrate_iter = 3
@@ -72,9 +67,9 @@ class Params:
         
         self.runUEifCGIntegral = True
         self.useInterdictionCuts = True
+        self.useValueFunctionCuts = True
         
         self.OAcut_tol = 0.01
-        
         
         
         # used within TAPAS don't change

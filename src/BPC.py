@@ -23,6 +23,18 @@ class BPC:
         self.ydict = YDict.YDict()
         self.t0 = 0.0
         
+        if self.params.useValueFunctionCuts:
+            #self.M = {a:a.getPrimitiveTravelTime(self.network.TD) for a in self.network.links2}
+            
+            y0 = {}
+            for a in self.network.links2:
+                y0[a] = 0
+                
+            self.network.tapas('UE',y0)
+            OFV = self.network.getBeckmannOFV()
+            print('OFV',OFV)
+            self.M = {a:OFV for a in self.network.links2}
+        
         self.nBB = 0
         self.nSO = 0
         self.nUE = 0
@@ -35,6 +47,8 @@ class BPC:
         self.cntUnscaledInf = 0 
         self.yvec = [] #---for global interdiction cuts --- is it needed to store if directly adding to RMP?
         self.nOAcuts = 0
+        self.nOABcuts = 0
+        self.nVFcuts = 0
         self.nInitKNP = len(self.network.links2)
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
         
@@ -142,6 +156,8 @@ class BPC:
     
     def getOAcuts(self):
         
+        #---determine OA of TSTT function based on link flows and add link-based OA cuts to RMP
+        
         for a in self.network.links:
             OAcut = {}
             
@@ -167,6 +183,42 @@ class BPC:
                     self.rmp.add_constraint(self.rmp.mu[a] >= self.rmp.x[a]*OAcut['a'] + OAcut['b'])
                     self.nOAcuts += 1
                 
+    def getOABcuts(self):
+        
+        #---determine OA of Beckmann function based on (UE) link flows and add link-based OAB cuts to RMP
+        
+        for a in self.network.links:
+            OABcut = {}
+            
+            if a.y == 1:
+                
+                addOABcut = True
+                for cut in a.OABcuts: 
+                    
+                    #---check if a.x is sufficiently different from existing OABB cuts        
+                    if abs(a.x - cut['x']) <= self.params.OAcut_tol*a.C:
+                        addOABcut = False
+                        break
+                
+                if addOABcut == True:
+                    
+                    OABcut['x'] = a.x
+                    OABcut['a'] = a.getTravelTime(a.x,'UE')
+                    OABcut['b'] = a.getPrimitiveTravelTime(a.x) - a.x * a.getTravelTime(a.x,'UE')
+                                                  
+                    a.OABcuts.append(OABcut)
+                    
+                    #---add OAB cut to RMP
+                    self.rmp.add_constraint(self.rmp.muB[a] >= self.rmp.x[a]*OABcut['a'] + OABcut['b'])
+                    self.nOABcuts += 1
+                               
+                    
+    def getVFcut(self):
+        
+        print(self.network.getBeckmannOFV())
+        
+        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= self.network.getBeckmannOFV() + sum(self.M[a]*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4)) 
+        self.nVFcuts += 1
     
     def knapsack(self, type, can):
         
@@ -222,7 +274,7 @@ class BPC:
         self.rt_TAP += (time.time() - t0_TAP)
         self.nSO += 1
         
-        self.xvec = self.network.getFlowMap() 
+        #---self.xvec = self.network.getFlowMap() #superfluous?
         
         for a in self.network.links2:
             can.score[a.id] = a.x * a.getTravelTime(a.x,'SO') 
@@ -252,6 +304,10 @@ class BPC:
         self.rt_TAP += time.time() - t0_TAP
         self.nUE += 1
         self.UB = can.UB
+        
+        if self.params.useValueFunctionCuts:
+            self.getOABcuts()
+            self.getVFcut()
         
         #---reset yvec then add best y for which we ran UE
         self.yvec = []
@@ -346,6 +402,9 @@ class BPC:
         rmp.h = {p:rmp.continuous_var(lb=0) for p in self.getPaths()}
         rmp.mu = {a:rmp.continuous_var(lb=0) for a in self.network.links}
         rmp.y = {a:rmp.continuous_var(lb=0,ub=1) for a in self.network.links2}
+        
+        if self.params.useValueFunctionCuts:
+            rmp.muB = {a:rmp.continuous_var(lb=0) for a in self.network.links}
   
         rmp.add_constraint(sum(rmp.y[a] * a.cost for a in self.network.links2) <= self.network.B)                   
             
@@ -485,6 +544,8 @@ class BPC:
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+'---')
         
+        print(self.M)
+        
         self.network.resetTapas()
  
         self.t0 = time.time()
@@ -600,7 +661,11 @@ class BPC:
                     can.UB = self.network.tapas('UE',can.y)
                     self.ydict.insertUE(can.y, can.UB)
                     self.rt_TAP += time.time() - t0_TAP
-                    self.nUE += 1     
+                    self.nUE += 1  
+                    
+                    if self.params.useValueFunctionCuts:
+                        self.getOABcuts()
+                        self.getVFcut()                    
                 
                 if self.params.PRINT_BB_INFO:
                     print('TSTT UE - UB: %.1f, time: %.1f' % (can.UB,time.time() - t0_TAP))
@@ -687,6 +752,9 @@ class BPC:
             print(self.rt_pricing)
             print(self.yopt)
             print(self.cntUnscaledInf)
+            
+            if self.params.useValueFunctionCuts:
+                print(self.nOABcuts,self.nVFcuts)
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+' end---')

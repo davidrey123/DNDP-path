@@ -14,7 +14,8 @@ class Link:
         self.x = 0
         self.y = 1
         self.cost = cost
-        self.OAcuts = [] #---superfluous if cuts are added directly?
+        self.OAcuts = []
+        self.OABcuts = []
         
         self.visit_order = -1
         
