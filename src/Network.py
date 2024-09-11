@@ -22,6 +22,9 @@ class Network:
         self.TC = 0 # total cost
         self.params = Params.Params()
         
+        
+        
+        
         self.allPAS = PASList.PASList()        
         
         self.inf = 1e+9
@@ -484,6 +487,11 @@ class Network:
             #custom_x = {link: link.x for link in self.links}
             #print(custom_x)
             
+            self.params.good_pas_flow_mu = 0
+            self.params.good_pas_cost_mu = 0
+            self.params.good_bush_gap = 0
+            self.params.good_pas_cost_epsilon = 0
+            
             # for every origin
             for r in self.origins:
             
@@ -510,15 +518,19 @@ class Network:
                 # choose a random subset of active PASs
                 # shift flow within each chosen PAS
                 
-                if self.params.PRINT_TAPAS_INFO:
-                    print("starting branch shifts", r)
+                
+                    
                 r.bush.branchShifts()
 
-                if self.params.PRINT_TAPAS_INFO:
-                    print("initial flow shifts", r)
+            
+                printed = False
+                    
                               
                 for a in r.bush.relevantPAS.forward:
                     for p in r.bush.relevantPAS.forward[a]:
+                        if self.params.PRINT_TAPAS_INFO and not printed:
+                            print("initial flow shifts", r)
+                            printed = True
                         p.flowShift(self.type, self.params)
                         
                         # for every active PAS
@@ -578,21 +590,26 @@ class Network:
                     print("Adjusting parameters due to small gap "+str(self.params.pas_cost_mu)+" "+str(self.params.line_search_gap))
             '''    
             if (last_iter_gap - gap) < 0.00001:
-                print('TAPAS check 2', self.params.bush_gap, self.params.pas_cost_mu, self.params.pas_flow_mu, self.params.pas_cost_epsilon)
                 
-                if self.params.bush_gap == 1E-6:
-                    self.params.bush_gap = 1E-2
-                    self.params.pas_cost_mu = 1E-2
-                    self.params.pas_flow_mu = 1E-2
-                    self.params.pas_cost_epsilon = 1E-3
-                else:
-                    self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
-                    self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)
-                    self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6)
+                
+                self.params.line_search_gap = max(self.params.line_search_gap/10, self.params.min_line_search_gap)
+                
+                if self.params.good_pas_cost_mu == 0 and self.params.pas_cost_mu > 5e-5:
+                    self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)   
+                    
+                elif self.params.good_pas_flow_mu == 0 and self.params.pas_flow_mu > 5e-5:
+                    self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6) 
+                    
+                elif self.params.good_pas_cost_epsilon == 0 and self.params.pas_cost_epsilon > 5e-6:
                     self.params.pas_cost_epsilon = max(self.params.pas_cost_epsilon/10, 1e-6)
-                    #self.params.line_search_gap = max(self.params.line_search_gap/10, 1e-6)                
-
+                elif self.params.bush_gap > 5e-6:
+                    self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
+                    self.params.resetPAS()
                 
+                
+                if self.params.PRINT_TAP_ITER:
+                    print('TAPAS gap check', self.params.bush_gap, self.params.pas_cost_mu, self.params.pas_flow_mu, self.params.pas_cost_epsilon)
+                    print("\t", self.params.good_bush_gap, self.params.good_pas_cost_mu, self.params.good_pas_flow_mu, self.params.good_pas_cost_epsilon)
                 
             last_iter_gap = gap
             iter += 1
@@ -642,12 +659,12 @@ class Network:
                         best = p
                 
                 '''
-                if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu):
+                if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu, self.params):
                     return p
                         
         if ij in self.allPAS.forward:
             for p in self.allPAS.forward[ij]:
-                if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu):
+                if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu, self.params):
                     return p
           
         return None
