@@ -64,17 +64,48 @@ class PAS:
             return self.backwardlinks[-1]
         
     
-    def isEffective(self, type, bush, cost_mu, minflow):
+    def isEffective(self, type, bush, cost_mu, minflow, params):
         forwardcost = self.getForwardCost(type)
         backwardcost = self.getBackwardCost(type)
-        
 
         
+        if forwardcost > backwardcost:
+            maxFwdShift = self.maxForwardBushFlowShift(bush)
+            
+            if forwardcost > backwardcost * (1 + cost_mu):
+                params.good_pas_cost_mu += 1
+                
+                if maxFwdShift > minflow:
+                    params.good_pas_flow_mu += 1
+                    
+                    return True
+                else:
+                    return False
+            elif maxFwdShift > minflow:
+                #params.good_pas_flow_mu += 1
+                return False
+        else:
+            maxBwdShift = self.maxBackwardBushFlowShift(bush)
+            
+            if backwardcost > forwardcost * (1 + cost_mu):
+                params.good_pas_cost_mu += 1
+                
+                if maxBwdShift > minflow:
+                    params.good_pas_flow_mu += 1
+                    
+                    return True
+                else:
+                    return False
+            elif maxBwdShift > minflow:
+                #params.good_pas_flow_mu += 1
+                return False
+         
+        '''   
         if forwardcost > backwardcost * (1 + cost_mu):
-            return self.maxForwardBushFlowShift(bush) > minflow
+            return maxFwdShift > minflow
         elif backwardcost > forwardcost * (1 + cost_mu):
-            return self.maxBackwardBushFlowShift(bush) > minflow
-        
+            return maxBwdShift > minflow
+        '''
         return False
     
     def isCostEffective(self, type, cost_mu):
@@ -238,6 +269,9 @@ class PAS:
         
         
     def flowShift(self, type, params):
+    
+        if params.PRINT_PAS_INFO:
+            print("\tflow shift", self.id)
         
         forwardcost = self.getForwardCost(type)
         backwardcost = self.getBackwardCost(type)
@@ -252,11 +286,22 @@ class PAS:
         #print("flow shift? " +str(costdiff)+" "+str(forwardcost)+" "+str(backwardcost)+" "+str(cost_mu)+" "+str(backwards))
         
         # maybe the forward and backward costs will be reversed sometimes
-        if (backwards == 1 and costdiff < params.pas_cost_epsilon * forwardcost) or (backwards == -1 and -costdiff < params.pas_cost_epsilon * backwardcost):
-
-            #print("\t", "costdiff is low", costdiff)
-            return False
-
+        if backwards == 1:
+            if costdiff < params.pas_cost_epsilon * forwardcost:
+                if params.PRINT_PAS_INFO:
+                    print("\t\tcostdiff is low", costdiff)
+                return False
+            #else:
+                #params.good_pas_cost_epsilon += 1
+        
+        elif backwards == -1: 
+            if -costdiff < params.pas_cost_epsilon * backwardcost:
+                #print("\t", "costdiff is low", costdiff)
+                if params.PRINT_PAS_INFO:
+                    print("\t\tcostdiff is low", costdiff)
+                return False
+            #else:
+                #params.good_pas_cost_epsilon += 1
         
         #print(backwards)
 
@@ -278,23 +323,8 @@ class PAS:
         
             
         if overallMaxShift < params.pas_flow_mu:
-            '''
-            print("continue shift", overallMaxShift, str(self.relevant), forwardcost, backwardcost)
-            maxfwd = self.maxForwardFlowShift()
-            for ij in maxfwd:
-                print("\t", ij, maxfwd[ij])
-            print("--")
-            
-            maxbwd = self.maxBackwardFlowShift()
-            for ij in maxbwd:
-                print("\t", ij, maxbwd[ij])
-            
-            print("--")
-            for r in self.relevant:
-                print("\t", self.isEffective(type, r.bush, 0.0001, 0.0001))
-            '''
-            
-            #print("\t", "max shift", overallMaxShift)
+            if params.PRINT_PAS_INFO:
+                print("\t\tmax shift is low", overallMaxShift)
             return False
         
 
@@ -315,9 +345,15 @@ class PAS:
         bot = 0
         top = overallMaxShift
         #with open('flowShift3.txt', 'a') as file, contextlib.redirect_stdout(file):
-        while top - bot > params.line_search_gap:
+        while top - bot > overallMaxShift * params.line_search_gap:
             #print(line_search_gap)
             mid = (top + bot)/2
+            
+            if top < params.pas_flow_mu:
+                if params.PRINT_PAS_INFO:
+                    print("\t\tshift is low during line search")
+                return False
+                
             
             check = self.getTT(mid * backwards, type)
             #print(mid * backwards)
@@ -352,9 +388,10 @@ class PAS:
                 r.bush.addFlow(l, -maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
         
 
+        params.good_pas_cost_epsilon += 1
         
         if params.PRINT_PAS_INFO:
-            print("\tshift", bot, overallMaxShift, self.getForwardCost(type), self.getBackwardCost(type), self.getForwardCost(type)-self.getBackwardCost(type))
+            print("\tshift", bot, overallMaxShift, (-costdiff), (self.getForwardCost(type)-self.getBackwardCost(type)))
         #print(bot, overallMaxShift)
         
         #if self.id == 2799:
