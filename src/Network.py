@@ -560,20 +560,40 @@ class Network:
             # there's an issue where PAS are labeled as not cost effective because the difference in cost is small, less than 5% of the reduced cost
             # for low network gaps, this is causing PAS to not flow shift
             # when the gap is low, increase the flow shift sensitivity
+            '''
             if (last_iter_gap - gap) / gap < 0.01:
+                print('TAPAS check 1')
                 
                 #for r in self.origins:
                 #    r.bush.algBShift()
                 
-                #self.params.bush_gap = max(self.params.bush_gap/10, 1e-5)
+                self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
+                self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)
+                self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6)
+                self.params.flow_epsilon = max(self.params.flow_epsilon/10, 1e-6)
+               
                 self.params.line_search_gap = max(self.params.line_search_gap/10, self.params.min_line_search_gap)
-                #self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-5)
                     
                 if self.params.PRINT_TAPAS_INFO:
                     print("Adjusting parameters due to small gap "+str(self.params.pas_cost_mu)+" "+str(self.params.line_search_gap))
+            '''    
+            if (last_iter_gap - gap) < 0.00001:
+                print('TAPAS check 2', self.params.bush_gap, self.params.pas_cost_mu, self.params.pas_flow_mu, self.params.pas_cost_epsilon)
                 
+                if self.params.bush_gap == 1E-6:
+                    self.params.bush_gap = 1E-2
+                    self.params.pas_cost_mu = 1E-2
+                    self.params.pas_flow_mu = 1E-2
+                    self.params.pas_cost_epsilon = 1E-3
+                else:
+                    self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
+                    self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)
+                    self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6)
+                    self.params.pas_cost_epsilon = max(self.params.pas_cost_epsilon/10, 1e-6)
+                    #self.params.line_search_gap = max(self.params.line_search_gap/10, 1e-6)                
 
-            
+                
+                
             last_iter_gap = gap
             iter += 1
             
