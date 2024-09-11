@@ -160,7 +160,7 @@ class Branch:
         top = self.maxflow
         #print(top)
         
-        while top - bot > self.bush.network.params.line_search_gap:
+        while top - bot > self.maxflow * self.bush.network.params.line_search_gap:
             mid = (bot+top)/2
             
             newTTDiff = self.getAvgTT(mid, type) - self.getMinTT(mid, type)
