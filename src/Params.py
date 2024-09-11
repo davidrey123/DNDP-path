@@ -4,18 +4,39 @@
 INFTY = 1.0e9
 
 class Params:   
- 
+    
+    def resetPAS(self):
+        # if these are too large, then we avoid flow shifting on PAS
+        # if these are too small, then we use PAS that are ineffective
+        self.pas_cost_mu = 0.01
+        self.pas_flow_mu = 0.01
+        
+        # if this is too large, then we avoid flow shifting in PAS
+        # if this is too small, we waste time shifting in PAS that is useless
+        self.pas_cost_epsilon = 0.01
+
+        
+        self.line_search_gap = 1E-2
+        
+        
+        
+        
     def __init__(self):
         self.bush_gap = 0.01
-        self.pas_cost_mu = 0.01
+        self.pas_cost_mu = 0
         
-        self.pas_cost_epsilon = 0.001
+        self.pas_cost_epsilon = 0
 
-        self.pas_flow_mu = 0.01
+        self.pas_flow_mu = 0
+        
+        self.line_search_gap = 1E-3
+        
+        self.resetPAS()
+        
         self.flow_epsilon = 0.000001
         
-        self.line_search_gap = 1E-5
-        self.min_line_search_gap = 1E-5
+        
+        self.min_line_search_gap = 1E-6
         self.tapas_equilibrate_iter = 3
     
         self.DEBUG_CHECKS = True
@@ -24,12 +45,12 @@ class Params:
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
         
-        self.PRINT_TAP_ITER = False
+        self.PRINT_TAP_ITER = True
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
         
-        self.tapas_max_iter = 60 
+        self.tapas_max_iter = 50 
         self.min_gap = 1E-3
         self.min_gap_SO_OA_cuts = 1E-1 #---warning should not be used to compute lower bounds on TSTT - only OA cuts
         
@@ -53,3 +74,14 @@ class Params:
         self.useInterdictionCuts = True
         
         self.OAcut_tol = 0.01
+        
+        
+        
+        # used within TAPAS don't change
+        
+        self.good_pas_cost_mu = 0
+        self.good_pas_flow_mu = 0
+        self.good_bush_gap = 0
+        self.good_pas_cost_epsilon = 0
+        
+    
