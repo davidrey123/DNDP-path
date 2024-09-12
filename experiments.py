@@ -8,7 +8,7 @@ from src import BPC
 
 t0_exp = time.time()
 
-filename = 'results.txt'
+filename = 'experiments.txt'
 f = open(filename, "w")
 
 #nets = ['SiouxFalls','BerlinMitteCenter','Anaheim','Barcelona']
@@ -16,8 +16,8 @@ nets = ['SiouxFalls','EasternMassachusetts','BerlinMitteCenter']
 algs = ['BPC','FS_NETS','Leblanc']
 
 bprop = 0.5
-scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-1,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
-inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':1,'BerlinMitteCenter':2,'Anaheim':2,'Barcelona':2}
+scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
+inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2}
 
 headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE \\\\',
            'FS_NETS':'& UB & Gap (\\%) & Time (s) & MILP (s) & TAP (s) & SO & UE \\\\',
@@ -57,7 +57,7 @@ for alg in algs:
             
         for nA2 in ['10','20']:
             
-            for ID in range(1,2):
+            for ID in range(1,11):
                 
                 ins = ins0+'_DNDP_'+nA2+'_'+str(ID)
                 insshort = ins0+'\\_'+nA2+'\\_'+str(ID)
