@@ -32,7 +32,6 @@ class BPC:
                 
             self.network.tapas('UE',y0)
             OFV = self.network.getBeckmannOFV()
-            print('OFV',OFV)
             self.M = {a:OFV for a in self.network.links2}
         
         self.nBB = 0
@@ -215,8 +214,6 @@ class BPC:
                     
     def getVFcut(self):
         
-        print(self.network.getBeckmannOFV())
-        
         self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= self.network.getBeckmannOFV() + sum(self.M[a]*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4)) 
         self.nVFcuts += 1
     
@@ -295,8 +292,7 @@ class BPC:
                 yBest = yKNP                
                 
             #---interdict to get different y
-            self.yvec.append(yKNP)            
-            #print(n,yKNP)
+            self.yvec.append(yKNP)
                 
         t0_TAP = time.time()
         can.UB = self.network.tapas('UE',yBest)
@@ -343,8 +339,7 @@ class BPC:
                 if r.getDemand(s) > 0:
                 
                     p = self.network.trace(r,s)
-                    self.paths[r][s].append(p)
-                    #print(r.id, s.id, p.links)                
+                    self.paths[r][s].append(p)               
                     new += 1
                 
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
@@ -387,10 +382,7 @@ class BPC:
                     
                     if rc < minrc:
                         minrc = rc
-            
-        #if self.params.PRINT_BB_INFO:
-        #    print('pricing',new,minrc)        
-            
+                
         self.rt_pricing += (time.time() - t0_pricing)        
         return minrc
     
@@ -466,9 +458,6 @@ class BPC:
             OFV = self.rmp.objective_value
             RMP_status = self.rmp.solve_details.status
             
-            #if self.params.PRINT_BB_INFO:
-            #    print('OFV: %.1f, RMP_status: %s' % (OFV,RMP_status))
-            
             yopt = {}
             for a in self.network.links2:
                 yopt[a] = self.rmp.y[a].solution_value
@@ -511,13 +500,11 @@ class BPC:
     
             minrc = self.pricing(can)
             
-            #if self.params.PRINT_BB_INFO:
-            #    npaths = len(self.getPaths())
-            #    print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
+            if self.params.PRINT_BB_INFO:
+                npaths = len(self.getPaths())
+                print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
             
             if minrc >= -self.CG_tol:
-                #if self.params.PRINT_BB_INFO:
-                #    print('CG converged')
                 conv = True
             
             nCG += 1
@@ -528,10 +515,7 @@ class BPC:
             
             if self.params.PRINT_BB_INFO:
                 if CG_status != 'fractional':
-                    print('CG status',CG_status)
-                    
-            #npaths = len(self.getPaths())
-            #print('CG: %s\t%d\t%d\t%.1f\t%.2f' % (CG_status,nCG,npaths,OFV,minrc))        
+                    print('CG status',CG_status)      
             
             return CG_status,OFV,yRMP
         
@@ -543,8 +527,6 @@ class BPC:
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+'---')
-        
-        print(self.M)
         
         self.network.resetTapas()
  
@@ -705,8 +687,7 @@ class BPC:
                     self.branch_unfixed(can)
                     
                 if self.params.PRINT_BB_INFO:
-                    #print(fixed,frac)
-                    #print(can.score)
+
                     for a in self.network.links2:
                         if a.id == can.ybr:
                             print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))                
