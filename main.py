@@ -4,14 +4,14 @@ from src import Leblanc
 from src import FS_NETS
 from src import BPC
 from src import BC
+from src import BC2
+
 
 net = 'SiouxFalls'
-ins = 'SF_DNDP_10_1'
+ins = 'SF_DNDP_10_2'
+
 
 '''
-net = 'BerlinMitteCenter'
-ins = 'BMC_DNDP_10_1'
-
 net = 'Anaheim'
 ins = 'A_DNDP_10_1'
 
@@ -20,6 +20,9 @@ ins = 'B_DNDP_20_2'
 
 net = 'EasternMassachusetts'
 ins = 'EM_DNDP_10_1'
+
+net = 'BerlinMitteCenter'
+ins = 'BMC_DNDP_10_1'
 '''
 
 b_prop = 0.5
@@ -29,9 +32,10 @@ network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 print(net,ins)
 
 run = 'BPC'
-run = 'BC'
+#run = 'BC'
+run = 'BC2'
 #run = 'Leblanc' 
-#run = 'FS_NETS'
+run = 'FS_NETS'
 print(run)
 
 if run == 'BPC':
@@ -41,6 +45,10 @@ if run == 'BPC':
 elif run == 'BC':
     bc = BC.BC(network)
     bc.BB()    
+    
+elif run == 'BC2':
+    bc2 = BC2.BC2(network)
+    bc2.BB()        
     
 elif run == 'FS_NETS':
     fs_nets = FS_NETS.FS_NETS(network)

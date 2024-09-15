@@ -6,6 +6,7 @@ from src import Leblanc
 from src import FS_NETS
 from src import BPC
 from src import BC
+from src import BC2
 
 t0_exp = time.time()
 
@@ -14,8 +15,8 @@ f = open(filename, "w")
 
 #nets = ['SiouxFalls','BerlinMitteCenter','Anaheim','Barcelona']
 nets = ['SiouxFalls','EasternMassachusetts','BerlinMitteCenter']
-algs = ['BPC','BC','FS_NETS','Leblanc']
-algs = ['BC']
+algs = ['BPC','FS_NETS','Leblanc']
+algs = ['BC','BC2']
 
 bprop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
@@ -56,7 +57,7 @@ for alg in algs:
             ins0 = 'BMC'  
 
         elif net == 'EasternMassachusetts':
-            ins0 = 'EM'              
+            ins0 = 'EM'
             
         for nA2 in ['10','20']:
             
@@ -80,6 +81,12 @@ for alg in algs:
                     bc.BB()
                     f.write('%s & %.1f & %.2f & %.1f & %.1f & %.1f & %d & %d \\\\\n' % (insshort,bc.UB,100*bc.gap,bc.rt,bc.rt_LP,bc.rt_TAP,bc.nSO,bc.nUE))
                     f.flush()                    
+
+                elif alg == 'BC2':
+                    bc2 = BC2.BC2(network)
+                    bc2.BB()
+                    f.write('%s & %.1f & %.2f & %.1f & %.1f & %.1f & %d & %d \\\\\n' % (insshort,bc2.UB,100*bc2.gap,bc2.rt,bc2.rt_MILP,bc2.rt_TAP,bc2.nSO,bc2.nUE))
+                    f.flush()
                     
                 elif alg == 'FS_NETS':
                     fs_nets = FS_NETS.FS_NETS(network)
