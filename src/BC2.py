@@ -273,15 +273,21 @@ class BC2:
     
     def OA_link(self,can):
         
+        nOA = 0
+        UB_OA = self.inf
+        yOA = {}
+        Icuts = []        
+        
         for n in self.BB_nodes:
             if n.id == can.parent:
                 LB_OA = n.LB #---value to be returned that will serve as the LB of the BB node
                 break
+            
+        #---reset LB of mu
+        self.milp.get_var_by_name('smu').lb = LB_OA
         
-        nOA = 0
-        UB_OA = self.inf
-        yOA = {}
-        Icuts = []
+        if self.params.PRINT_BB_INFO:
+            print('(OA_link) before: nvars: %d, ncons: %d, mu_lb: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.get_var_by_name('smu').lb))
         
         conv_OA = False
         while conv_OA == False:
@@ -310,11 +316,9 @@ class BC2:
                 return nOA,LB_OA,yOA,MILP_status
             
             #---update LB of mu
-            #can.LB = MILP_OFV #---can.LB is temporarily updated during the OA loop but will be overwritten after exiting OA_link
             self.milp.get_var_by_name('smu').lb = MILP_OFV
             
             #---update interdiction cuts
-            #can.yvec.append(yMILP) #---superfluous if directly adding cut to MILP?
             Icut = self.milp.add_constraint(sum(self.milp.y[a] + yMILP[a] - 2*self.milp.y[a]*yMILP[a] for a in self.network.links2) >= 1)
             Icuts.append(Icut)            
             
@@ -358,14 +362,17 @@ class BC2:
                     print('-----------------------------------> time limit exceeded in OA_link')
                 break
             
-            nOA += 1
+            if self.params.PRINT_BB_INFO:
+                print('(OA_link) during: nvars: %d, ncons: %d, mu_lb: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.get_var_by_name('smu').lb))
             
-        #---reset LB of mu
-        self.milp.get_var_by_name('smu').lb = LB_OA
+            nOA += 1
         
         #---remove local interdiction cuts
         for Icut in Icuts:
-            self.milp.remove_constraint(Icut)        
+            self.milp.remove_constraint(Icut)
+            
+        if self.params.PRINT_BB_INFO:
+            print('(OA_link) after: nvars: %d, ncons: %d, mu_lb: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.get_var_by_name('smu').lb))
             
         return nOA,LB_OA,yOA,MILP_status
         
@@ -530,6 +537,7 @@ class BC2:
             print(self.rt_TAP)
             print(self.rt_MILP)
             print(self.yopt)
+            print(self.nOAcuts)
 
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+' end---')

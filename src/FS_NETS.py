@@ -10,7 +10,7 @@ class FS_NETS:
     def __init__(self, network):
         self.network = network
         self.BB_nodes = []
-        self.inf = 1e+9        
+        self.inf = 1e+9
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
@@ -258,16 +258,22 @@ class FS_NETS:
     
     def OA_link(self,can):
         
+        nOA = 0
+        UB_OA = self.inf
+        yOA = {}
+        Icuts = []        
+        
         for n in self.BB_nodes:
             if n.id == can.parent:
                 LB_OA = n.LB #---value to be returned that will serve as the LB of the BB node
                 break
         
-        nOA = 0
-        UB_OA = self.inf
-        yOA = {}
-        Icuts = []
-               
+        #---reset LB of mu
+        self.milp.get_var_by_name('mu').lb = LB_OA
+        
+        if self.params.PRINT_BB_INFO:
+            print(can.LB, LB_OA)
+            print('(OA_link) before: nvars: %d, ncons: %d, mu_lb: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.get_var_by_name('mu').lb))        
         
         conv_OA = False
         while conv_OA == False:
@@ -296,11 +302,9 @@ class FS_NETS:
                 return nOA,LB_OA,yOA,MILP_status
             
             #---update LB of mu
-            #can.LB = MILP_OFV #---can.LB is temporarily updated during the OA loop but will be overwritten after exiting OA_link
             self.milp.get_var_by_name('mu').lb = MILP_OFV
             
             #---update interdiction cuts
-            #can.yvec.append(yMILP) #---superfluous if directly adding cut to MILP?
             Icut = self.milp.add_constraint(sum(self.milp.y[a] + yMILP[a] - 2*self.milp.y[a]*yMILP[a] for a in self.network.links2) >= 1)
             Icuts.append(Icut)            
             
@@ -344,14 +348,18 @@ class FS_NETS:
                     print('-----------------------------------> time limit exceeded in OA_link')
                 break
             
-            nOA += 1
+            if self.params.PRINT_BB_INFO:
+                print('(OA_link) during: nvars: %d, ncons: %d, mu_lb: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.get_var_by_name('mu').lb))          
             
-        #---reset LB of mu
-        self.milp.get_var_by_name('mu').lb = LB_OA
+            nOA += 1
         
         #---remove local interdiction cuts
         for Icut in Icuts:
-            self.milp.remove_constraint(Icut)        
+            self.milp.remove_constraint(Icut)
+            
+        if self.params.PRINT_BB_INFO:
+            print(can.LB, LB_OA)
+            print('(OA_link) after: nvars: %d, ncons: %d, mu_lb: %.1f' % (self.milp.number_of_variables,self.milp.number_of_constraints,self.milp.get_var_by_name('mu').lb))            
             
         return nOA,LB_OA,yOA,MILP_status
         
