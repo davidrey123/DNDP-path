@@ -259,9 +259,7 @@ class BC:
         self.getOAcuts()
         self.rt_TAP += (time.time() - t0_TAP)
         self.nSO += 1
-        
-        #---self.xvec = self.network.getFlowMap() #superfluous?
-        
+       
         for a in self.network.links2:
             can.score[a.id] = a.x * a.getTravelTime(a.x,'SO') 
         
@@ -383,7 +381,7 @@ class BC:
             self.lp.parameters.read.scale = 0            
             self.cntUnscaledInf += 1
             
-        if self.lp.solve_details.status == 'infeasible' or self.lp.solve_details.status == 'integer infeasible':
+        if self.lp.solve_details.status == 'infeasible':
             return 'infeasible',self.inf,{}
         
         else:
@@ -400,6 +398,13 @@ class BC:
                 for OAcut in a.OAcuts:
                     maxscore = max(self.lp.x[a].solution_value * OAcut['a'] + OAcut['b'],maxscore)                    
                 can.score[a.id] = self.lp.x[a].solution_value * maxscore
+                
+            #---check LP solution integrality
+            LP_status, can.frac = self.checkIntegral(yopt)
+            
+            if self.params.PRINT_BB_INFO:
+                if LP_status != 'fractional':
+                    print('LP status',LP_status)                
             
         self.rt_LP += (time.time() - t0_lp)
         
@@ -469,14 +474,7 @@ class BC:
                 Bcuts0,Bcuts1 = self.addBranchCuts(can)
                 
                 #---LB is obtained from LP relaxation of OA MP
-                LP_status,can.LB,yLP = self.solveLP(can)
-                
-                #---check LP solution integrality
-                LP_status, can.frac = self.checkIntegral(yLP)
-                
-                if self.params.PRINT_BB_INFO:
-                    if LP_status != 'fractional':
-                        print('LP status',LP_status)
+                LP_status,can.LB,yLP = self.solveLP(can)                
                
                 if LP_status == 'infeasible':
                     if self.params.PRINT_BB_INFO:
