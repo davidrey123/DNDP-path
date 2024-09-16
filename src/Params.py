@@ -53,7 +53,7 @@ class Params:
     
         self.warmstart = False
         
-        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_BB_INFO = False #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info
         
         self.CPLEX_threads = 1
@@ -67,7 +67,7 @@ class Params:
         
         self.runUEifCGIntegral = True
         self.useInterdictionCuts = True
-        self.useValueFunctionCuts = True
+        self.useValueFunctionCuts = False
         
         self.OAcut_tol = 0.01
         
