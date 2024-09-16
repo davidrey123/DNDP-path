@@ -15,8 +15,7 @@ f = open(filename, "w")
 
 #nets = ['SiouxFalls','BerlinMitteCenter','Anaheim','Barcelona']
 nets = ['SiouxFalls','EasternMassachusetts','BerlinMitteCenter']
-algs = ['BPC','FS_NETS','Leblanc']
-algs = ['BC','BC2']
+algs = ['BPC','BC','BC2','FS_NETS','Leblanc']
 
 bprop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}

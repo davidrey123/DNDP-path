@@ -8,7 +8,7 @@ from src import BC2
 
 
 net = 'SiouxFalls'
-ins = 'SF_DNDP_10_2'
+ins = 'SF_DNDP_10_1'
 
 
 '''
@@ -33,9 +33,9 @@ print(net,ins)
 
 run = 'BPC'
 #run = 'BC'
-run = 'BC2'
-#run = 'Leblanc' 
-run = 'FS_NETS'
+#run = 'BC2'
+#run = 'FS_NETS'
+#run = 'Leblanc'
 print(run)
 
 if run == 'BPC':

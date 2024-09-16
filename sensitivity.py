@@ -12,11 +12,12 @@ f = open(filename, "w")
 #nets = ['SiouxFalls','BerlinMitteCenter','Anaheim','Barcelona']
 nets = ['SiouxFalls','EasternMassachusetts','BerlinMitteCenter']
 
-configs = [{'OAcut_tol':0.01, 'nInitKNP':1},
-           {'OAcut_tol':0.05, 'nInitKNP':1},
-           {'OAcut_tol':0.1, 'nInitKNP':1},
-           {'OAcut_tol':0.05, 'nInitKNP':0.5},
-           {'OAcut_tol':0.05, 'nInitKNP':2}]
+configs = [{'min_gap_SO_OA_cuts':1e-1,'OAcut_tol':0.01, 'nInitKNP':1},
+           {'min_gap_SO_OA_cuts':1e-2,'OAcut_tol':0.01, 'nInitKNP':1},
+           {'min_gap_SO_OA_cuts':1e-3,'OAcut_tol':0.01, 'nInitKNP':1},
+           {'min_gap_SO_OA_cuts':1e-1,'OAcut_tol':0.005, 'nInitKNP':1},
+           {'min_gap_SO_OA_cuts':1e-2,'OAcut_tol':0.005, 'nInitKNP':1},
+           {'min_gap_SO_OA_cuts':1e-3,'OAcut_tol':0.005, 'nInitKNP':1}]
 
 bprop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-1,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
@@ -70,6 +71,7 @@ for config in configs:
 
                 bpc = BPC.BPC(network)
                 
+                bpc.params.min_gap_SO_OA_cuts = config['min_gap_SO_OA_cuts']
                 bpc.params.OAcut_tol = config['OAcut_tol']
                 bpc.nInitKNP = round(config['nInitKNP']*len(network.links2))
                 
