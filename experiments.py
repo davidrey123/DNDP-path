@@ -24,6 +24,7 @@ inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'
 
 headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE \\\\',
            'BC':'& UB & Gap (\\%) & Time (s) & LP (s) & TAP (s) & SO & UE \\\\',
+           'BC2':'& UB & Gap (\\%) & Time (s) & MILP (s) & TAP (s) & SO & UE \\\\',
            'FS_NETS':'& UB & Gap (\\%) & Time (s) & MILP (s) & TAP (s) & SO & UE \\\\',
            'Leblanc':'& UB & Gap (\\%) & Time (s) & TAP (s) & SO & UE \\\\'}
 
