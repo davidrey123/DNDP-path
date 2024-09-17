@@ -531,6 +531,8 @@ class BPC:
         self.network.resetTapas()
  
         self.t0 = time.time()
+        #tCG = 0.0
+        #tBR = 0.0
     
         #---initialize paths
         self.initPaths()
@@ -540,6 +542,8 @@ class BPC:
     
         #---initialize OA cuts
         self.initOAcuts(self.BB_nodes[0])
+        
+        #print('t1: %.1f' % (time.time() - self.t0))
     
         conv = False
         while conv == False:                    
@@ -583,6 +587,8 @@ class BPC:
                         
             else:
                 
+                t2 = time.time()
+                
                 #---add Branch cuts
                 Bcuts0,Bcuts1 = self.addBranchCuts(can)
                 
@@ -613,7 +619,9 @@ class BPC:
                         can.y[a] = round(yCG[a])
                         
                 #---remove Branch cuts
-                self.removeBranchCuts(Bcuts0,Bcuts1)                        
+                self.removeBranchCuts(Bcuts0,Bcuts1)
+
+                #tCG += (time.time() - t2)
                           
             if runSO:
 
@@ -668,6 +676,9 @@ class BPC:
                 self.rmp.add_constraint(sum(self.rmp.y[a] + can.y[a] - 2*self.rmp.y[a]*can.y[a] for a in self.network.links2) >= 1)
 
             if prune == False:  
+                
+                t3 = time.time()
+                
                 fixed = can.fixed0 + can.fixed1
                 free = [a.id for a in self.network.links2 if a.id not in fixed]
                 
@@ -690,7 +701,9 @@ class BPC:
 
                     for a in self.network.links2:
                         if a.id == can.ybr:
-                            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))                
+                            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
+                            
+                #tBR += time.time() - t3
                 
             can.active = False
             candidates = self.getCandidates()
@@ -725,6 +738,10 @@ class BPC:
             self.nBB += 1
  
         self.rt = time.time() - self.t0
+        
+        #print('tCG: %.2f' % tCG)
+        #print('tBR: %.2f' % tBR)
+        
 
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))

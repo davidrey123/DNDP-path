@@ -1,5 +1,3 @@
-# Created on : Mar 27, 2024, 5:00:04 PM
-# Author     : michaellevin
 
 INFTY = 1.0e9
 
@@ -69,7 +67,7 @@ class Params:
         self.useInterdictionCuts = True
         self.useValueFunctionCuts = False
         
-        self.OAcut_tol = 0.01
+        self.OAcut_tol = 0.05
         
         
         # used within TAPAS don't change
