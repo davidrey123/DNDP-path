@@ -15,7 +15,8 @@ f = open(filename, "w")
 
 #nets = ['SiouxFalls','BerlinMitteCenter','Anaheim','Barcelona']
 nets = ['SiouxFalls','EasternMassachusetts','BerlinMitteCenter']
-algs = ['BPC','BC','BC2','FS_NETS','Leblanc']
+#algs = ['BPC','BC','BC2','FS_NETS','Leblanc']
+algs = ['BPC','FS_NETS','Leblanc']
 
 bprop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
@@ -27,10 +28,10 @@ headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO
            'FS_NETS':'& UB & Gap (\\%) & Time (s) & MILP (s) & TAP (s) & SO & UE \\\\',
            'Leblanc':'& UB & Gap (\\%) & Time (s) & TAP (s) & SO & UE \\\\'}
 
-f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.2f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().CPLEX_threads))
-f.write("Params: TAP_tol %.1f, SO_OA_cuts_tol %.1f, OAcuts_tol %.1f, \n" % (Params.Params().min_gap,Params.Params().min_gap_SO_OA_cuts,Params.Params().OAcut_tol))
+f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.3f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().CPLEX_threads))
+f.write("Params: TAP_tol %.3f, SO_OA_cuts_tol %.3f, OAcuts_tol %.3f, \n" % (Params.Params().min_gap,Params.Params().min_gap_SO_OA_cuts,Params.Params().OAcut_tol))
 f.write("Budget/Total cost: %.2f\n" % (bprop))
-f.write("Flow scaling: %s\n" % (scal_flow))
+#f.write("Flow scaling: %s\n" % (scal_flow))
 f.write("Trips inflation: %s\n" % (inflate_trips))
 f.write('%s\n' % algs)
 

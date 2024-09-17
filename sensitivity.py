@@ -26,9 +26,9 @@ inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':1,'BerlinMitteCenter':2,'
 headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE \\\\'}
 
 f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.2f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().CPLEX_threads))
-f.write("Params: TAP_tol %.1f, SO_OA_cuts_tol %.1f, OAcuts_tol %.1f, \n" % (Params.Params().min_gap,Params.Params().min_gap_SO_OA_cuts,Params.Params().OAcut_tol))
+f.write("Params: TAP_tol %.3f, SO_OA_cuts_tol %.3f, OAcuts_tol %.3f, \n" % (Params.Params().min_gap,Params.Params().min_gap_SO_OA_cuts,Params.Params().OAcut_tol))
 f.write("Budget/Total cost: %.2f\n" % (bprop))
-f.write("Flow scaling: %s\n" % (scal_flow))
+#f.write("Flow scaling: %s\n" % (scal_flow))
 f.write("Trips inflation: %s\n" % (inflate_trips))
 
 header = 'Instance '+headers['BPC']+'\n'
