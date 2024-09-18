@@ -16,22 +16,49 @@ class Params:
         
         
     def __init__(self):
+        
+        #---TAP params
+        self.msa_max_iter = 500        
+        self.tapas_max_iter = 100 
+        self.min_gap = 1E-3
+        self.warmstart = False        
+        
+        #---TAPAS params
         self.bush_gap = 0.01
-        self.pas_cost_mu = 0
-        
+        self.pas_cost_mu = 0        
         self.pas_cost_epsilon = 0
-
-        self.pas_flow_mu = 0
-        
+        self.pas_flow_mu = 0        
         self.line_search_gap = 1E-3
         
         self.resetPAS()
         
         self.flow_epsilon = 0.000001
-        
         self.min_line_search_gap = 1E-6
         self.tapas_equilibrate_iter = 3
-    
+        
+        #---used within TAPAS don't change        
+        self.good_pas_cost_mu = 0
+        self.good_pas_flow_mu = 0
+        self.good_bush_gap = 0
+        self.good_pas_cost_epsilon = 0
+        
+        #---BB params
+        self.CPLEX_threads = 1
+        self.BB_timelimit = 3600
+        self.BB_tol = 1E-2
+        
+        #---BPC / BC params
+        self.OAcut_tol = 0.05
+        self.solveSO = False
+        self.min_gap_SO_OA_cuts = 1E-1 
+        self.runUEifCGIntegral = True
+        self.useInterdictionCuts = True
+        self.useValueFunctionCuts = False
+        #self.initOAheuristic = 'kBestKNP'
+        #self.initOAheuristic = 'LocalSearchKNP'
+        self.initOAheuristic = 'LocalSearchY1'
+        
+        #---printing    
         self.DEBUG_CHECKS = True
 
         self.PRINT_PAS_INFO = False
@@ -42,39 +69,7 @@ class Params:
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
-        
-        self.tapas_max_iter = 100 
-        self.min_gap = 1E-3
-        self.min_gap_SO_OA_cuts = 1E-1 #---warning should not be used to compute lower bounds on TSTT - only OA cuts
-        
-        self.msa_max_iter = 500
-    
-        self.warmstart = False
-        
-        self.PRINT_BB_INFO = False #---prints detailed BB info
-        self.PRINT_BB_BASIC = False #---prints only basic BB info
-        
-        self.CPLEX_threads = 1
-        self.BB_timelimit = 3600
-        self.BB_tol = 1E-2
 
-        self.OABPC_tol = 1E-2
-        self.KNP = False
+        self.PRINT_BB_INFO = False #---prints detailed BB info
+        self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
-        self.useAONcuts = False
-        
-        self.runUEifCGIntegral = True
-        self.useInterdictionCuts = True
-        self.useValueFunctionCuts = False
-        
-        self.OAcut_tol = 0.05
-        
-        
-        # used within TAPAS don't change
-        
-        self.good_pas_cost_mu = 0
-        self.good_pas_flow_mu = 0
-        self.good_bush_gap = 0
-        self.good_pas_cost_epsilon = 0
-        
-    
