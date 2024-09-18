@@ -18,8 +18,8 @@ def getOAcut(network):
 net = 'SiouxFalls'
 ins = 'SF_DNDP_20_1'
 
-net = 'EasternMassachusetts'
-ins = 'EM_DNDP_10_1'
+#net = 'EasternMassachusetts'
+#ins = 'EM_DNDP_10_1'
 
 tot_time = time.time()
 
@@ -36,7 +36,8 @@ bush_flows = {}
 
 lastObj = 0
 
-
+for a in network.links2:
+    a.y = 1
 
 for iter in range(0, 30):
 
@@ -45,7 +46,7 @@ for iter in range(0, 30):
     cp.x = {a:cp.continuous_var(lb=0,ub=network.TD) for a in network.links}
     cp.xc = {(a,r):cp.continuous_var() for a in network.links for r in network.origins}
 
-    cp.y = {a:cp.continuous_var(lb=0, ub=0) for a in network.links2}
+    cp.y = {a:cp.continuous_var(lb=0, ub=1) for a in network.links2}
     cp.mu = {a:cp.continuous_var(lb=0,ub=1e10) for a in network.links}
     
     cp.add_constraint(sum(cp.y[a] * a.cost for a in network.links2) <= network.B)
@@ -95,13 +96,10 @@ for iter in range(0, 30):
             bush_flows[(a,r)] = cp.xc[(a,r)].solution_value
             
             
-
-    
-    for a in network.links2:
-        a.y = cp.y[a].solution_value
-        #print(a, a.x, cp.mu[a].solution_value)
         
     if lastObj > 0 and (obj - lastObj) / lastObj < 0.0001:
+        for a in network.links2:
+            a.y = cp.y[a].solution_value
         break
         
     lastObj = obj

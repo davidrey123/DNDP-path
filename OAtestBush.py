@@ -45,7 +45,8 @@ for a in network.links2:
 for r in network.origins:
     bushes[r] = CGbush.CGbush(r, network)
     
-    
+for a in network.links2:
+    a.y = 1   
             
 
 for iter in range(0, 30): # OA loop
@@ -61,7 +62,7 @@ for iter in range(0, 30): # OA loop
 
         cp.xc = {(a,r):cp.continuous_var() for r in network.origins for a in bushes[r].linkflows.keys()}
 
-        cp.y = {a:cp.continuous_var(lb=0, ub=0) for a in network.links2}
+        cp.y = {a:cp.continuous_var(lb=0, ub=1) for a in network.links2}
         cp.mu = {a:cp.continuous_var(lb=0,ub=1E10) for a in network.links}
 
         mu_cons = cp.add_constraint(-sum(cp.y[a] * a.cost for a in network.links2) >= -network.B)
@@ -155,11 +156,9 @@ for iter in range(0, 30): # OA loop
     for a in network.links:
         a.x = cp.x[a].solution_value
 
-        
-    for a in network.links2:
-        a.y = cp.y[a].solution_value
-
     if lastObj > 0 and (obj - lastObj) / lastObj < 0.0001:
+        for a in network.links2:
+            a.y = cp.y[a].solution_value
         break
 
     lastObj = obj
@@ -175,9 +174,7 @@ print("total time", round(tot_time, 2))
 print("\n")
 
 for a in network.links:
-    if a.y > 0:
-        print("\n")
-        for r in network.origins:
-            if a in bushes[r]:
-                print(a, r, bush_flows[(a,r)])
+    print("\n")
+
+    print(a, r, a.y, a.x)
 '''

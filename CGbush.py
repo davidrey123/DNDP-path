@@ -18,12 +18,20 @@ class CGbush:
     
         self.newlinks.append(a)
         
-        self.linkflows[a] = 0
-        self.link_RC[a] = 0
+        
         
         
     def processNewLinks(self):
+    
+        for a in self.newlinks:
+            
+            # add link to bush
+            self.linkflows[a] = 0
+            self.link_RC[a] = 0
+            
         self.newlinks = []
+        
+        
         
     def hasLink(self, a):
         return a in self.linkflows
