@@ -12,23 +12,23 @@ f = open(filename, "w")
 #nets = ['SiouxFalls','BerlinMitteCenter','Anaheim','Barcelona']
 nets = ['SiouxFalls','EasternMassachusetts','BerlinMitteCenter']
 
-configs = [{'min_gap_SO_OA_cuts':1e-1,'OAcut_tol':0.01, 'nInitKNP':1},
-           {'min_gap_SO_OA_cuts':1e-2,'OAcut_tol':0.01, 'nInitKNP':1},
-           {'min_gap_SO_OA_cuts':1e-3,'OAcut_tol':0.01, 'nInitKNP':1},
-           {'min_gap_SO_OA_cuts':1e-1,'OAcut_tol':0.005, 'nInitKNP':1},
-           {'min_gap_SO_OA_cuts':1e-2,'OAcut_tol':0.005, 'nInitKNP':1},
-           {'min_gap_SO_OA_cuts':1e-3,'OAcut_tol':0.005, 'nInitKNP':1}]
+configs = [{'initOAheuristic':'kBestKNP','OAcut_tol':0.05,'solveSO':False,'useValueFunctionCuts':False},
+           {'initOAheuristic':'LocalSearchKNP','OAcut_tol':0.05,'solveSO':False,'useValueFunctionCuts':False},
+           {'initOAheuristic':'LocalSearchY1','OAcut_tol':0.05,'solveSO':False,'useValueFunctionCuts':False},
+           {'initOAheuristic':'LocalSearchKNP','OAcut_tol':0.05,'solveSO':True,'useValueFunctionCuts':False},
+           {'initOAheuristic':'LocalSearchKNP','OAcut_tol':0.05,'solveSO':False,'useValueFunctionCuts':True},
+           {'initOAheuristic':'LocalSearchKNP','OAcut_tol':0.05,'solveSO':True,'useValueFunctionCuts':True},
+           {'initOAheuristic':'LocalSearchKNP','OAcut_tol':0.1,'solveSO':False,'useValueFunctionCuts':False},
+           {'initOAheuristic':'LocalSearchKNP','OAcut_tol':0.01,'solveSO':False,'useValueFunctionCuts':False}]
 
 bprop = 0.5
-scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-1,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
-inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':1,'BerlinMitteCenter':2,'Anaheim':2,'Barcelona':2}
+scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
+inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2}
 
-headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & TAP (s) & SO & UE \\\\'}
+headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & OA (s) & TAP (s) & UE \\\\'}
 
-f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.2f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().CPLEX_threads))
-f.write("Params: TAP_tol %.3f, SO_OA_cuts_tol %.3f, OAcuts_tol %.3f, \n" % (Params.Params().min_gap,Params.Params().min_gap_SO_OA_cuts,Params.Params().OAcut_tol))
+f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.3f, TAP_tol %.3f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().min_gap,Params.Params().CPLEX_threads))
 f.write("Budget/Total cost: %.2f\n" % (bprop))
-#f.write("Flow scaling: %s\n" % (scal_flow))
 f.write("Trips inflation: %s\n" % (inflate_trips))
 
 header = 'Instance '+headers['BPC']+'\n'
@@ -60,7 +60,7 @@ for config in configs:
             
         for nA2 in ['10','20']:
             
-            for ID in range(1,4):
+            for ID in range(1,2):
                 
                 ins = ins0+'_DNDP_'+nA2+'_'+str(ID)
                 insshort = ins0+'\\_'+nA2+'\\_'+str(ID)
@@ -71,12 +71,13 @@ for config in configs:
 
                 bpc = BPC.BPC(network)
                 
-                bpc.params.min_gap_SO_OA_cuts = config['min_gap_SO_OA_cuts']
+                bpc.params.initOAheuristic = config['initOAheuristic']
                 bpc.params.OAcut_tol = config['OAcut_tol']
-                bpc.nInitKNP = round(config['nInitKNP']*len(network.links2))
-                
+                bpc.params.solveSO = config['solveSO']
+                bpc.params.useValueFunctionCuts = config['useValueFunctionCuts']
+  
                 bpc.BB()
-                f.write('%s & %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %d & %d \\\\\n' % (insshort,bpc.UB,100*bpc.gap,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_TAP,bpc.nSO,bpc.nUE))
+                f.write('%s & %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %.1f & %d \\\\\n' % (insshort,bpc.UB,100*bpc.gap,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_OA,bpc.rt_TAP,bpc.nUE))
                 f.flush()
             
     total_config_hours = (time.time() - t0_config)/3600

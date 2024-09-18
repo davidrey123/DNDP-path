@@ -24,8 +24,8 @@ net = 'BerlinMitteCenter'
 ins = 'BMC_DNDP_10_1'
 '''
 
-net = 'EasternMassachusetts'
-ins = 'EM_DNDP_10_1'
+net = 'SiouxFalls'
+ins = 'SF_DNDP_10_1'
 
 b_prop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
@@ -42,7 +42,10 @@ print(run)
 
 if run == 'BPC':
     bpc = BPC.BPC(network)
-    bpc.BB()
+    bpc.BB()    
+    lostime = bpc.rt - (bpc.rt_RMP + bpc.rt_OA + bpc.rt_TAP + bpc.rt_pricing)
+    prop = 100*lostime/bpc.rt
+    print('rt: %.1f, lostime: %.1f, prop: %.2f%%' % (bpc.rt,lostime,prop))    
     
 elif run == 'BC':
     bc = BC.BC(network)
