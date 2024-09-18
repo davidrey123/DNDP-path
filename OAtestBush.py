@@ -23,6 +23,11 @@ ins = 'SF_DNDP_20_1'
 #net = 'EasternMassachusetts'
 #ins = 'EM_DNDP_10_1'
 
+
+
+# test on BMC_DNDP_10_1 it has a difference between FS_NETS relaxed MILP and path-based CG
+
+
 tot_time = time.time()
 
 b_prop = 0.5
@@ -45,8 +50,11 @@ for a in network.links2:
 for r in network.origins:
     bushes[r] = CGbush.CGbush(r, network)
     
-for a in network.links2:
-    a.y = 1   
+y_ub = 0
+
+if y_ub == 1:
+    for a in network.links2:
+        a.y = 1
             
 
 for iter in range(0, 30): # OA loop
@@ -62,7 +70,7 @@ for iter in range(0, 30): # OA loop
 
         cp.xc = {(a,r):cp.continuous_var() for r in network.origins for a in bushes[r].linkflows.keys()}
 
-        cp.y = {a:cp.continuous_var(lb=0, ub=1) for a in network.links2}
+        cp.y = {a:cp.continuous_var(lb=0, ub=y_ub) for a in network.links2}
         cp.mu = {a:cp.continuous_var(lb=0,ub=1E10) for a in network.links}
 
         mu_cons = cp.add_constraint(-sum(cp.y[a] * a.cost for a in network.links2) >= -network.B)
@@ -76,8 +84,8 @@ for iter in range(0, 30): # OA loop
         gamma_minus_cons = {}
 
         for a in network.links:
-            gamma_plus_cons[a] = cp.add_constraint(cp.x[a] - sum(cp.xc[(a,r)] for r in network.origins if bushes[r].hasLink(a)) >= 0)
-            gamma_minus_cons[a] = cp.add_constraint(-cp.x[a] + sum(cp.xc[(a,r)] for r in network.origins if bushes[r].hasLink(a)) >= 0)
+            gamma_plus_cons[a] = cp.add_constraint(cp.x[a] - sum(cp.xc[(a,r)] for r in network.origins if bushes[r].contains(a)) >= 0)
+            gamma_minus_cons[a] = cp.add_constraint(-cp.x[a] + sum(cp.xc[(a,r)] for r in network.origins if bushes[r].contains(a)) >= 0)
 
 
         eta_plus_cons = {}
@@ -92,9 +100,13 @@ for iter in range(0, 30): # OA loop
                 else:
                     dem = r.getDemand(i)
 
+                bush_inc = i.getBushIncoming(bushes[r])
+                bush_out = i.getBushOutgoing(bushes[r])
 
-                eta_plus_cons[(i, r)] = cp.add_constraint(sum(cp.xc[(a,r)] for a in i.incoming if bushes[r].hasLink(a)) - sum(cp.xc[(a,r)] for a in i.outgoing if bushes[r].hasLink(a)) >= dem)
-                eta_minus_cons[(i, r)] = cp.add_constraint(-sum(cp.xc[(a,r)] for a in i.incoming if bushes[r].hasLink(a)) + sum(cp.xc[(a,r)] for a in i.outgoing if bushes[r].hasLink(a)) >= -dem)
+                if len(bush_inc) > 0 or len(bush_out) > 0:
+                    eta_plus_cons[(i, r)] = cp.add_constraint(sum(cp.xc[(a,r)] for a in bush_inc) - sum(cp.xc[(a,r)] for a in bush_out) >= dem)
+                    eta_minus_cons[(i, r)] = cp.add_constraint(-sum(cp.xc[(a,r)] for a in bush_inc) + sum(cp.xc[(a,r)] for a in bush_out) >= -dem)
+
 
         lambda_cons = {}
 
@@ -122,7 +134,7 @@ for iter in range(0, 30): # OA loop
         for a in network.links:
 
             for r in network.origins:
-                if bushes[r].hasLink(a):
+                if bushes[r].contains(a):
                     bushes[r].linkflows[a] = cp.xc[(a,r)].solution_value
 
                     #if a.start.id==10 and a.end.id==16:
@@ -132,12 +144,17 @@ for iter in range(0, 30): # OA loop
         for r in network.zones:
             for a in network.links:
             
-                
                 price = -(-gamma_plus_cons[a].dual_value + gamma_minus_cons[a].dual_value)
-                price += -(eta_plus_cons[(a.end, r)].dual_value - eta_plus_cons[(a.start, r)].dual_value)
-                price += -(-eta_minus_cons[(a.end, r)].dual_value + eta_minus_cons[(a.start, r)].dual_value)
 
-                if bushes[r].hasLink(a):
+                if (a.end, r) in eta_plus_cons:
+                    price += -(eta_plus_cons[(a.end, r)].dual_value) 
+                    price += -(-eta_minus_cons[(a.end, r)].dual_value)
+
+                if (a.start, r) in eta_plus_cons:
+                    price += -(- eta_plus_cons[(a.start, r)].dual_value)
+                    price += -(eta_minus_cons[(a.start, r)].dual_value)
+
+                if bushes[r].contains(a):
                     bushes[r].link_RC[a] = price
                 elif price < -0.0001:
                     new_col = True
