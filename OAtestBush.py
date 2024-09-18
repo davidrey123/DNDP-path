@@ -17,11 +17,11 @@ def getOAcut(network):
 
     return OAcut
 
-net = 'SiouxFalls'
-ins = 'SF_DNDP_20_1'
+#net = 'SiouxFalls'
+#ins = 'SF_DNDP_20_1'
 
-#net = 'EasternMassachusetts'
-#ins = 'EM_DNDP_10_1'
+net = 'EasternMassachusetts'
+ins = 'EM_DNDP_10_1'
 
 
 
@@ -128,7 +128,7 @@ for iter in range(0, 30): # OA loop
 
         obj = cp.objective_value
 
-        print("\t", cg_iter, obj, round(time.time() - t1, 2))
+        
         
         
         for a in network.links:
@@ -140,8 +140,12 @@ for iter in range(0, 30): # OA loop
                     #if a.start.id==10 and a.end.id==16:
                     #    print(a, r, a.x, bush_flows[(a,r)])
 
+        best_price = 0
         
-        for r in network.zones:
+        for r in network.origins:
+            best_r_price = 0
+            best_link = None
+            
             for a in network.links:
             
                 price = -(-gamma_plus_cons[a].dual_value + gamma_minus_cons[a].dual_value)
@@ -149,21 +153,37 @@ for iter in range(0, 30): # OA loop
                 if (a.end, r) in eta_plus_cons:
                     price += -(eta_plus_cons[(a.end, r)].dual_value) 
                     price += -(-eta_minus_cons[(a.end, r)].dual_value)
+                #else:
+                #    print("\t\tmissing", r, a.end)
 
                 if (a.start, r) in eta_plus_cons:
                     price += -(- eta_plus_cons[(a.start, r)].dual_value)
                     price += -(eta_minus_cons[(a.start, r)].dual_value)
+                #else:
+                #    print("\t\tmissing", r, a.start)
 
                 if bushes[r].contains(a):
                     bushes[r].link_RC[a] = price
-                elif price < -0.0001:
+                elif price < best_r_price - 0.0001:
                     new_col = True
+                    '''
+                    best_link = a
+                    best_r_price = price
+                    '''
                     bushes[r].addLink(a)
-                    
-                    
-            bushes[r].processNewLinks()
+                    best_price = min(best_price, price)  
+                
+            bushes[r].processNewLinks()        
+            '''
+            if best_link is not None:
+                bushes[r].addLink(best_link)
+                best_price = min(best_price, best_r_price)        
+                bushes[r].processNewLinks()
+            '''
         
-        if not new_col:
+        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2))
+        
+        if not new_col or abs(lastCGobj - obj) < 0.0001:
             break
 
         lastCGobj = obj

@@ -36,6 +36,8 @@ bush_flows = {}
 
 lastObj = 0
 
+y_ub = 0
+
 for a in network.links2:
     a.y = 1
 
@@ -46,7 +48,7 @@ for iter in range(0, 30):
     cp.x = {a:cp.continuous_var(lb=0,ub=network.TD) for a in network.links}
     cp.xc = {(a,r):cp.continuous_var() for a in network.links for r in network.origins}
 
-    cp.y = {a:cp.continuous_var(lb=0, ub=1) for a in network.links2}
+    cp.y = {a:cp.continuous_var(lb=0, ub=y_ub) for a in network.links2}
     cp.mu = {a:cp.continuous_var(lb=0,ub=1e10) for a in network.links}
     
     cp.add_constraint(sum(cp.y[a] * a.cost for a in network.links2) <= network.B)

@@ -22,7 +22,7 @@ class CGbush:
                 self.link_RC[sptree[n]] = 0
                 
                 
-        self.topologicalSort()
+        #self.topologicalSort()
     
     def addLink(self, a):
     
@@ -39,10 +39,13 @@ class CGbush:
             self.removeCycle(a.end, a.start)
                 
             # add link to bush
+            #print("\t\tadding", self.origin, a)
             self.linkflows[a] = 0
             self.link_RC[a] = 0
             
         self.newlinks = []
+        
+        #self.topologicalSort()
         
     def removeCycle(self, start, end): # remove the connection(s) from start to end
         # this may not be the most efficient, but let's try it for now.
@@ -95,23 +98,44 @@ class CGbush:
                     curr = curr.pred.end
                     
                 # remove link from trace
+                # prioritize links with 0 flow and high reduced cost
                 
                 best = None
-                best_val = 0
+                best_val = -1
+                best_zero = None
+                
                 
                 for a in trace:
+                    
                     if self.linkflows[a] == 0:
-                        best = a
-                        break
-                    else:
-                        val = self.linkflows[a] * self.link_RC[a]
+                        val = self.link_RC[a]
+                        
+                        if val > best_val:
+                            best_val = val
+                            best_zero = a
+                            
+                    elif best_zero is None:
+                        val = self.link_RC[a]
+                        
                         if val > best_val:
                             best_val = val
                             best = a
+                    '''
+                    val = self.link_RC[a]
+                        
+                    if val > best_val:
+                        best_val = val
+                        best = a
+                    '''
                 
-                #print("deleting", best, self.linkflows[best], self.link_RC[best])
-                del self.linkflows[best]
-                del self.link_RC[best]
+                if best_zero is not None:
+                    #print("\t\tdeleting", self.origin, best_zero, self.linkflows[best_zero], self.link_RC[best_zero])
+                    del self.linkflows[best_zero]
+                    del self.link_RC[best_zero]
+                else:
+                    #print("\t\tdeleting", self.origin, best, self.linkflows[best], self.link_RC[best])
+                    del self.linkflows[best]
+                    del self.link_RC[best]
                 
             else:
                 break
