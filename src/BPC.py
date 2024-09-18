@@ -351,6 +351,7 @@ class BPC:
         #---add best y for which we ran UE
         if self.params.useInterdictionCuts:
             self.rmp.add_constraint(sum(self.rmp.y[a] + yBest[a] - 2*self.rmp.y[a]*yBest[a] for a in self.network.links2) >= 1)
+            self.nIcuts += 1
             
         self.yopt = yBest
     
@@ -724,6 +725,7 @@ class BPC:
             #---add interdiction cuts
             if self.params.useInterdictionCuts and runUE:
                 self.rmp.add_constraint(sum(self.rmp.y[a] + can.y[a] - 2*self.rmp.y[a]*can.y[a] for a in self.network.links2) >= 1)
+                self.nIcuts += 1
 
             if prune == False:
                 
