@@ -21,6 +21,7 @@ class BC:
         self.ydict = YDict.YDict()
         self.t0 = 0.0
         self.M = self.inf
+        self.rootNodeLB = 0
         
         self.nBB = 0
         self.nSO = 0
@@ -452,7 +453,7 @@ class BC:
         self.rt_LP += (time.time() - t0_lp)
         
         if self.params.PRINT_BB_INFO:
-            print('nvars: %d, ncons: %d, nOAcuts: %d, nIcuts: %d, cplexTime: %.1f, lpTime: %.1f' % (self.lp.number_of_variables,self.lp.number_of_constraints,self.nOAcuts,len(self.yvec),self.lp.solve_details.time,(time.time() - t0_lp)))
+            print('nvars: %d, ncons: %d, nOAcuts: %d, nIcuts: %d, cplexTime: %.1f, lpTime: %.1f' % (self.lp.number_of_variables,self.lp.number_of_constraints,self.nOAcuts,self.nIcuts,self.lp.solve_details.time,(time.time() - t0_lp)))
         
         return LP_status,OFV,yopt
 
@@ -521,7 +522,10 @@ class BC:
                 Bcuts0,Bcuts1 = self.addBranchCuts(can)
                 
                 #---LB is obtained from LP relaxation of OA MP
-                LP_status,can.LB,yLP = self.solveLP(can)                
+                LP_status,can.LB,yLP = self.solveLP(can)
+                
+                if self.nBB == 0:
+                    self.rootNodeLB = can.LB                
                
                 if LP_status == 'infeasible':
                     if self.params.PRINT_BB_INFO:

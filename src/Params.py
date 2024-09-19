@@ -55,8 +55,8 @@ class Params:
         self.useInterdictionCuts = True
         self.useValueFunctionCuts = False
         #self.initOAheuristic = 'kBestKNP'
-        #self.initOAheuristic = 'LocalSearchKNP'
-        self.initOAheuristic = 'LocalSearchY1'
+        self.initOAheuristic = 'LocalSearchKNP'
+        #self.initOAheuristic = 'LocalSearchY1'
         
         #---printing    
         self.DEBUG_CHECKS = True

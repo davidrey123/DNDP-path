@@ -22,6 +22,7 @@ class BPC:
         self.ydict = YDict.YDict()
         self.t0 = 0.0        
         self.M = self.inf
+        self.rootNodeLB = 0
         
         self.nBB = 0
         self.nSO = 0
@@ -630,7 +631,10 @@ class BPC:
                 Bcuts0,Bcuts1 = self.addBranchCuts(can)
                 
                 #---LB is obtained from LP relaxation of OA MP
-                CG_status,can.LB,yCG = self.CG(can)            
+                CG_status,can.LB,yCG = self.CG(can)
+                
+                if self.nBB == 0:
+                    self.rootNodeLB = can.LB
                
                 if CG_status == 'infeasible':
                     if self.params.PRINT_BB_INFO:
