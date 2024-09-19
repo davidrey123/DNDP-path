@@ -162,6 +162,7 @@ for iter in range(0, 30): # OA loop
                 #else:
                 #    print("\t\tmissing", r, a.start)
 
+                a.dual = price
                 if bushes[r].contains(a):
                     bushes[r].link_RC[a] = price
                 elif price < best_r_price - 0.0001:
