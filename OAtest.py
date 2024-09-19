@@ -41,43 +41,46 @@ y_ub = 0
 for a in network.links2:
     a.y = 1
 
+
+cp = Model()
+cp.x = {a:cp.continuous_var(lb=0,ub=network.TD) for a in network.links}
+cp.xc = {(a,r):cp.continuous_var() for a in network.links for r in network.origins}
+
+cp.y = {a:cp.continuous_var(lb=0, ub=y_ub) for a in network.links2}
+cp.mu = {a:cp.continuous_var(lb=0,ub=1e10) for a in network.links}
+
+cp.add_constraint(sum(cp.y[a] * a.cost for a in network.links2) <= network.B)
+
+for a in network.links2:
+    cp.add_constraint(cp.x[a] <= cp.y[a] * network.TD)
+    
+    
+for a in network.links:
+    cp.add_constraint(sum(cp.xc[(a,r)] for r in network.origins) == cp.x[a])
+    
+    
+for i in network.nodes:                    
+    for r in network.origins:            
+
+        if i.id == r.id:
+            dem = - sum(r.getDemand(s) for s in network.zones)                
+        elif isinstance(i, type(r)) == True:
+            dem = r.getDemand(i)
+        else:
+            dem = 0
+
+        cp.add_constraint(sum(cp.xc[(a,r)] for a in i.incoming) - sum(cp.xc[(a,r)] for a in i.outgoing) == dem)
+
+
+for a in network.links:
+    cp.add_constraint(cp.mu[a] >= cp.x[a]*a.t_ff)
+        
+cp.minimize(sum(cp.mu[a] for a in network.links))
+
+
 for iter in range(0, 30):
 
     t0 = time.time()
-    cp = Model()
-    cp.x = {a:cp.continuous_var(lb=0,ub=network.TD) for a in network.links}
-    cp.xc = {(a,r):cp.continuous_var() for a in network.links for r in network.origins}
-
-    cp.y = {a:cp.continuous_var(lb=0, ub=y_ub) for a in network.links2}
-    cp.mu = {a:cp.continuous_var(lb=0,ub=1e10) for a in network.links}
-    
-    cp.add_constraint(sum(cp.y[a] * a.cost for a in network.links2) <= network.B)
-
-    for a in network.links2:
-        cp.add_constraint(cp.x[a] <= cp.y[a] * network.TD)
-
-    for a in network.links:
-        cp.add_constraint(sum(cp.xc[(a,r)] for r in network.origins) == cp.x[a])
-
-    for i in network.nodes:                    
-        for r in network.origins:            
-
-            if i.id == r.id:
-                dem = - sum(r.getDemand(s) for s in network.zones)                
-            elif isinstance(i, type(r)) == True:
-                dem = r.getDemand(i)
-            else:
-                dem = 0
-
-            cp.add_constraint(sum(cp.xc[(a,r)] for a in i.incoming) - sum(cp.xc[(a,r)] for a in i.outgoing) == dem)
-
-    for OAcut in OAcuts:
-        for a in network.links:
-            cp.add_constraint(cp.mu[a] >= cp.x[a]*OAcut['a'][a] + OAcut['b'][a])
-            #print(a, OAcut['a'][a], OAcut['b'][a])
-        
-
-    cp.minimize(sum(cp.mu[a] for a in network.links))
 
     cp.solve(log_output=False)
     
@@ -106,7 +109,10 @@ for iter in range(0, 30):
         
     lastObj = obj
         
-    OAcuts.append(getOAcut(network))
+    OAcut = getOAcut(network)
+    
+    for a in network.links:
+        cp.add_constraint(cp.mu[a] >= cp.x[a]*OAcut['a'][a] + OAcut['b'][a])
     
 
 tot_time = time.time() - tot_time

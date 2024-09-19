@@ -38,6 +38,14 @@ def pricing(duals, network, paths):
                     p = network.trace(r,s)
                     paths[r][s].append(p)
                     new += 1
+                    
+                    new_hp = rmp.continuous_var(lb=0)
+                    rmp.h[p] = new_hp
+                    dem_cons[(r,s)].lhs.add_term(new_hp, 1)
+                    
+                    #link_cons[a] = rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in getPaths(network, paths) if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
+                    for a in p.links:
+                        link_cons[a].lhs.add_term(new_hp, -1)
 
                 if rc < minrc:
                     minrc = rc
@@ -55,40 +63,12 @@ def getPaths(network, paths):
                     all_paths.append(p)
         return all_paths  
 
-def rmp_path(network, paths, OAcuts, y_ub):
+def rmp_path(rmp, network, paths, OAcuts, y_ub):
         
     #---to do: recode such that lp is setup once and only new paths and cuts are added iteratively
 
     t0_RMP = time.time()
-    rmp = Model()
-
-    rmp.x = {a:rmp.continuous_var(lb=0,ub=network.TD) for a in network.links}
-    rmp.h = {p:rmp.continuous_var(lb=0) for p in getPaths(network, paths)}
-    rmp.mu = {a:rmp.continuous_var(lb=0) for a in network.links}
-
-    rmp.y = {a:rmp.continuous_var(lb=0,ub=y_ub) for a in network.links2}
-
-    rmp.add_constraint(sum(rmp.y[a] * a.cost for a in network.links2) <= network.B)
-
-    for a in network.links2:
-        rmp.add_constraint(rmp.x[a] <= rmp.y[a] * network.TD)
-
-    for r in network.origins:
-        for s in network.zones:
-            if r.getDemand(s) > 0:
-                rmp.add_constraint(sum(rmp.h[p] for p in paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))                    
-
-    for a in network.links:
-        rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in getPaths(network, paths) if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
-
-    for OAcut in OAcuts:
-        #---OA cuts
-        for a in network.links:
-            rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*OAcut['a'][a] + OAcut['b'][a])
-
     
-    rmp.minimize(sum(rmp.mu[a] for a in network.links))
-
 
     rmp.solve(log_output=False)
 
@@ -125,7 +105,7 @@ def rmp_path(network, paths, OAcuts, y_ub):
 
         return RMP_status,OFV,yopt,duals
 
-def CG(network, paths, OAcuts, y_ub):
+def CG(rmp, network, paths, OAcuts, y_ub):
 
     nCG = 0
     conv = False
@@ -134,7 +114,7 @@ def CG(network, paths, OAcuts, y_ub):
 
     while conv == False:        
 
-        RMP_status,OFV,yRMP,duals = rmp_path(network, paths, OAcuts, y_ub)
+        RMP_status,OFV,yRMP,duals = rmp_path(rmp, network, paths, OAcuts, y_ub)
 
         if RMP_status == 'infeasible':
             CG_status = 'infeasible'
@@ -205,6 +185,9 @@ for a in network.links2:
     
     
 paths = {r:{s:[] for s in network.zones} for r in network.origins}
+
+
+
     
 for r in network.origins:        
     network.dijkstras(r,'UE')
@@ -215,6 +198,39 @@ for r in network.origins:
 
             p = network.trace(r,s)
             paths[r][s].append(p)
+            
+            
+rmp = Model()
+
+rmp.x = {a:rmp.continuous_var(lb=0,ub=network.TD) for a in network.links}
+rmp.h = {p:rmp.continuous_var(lb=0) for p in getPaths(network, paths)}
+rmp.mu = {a:rmp.continuous_var(lb=0) for a in network.links}
+
+rmp.y = {a:rmp.continuous_var(lb=0,ub=y_ub) for a in network.links2}
+
+
+rmp.add_constraint(sum(rmp.y[a] * a.cost for a in network.links2) <= network.B)
+
+link_cons = {}
+dem_cons = {}
+
+for a in network.links:
+    link_cons[a] = rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in getPaths(network, paths) if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
+
+for r in network.origins:
+    for s in network.zones:
+        if r.getDemand(s) > 0:
+            dem_cons[(r,s)] = rmp.add_constraint(sum(rmp.h[p] for p in paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))   
+            
+         
+#for a in network.links:
+#    rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*a.t_ff)
+       
+rmp.minimize(sum(rmp.mu[a] for a in network.links))
+
+
+for a in network.links2:
+    rmp.add_constraint(rmp.x[a] <= rmp.y[a] * network.TD)
 
 for iter in range(0, 30):
 
@@ -223,7 +239,7 @@ for iter in range(0, 30):
       
     
         
-    CG_status, obj, y_sol = CG(network, paths, OAcuts, y_ub)
+    CG_status, obj, y_sol = CG(rmp, network, paths, OAcuts, y_ub)
     
     print(iter, obj, round(time.time() - t0, 2))
     
@@ -236,7 +252,10 @@ for iter in range(0, 30):
         
     lastObj = obj
         
-    OAcuts.append(getOAcut(network))
+    OAcut = getOAcut(network)
+    
+    for a in network.links:
+        rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*OAcut['a'][a] + OAcut['b'][a])
     
 
 tot_time = time.time() - tot_time

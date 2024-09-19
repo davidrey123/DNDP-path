@@ -33,10 +33,12 @@ class CGbush:
         
     def processNewLinks(self):
     
+        removed = []
+        
         for a in self.newlinks:
             
             # check if adding it creates cycle
-            self.removeCycle(a.end, a.start)
+            removed.extend(self.removeCycle(a.end, a.start))
                 
             # add link to bush
             #print("\t\tadding", self.origin, a)
@@ -46,6 +48,8 @@ class CGbush:
         self.newlinks = []
         
         #self.topologicalSort()
+        
+        return removed
         
     def removeCycle(self, start, end): # remove the connection(s) from start to end
         # this may not be the most efficient, but let's try it for now.
@@ -57,6 +61,7 @@ class CGbush:
         
         foundStart = True
         
+        removed = []
         
         while foundStart:
             for n in self.network.nodes:
@@ -132,14 +137,17 @@ class CGbush:
                     #print("\t\tdeleting", self.origin, best_zero, self.linkflows[best_zero], self.link_RC[best_zero])
                     del self.linkflows[best_zero]
                     del self.link_RC[best_zero]
+                    removed.append(best_zero)
                 else:
                     #print("\t\tdeleting", self.origin, best, self.linkflows[best], self.link_RC[best])
                     del self.linkflows[best]
                     del self.link_RC[best]
+                    removed.append(best)
                 
             else:
                 break
             
+        return removed
         
     def topologicalSort(self):
         
