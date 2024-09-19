@@ -15,23 +15,12 @@ class BC:
         self.nit = 0
         self.LB = 0
         self.UB = self.inf
-        self.UB_SO_DNDP = self.inf
         self.gap = self.inf
         self.yopt = None
         self.params = Params.Params()
         self.ydict = YDict.YDict()
         self.t0 = 0.0
-        
-        if self.params.useValueFunctionCuts:
-            #self.M = {a:a.getPrimitiveTravelTime(self.network.TD) for a in self.network.links2}
-            
-            y0 = {}
-            for a in self.network.links2:
-                y0[a] = 0
-                
-            self.network.tapas('UE',y0)
-            OFV = self.network.getBeckmannOFV()
-            self.M = {a:OFV for a in self.network.links2}
+        self.M = self.inf
         
         self.nBB = 0
         self.nSO = 0
@@ -42,11 +31,11 @@ class BC:
         
         self.LP = None
         self.cntUnscaledInf = 0 
-        self.yvec = [] #---for global interdiction cuts --- is it needed to store if directly adding to lp?
+        self.nIcuts = 0
         self.nOAcuts = 0
         self.nOABcuts = 0
         self.nVFcuts = 0
-        self.nInitKNP = len(self.network.links2)
+        self.nInitYvec = len(self.network.links2)
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
@@ -203,34 +192,20 @@ class BC:
                     
     def getVFcut(self):
         
-        self.lp.add_constraint(sum(self.lp.muB[a] for a in self.network.links) <= self.network.getBeckmannOFV() + sum(self.M[a]*(1 - self.lp.y[a]) for a in self.network.links2 if a.x > 1e-4)) 
+        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= self.network.getBeckmannOFV() + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
         self.nVFcuts += 1
     
-    def knapsack(self, type, can):
+    def knapsack(self, yvec):
         
         knp = Model()
         knp.y = {a:knp.binary_var() for a in self.network.links2}
         knp.add_constraint(sum(knp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
         
         #---Interdiction cuts
-        for yv in self.yvec:
+        for yv in yvec:
             knp.add_constraint(sum(knp.y[a] + yv[a] - 2*knp.y[a]*yv[a] for a in self.network.links2) >= 1)
-            
-        #---Branch cuts
-        for a in self.network.links2:
-            
-            if a.id in can.fixed0:
-                knp.add_constraint(knp.y[a] == 0)
-                               
-            if a.id in can.fixed1:
-                knp.add_constraint(knp.y[a] == 1)
         
-        if type == 'capacity':
-            knp.maximize(sum(knp.y[a] * a.C for a in self.network.links2))
-        elif type == 'x':
-            knp.maximize(sum(knp.y[a] * a.x for a in self.network.links2))                        
-        else:
-            print('unknown type')
+        knp.maximize(sum(knp.y[a] * a.x for a in self.network.links2))
             
         knp.solve(log_output=False)
             
@@ -244,46 +219,115 @@ class BC:
                 
             return yKNP
         
-    def initOAcuts(self, can):
+    def kBestKNP(self):
         
-        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('Running knapsack heuristic with',self.nInitKNP,'round(s)')
-        
-        yKNP = {}
-        for a in self.network.links2:
-            yKNP[a] = 1
-        
-        t0_TAP = time.time()
-        tstt = self.network.tapas('SO_OA_cuts',yKNP)
-        self.ydict.insertSO(yKNP, tstt)
-        self.getOAcuts()
-        self.rt_TAP += (time.time() - t0_TAP)
-        self.nSO += 1
-       
-        for a in self.network.links2:
-            can.score[a.id] = a.x * a.getTravelTime(a.x,'SO') 
-        
+        tsttBest = self.inf
         yBest = None
-        for n in range(self.nInitKNP):
-            yKNP = self.knapsack('x',can)
+        yvec = []
+        for n in range(self.nInitYvec):
+            yKNP = self.knapsack(yvec)
                        
-            t0_TAP = time.time()
             tstt = self.network.tapas('SO_OA_cuts',yKNP)
             self.ydict.insertSO(yKNP, tstt)
-            self.rt_TAP += (time.time() - t0_TAP)
             self.getOAcuts()                            
             self.nSO += 1        
             
-            if tstt < self.UB_SO_DNDP:
-                self.UB_SO_DNDP = tstt
+            if tstt < tsttBest:
+                tsttBest = tstt
                 yBest = yKNP                
                 
-            #---interdict to get different y
-            self.yvec.append(yKNP)
+            #---interdict yKNP to get different y
+            yvec.append(yKNP)
+        
+        return yBest
+    
+    def LocalSearchKNP(self):
+        
+        yKNP = self.knapsack([])                       
+        tstt = self.network.tapas('SO_OA_cuts',yKNP)
+        self.ydict.insertSO(yKNP, tstt)
+        self.getOAcuts()                            
+        self.nSO += 1
+        
+        yBest = yKNP
+        tsttBest = tstt
+        
+        for a in self.network.links2:
+            
+            yLS = dict(yKNP)
+            
+            if yLS[a] == 1:
+                yLS[a] = 0
                 
+            else:
+                yLS[a] = 1            
+                
+            tstt = self.network.tapas('SO_OA_cuts',yLS)
+            self.ydict.insertSO(yLS, tstt)
+            self.getOAcuts()                            
+            self.nSO += 1
+            
+            if tstt < tsttBest:
+                tsttBest = tstt
+                yBest = yLS
+        
+        return yBest
+    
+    def LocalSearchY1(self):
+        
+        yBest = self.knapsack([])                       
+        tstt = self.network.tapas('SO_OA_cuts',yBest)
+        self.ydict.insertSO(yBest, tstt)
+        self.getOAcuts()                            
+        self.nSO += 1
+        
+        y1 = {a:1 for a in self.network.links2}
+        
+        for a in self.network.links2:
+            
+            yLS = dict(y1)            
+            yLS[a] = 0
+                
+            tstt = self.network.tapas('SO_OA_cuts',yLS)
+            self.ydict.insertSO(yLS, tstt)       
+            self.getOAcuts()                            
+            self.nSO += 1
+                    
+        return yBest    
+        
+    def initOAcuts(self, type, can):
+        
+        if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
+            print('Initializing OA cuts with',self.params.initOAheuristic)
+            
+        t0_OA = time.time()
+        
+        #---solve SO-TAP(y1) to initialize OA cuts and branching scores
+        y1 = {a:1 for a in self.network.links2}
+        
+        self.network.tapas('SO_OA_cuts',y1)
+        self.getOAcuts()
+        self.nSO += 1
+        
+        for a in self.network.links2:
+            can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')         
+        
+        #---select heuristic to explore y vectors and initialize OA cuts
+        if type == 'kBestKNP':
+            yBest = self.kBestKNP()
+            
+        elif type == 'LocalSearchKNP':
+            yBest = self.LocalSearchKNP()
+            
+        elif type == 'LocalSearchY1':
+            yBest = self.LocalSearchY1()            
+            
+        self.rt_OA = time.time() - t0_OA
+                
+        #---solve UE-TAP(yBest) to get UB
         t0_TAP = time.time()
         can.UB = self.network.tapas('UE',yBest)
-        self.ydict.insertUE(yBest, can.UB)
+        self.ydict.insertUE(yBest,can.UB)
         self.rt_TAP += time.time() - t0_TAP
         self.nUE += 1
         self.UB = can.UB
@@ -292,11 +336,10 @@ class BC:
             self.getOABcuts()
             self.getVFcut()
         
-        #---reset yvec then add best y for which we ran UE
-        self.yvec = []
-        if self.params.useInterdictionCuts:       
-            self.yvec.append(yBest) #---superfluous?
+        #---add best y for which we ran UE
+        if self.params.useInterdictionCuts:
             self.lp.add_constraint(sum(self.lp.y[a] + yBest[a] - 2*self.lp.y[a]*yBest[a] for a in self.network.links2) >= 1)
+            self.nIcuts += 1
             
         self.yopt = yBest
     
@@ -426,7 +469,13 @@ class BC:
         self.createLP()
     
         #---initialize OA cuts
-        self.initOAcuts(self.BB_nodes[0])
+        self.initOAcuts(self.params.initOAheuristic,self.BB_nodes[0])
+        
+        if self.params.useValueFunctionCuts:
+            
+            y0 = {a:0 for a in self.network.links2}
+            self.network.tapas('UE',y0)
+            self.M = self.network.getBeckmannOFV()            
     
         conv = False
         while conv == False:                    
@@ -438,12 +487,13 @@ class BC:
             #    print('--> can (before): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))
      
             prune = False
-            runSO = False
+            runOA = False
             runUE = False
                      
             if status == 'infeasible':
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by feasibility')
+                    
                 prune = True                 
                 can.LB = self.inf
                 can.UB = self.inf        
@@ -451,13 +501,10 @@ class BC:
             elif status == 'fixed' or status == 'stop':
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by check',status)
+
                 prune = True
+                runOA = True                
                 runUE = True
-                
-                #---condition to be tuned: idea is to get OA cuts early in the search then stop                
-                #if self.nSO <= 5*nInitCuts: # **2 *5
-                
-                runSO = True
                  
                 for a in self.network.links2:
                     if a.id in can.fixed1:
@@ -490,8 +537,8 @@ class BC:
                     if self.params.PRINT_BB_INFO:
                         print('--> LP integral')
 
-                    #---CG solution is integral and better than UB ==> runSO
-                    runSO = True
+                    #---CG solution is integral and better than UB ==> runOA
+                    runOA = True
                     
                     if self.params.runUEifCGIntegral:
                         runUE = True
@@ -502,22 +549,34 @@ class BC:
                 #---remove Branch cuts
                 self.removeBranchCuts(Bcuts0,Bcuts1)                        
                           
-            if runSO:
+            if runOA:
 
-                if self.ydict.hasSO(can.y) == True:
-                    sotstt = self.ydict.getSO(can.y)
-                    if self.params.PRINT_BB_INFO:
-                        print('--> has SO') 
+                t0_OA = time.time()
+                
+                if self.params.solveSO:
+
+                    #---look for can.y in ydict (hash), solve SO-TAP if not found
+                    if self.ydict.hasSO(can.y) == True:
+                        sotstt = self.ydict.getSO(can.y)
+                        if self.params.PRINT_BB_INFO:
+                            print('--> has SO') 
+    
+                    else:                        
+                        sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
+                        self.ydict.insertSO(can.y, sotstt)
+                        self.getOAcuts()                        
+                        self.nSO += 1
 
                 else:
-                    t0_TAP = time.time()
-                    sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
-                    self.ydict.insertSO(can.y, sotstt)
+                    
+                    #---get OA cuts from RMP x solution
                     self.getOAcuts()
-                    self.rt_TAP += time.time() - t0_TAP
-                    self.nSO += 1                                         
+
+                self.rt_OA += time.time() - t0_OA                                        
                  
             if runUE:
+                
+                t0_TAP = time.time()
                 
                 if self.ydict.hasUE(can.y) == True:
                     can.UB = self.ydict.getUE(can.y)
@@ -525,16 +584,16 @@ class BC:
                         print('--> has UE')                    
                 
                 else:
-                    #---solve UE TAP to get UB 
-                    t0_TAP = time.time()
+                    #---solve UE TAP to get UB                    
                     can.UB = self.network.tapas('UE',can.y)
                     self.ydict.insertUE(can.y, can.UB)
-                    self.rt_TAP += time.time() - t0_TAP
                     self.nUE += 1  
                     
                     if self.params.useValueFunctionCuts:
                         self.getOABcuts()
-                        self.getVFcut()                    
+                        self.getVFcut()
+                        
+                self.rt_TAP += time.time() - t0_TAP                        
                 
                 if self.params.PRINT_BB_INFO:
                     print('TSTT UE - UB: %.1f, time: %.1f' % (can.UB,time.time() - t0_TAP))
@@ -551,8 +610,8 @@ class BC:
                             
             #---add interdiction cuts
             if self.params.useInterdictionCuts and runUE:
-                self.yvec.append(can.y)
                 self.lp.add_constraint(sum(self.lp.y[a] + can.y[a] - 2*self.lp.y[a]*can.y[a] for a in self.network.links2) >= 1)
+                self.nIcuts += 1
 
             if prune == False:  
                 fixed = can.fixed0 + can.fixed1
@@ -617,6 +676,7 @@ class BC:
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))
             print(self.rt_TAP)
+            print(self.rt_OA)            
             print(self.rt_LP)
             print(self.yopt)
             print(self.cntUnscaledInf)

@@ -446,10 +446,6 @@ class BPC:
             for s in self.network.zones:
                 if r.getDemand(s) > 0:
                     rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))
-                    
-                    #---disaggregate linking constraints: not working as expected....very slow?
-                    #for a in self.network.links2:
-                    #    rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s] if a in p.links) <= rmp.y[a] * r.getDemand(s))
     
         for a in self.network.links:
             rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))           
@@ -588,8 +584,7 @@ class BPC:
             
             y0 = {a:0 for a in self.network.links2}
             self.network.tapas('UE',y0)
-            OFV = self.network.getBeckmannOFV()
-            self.M = OFV
+            self.M = self.network.getBeckmannOFV()
         
         conv = False
         while conv == False:                    
