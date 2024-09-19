@@ -83,51 +83,36 @@ class Bush:
 
     def topologicalSort(self):
         
-        # Initialize in-degrees and visited flags
         for n in self.network.nodes:
             n.in_degree = len(n.getBushIncoming(self))
-            #print(n.in_degree)
 
-            n.visited = False
-            n.top_order = -1
-        
-        # Use a list as a priority queue
-        queue = []
-        heapq.heappush(queue, self.origin)  # Assume each node has a unique node_id
-        self.origin.visited = True
-        
+        # Queue to store vertices with indegree 0
+        q = deque()
+        for n in self.network.nodes:
+            if n.in_degree == 0:
+                q.append(n)
         self.sorted = []
-        idx = 0
         
-        while queue:
-            #print(queue)
-            # Use heappop for consistent smallest element first
-            vertex = heapq.heappop(queue)
-            #print(vertex_id)
-            #print(vertex)
-            self.sorted.append(vertex)
-            vertex.top_order = idx
+        idx = 0
+        while q:
+            i = q.popleft()
+            self.sorted.append(i)
+            i.top_order = idx
             idx += 1
-            
-            # Process outgoing edges
-            #with open('result2.txt', 'a') as file, contextlib.redirect_stdout(file):
-            for ij in vertex.getBushOutgoing(self):
-                #print(f"This is ij{ij}")
+            # Decrease indegree of adjacent vertices as the current node is in topological order
+            for ij in i.getBushOutgoing(self):
                 j = ij.end
-                #print(f"This is j{j}")
-                if not j.visited:
-                    j.in_degree -= 1
-                    if j.in_degree == 0:
-                        heapq.heappush(queue, j)
-                        j.visited = True   
-
+                j.in_degree -= 1
+                # If indegree becomes 0, push it to the queue
+                if j.in_degree == 0:
+                    q.append(j)
     
     def testTopologicalSort(self):
     
         self.topologicalSort()
         
         for l in self.flow:
-            if self.contains(l) and l.getSource().top_order > l.getDest().top_order:
+            if self.contains(l) and l.start.top_order > l.end.top_order:
                 return False
 
         return True
