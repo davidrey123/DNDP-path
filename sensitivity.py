@@ -25,7 +25,7 @@ bprop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
 inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2}
 
-headers = {'BPC':'& UB & Gap (\\%) & Time (s) & RMP (s) & Prc (s) & OA (s) & TAP (s) & UE \\\\'}
+headers = {'BPC':'& UB & Gap (\\%) & rooNodeLB & Time (s) & RMP (s) & Prc (s) & OA (s) & TAP (s) & nBB & nUE \\\\'}
 
 f.write("Params: BB_timelimit (s): %.1f, BB_tol: %.3f, TAP_tol %.3f, CPLEX_threads: %d\n" % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().min_gap,Params.Params().CPLEX_threads))
 f.write("Budget/Total cost: %.2f\n" % (bprop))
@@ -60,7 +60,7 @@ for config in configs:
             
         for nA2 in ['10','20']:
             
-            for ID in range(1,2):
+            for ID in range(1,11):
                 
                 ins = ins0+'_DNDP_'+nA2+'_'+str(ID)
                 insshort = ins0+'\\_'+nA2+'\\_'+str(ID)
@@ -77,7 +77,7 @@ for config in configs:
                 bpc.params.useValueFunctionCuts = config['useValueFunctionCuts']
   
                 bpc.BB()
-                f.write('%s & %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %.1f & %d \\\\\n' % (insshort,bpc.UB,100*bpc.gap,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_OA,bpc.rt_TAP,bpc.nUE))
+                f.write('%s & %.1f & %.2f & %.1f & %.1f & %.1f & %.1f & %.1f & %.1f & %d & %d \\\\\n' % (insshort,bpc.UB,100*bpc.gap,bpc.rootNodeLB,bpc.rt,bpc.rt_RMP,bpc.rt_pricing,bpc.rt_OA,bpc.rt_TAP,bpc.nBB,bpc.nUE))
                 f.flush()
             
     total_config_hours = (time.time() - t0_config)/3600
