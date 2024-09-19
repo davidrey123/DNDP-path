@@ -17,11 +17,11 @@ def getOAcut(network):
 
     return OAcut
 
-net = 'SiouxFalls'
-ins = 'SF_DNDP_20_1'
+#net = 'SiouxFalls'
+#ins = 'SF_DNDP_20_1'
 
-#net = 'EasternMassachusetts'
-#ins = 'EM_DNDP_10_1'
+net = 'EasternMassachusetts'
+ins = 'EM_DNDP_10_1'
 
 
 
@@ -116,7 +116,9 @@ for iter in range(0, 30): # OA loop
     
         t1 = time.time()
 
+        t_solve = time.time()
         cp.solve(log_output=False)
+        t_solve = time.time() - t_solve
         
         new_col = False
 
@@ -134,6 +136,8 @@ for iter in range(0, 30): # OA loop
                     #if a.start.id==10 and a.end.id==16:
                     #    print(a, r, a.x, bush_flows[(a,r)])
 
+        t_price = 0
+        
         best_price = 0
         
         for r in network.origins:
@@ -162,7 +166,7 @@ for iter in range(0, 30): # OA loop
                 #    print("\t\tmissing", r, a.start)
 
                 a.dual = price
-                if a not in bushes[r].linkflows and price < best_r_price - 0.0001:
+                if a not in bushes[r].linkflows and price < best_r_price - 0.001:
                     new_col = True
                     '''
                     best_link = a
@@ -177,7 +181,8 @@ for iter in range(0, 30): # OA loop
                 best_price = min(best_price, best_r_price)        
                 bushes[r].processNewLinks()
             '''
-                
+            
+            t2 = time.time()
             removed_vars = bushes[r].addLinks(added_vars)      
             
             
@@ -221,9 +226,10 @@ for iter in range(0, 30): # OA loop
                 #cp.get_cplex().variables.delete(old_xc._index)
                 cp.add_constraint(old_xc == 0)
                 del cp.xc[(a,r)]
-            
         
-        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2))
+            t_price += time.time() - t2
+        
+        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2), round(t_solve, 2), round(t_price, 2))
         
         if not new_col or abs(lastCGobj - obj) < 0.0001:
             break
