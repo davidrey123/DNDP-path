@@ -20,8 +20,8 @@ def getOAcut(network):
 net = 'SiouxFalls'
 ins = 'SF_DNDP_20_1'
 
-net = 'EasternMassachusetts'
-ins = 'EM_DNDP_10_1'
+#net = 'EasternMassachusetts'
+#ins = 'EM_DNDP_10_1'
 
 
 
@@ -129,11 +129,7 @@ for iter in range(0, 30): # OA loop
         
         
         
-        for a in network.links:
 
-            for r in network.origins:
-                if bushes[r].contains(a):
-                    bushes[r].linkflows[a] = cp.xc[(a,r)].solution_value
 
                     #if a.start.id==10 and a.end.id==16:
                     #    print(a, r, a.x, bush_flows[(a,r)])
@@ -147,6 +143,9 @@ for iter in range(0, 30): # OA loop
             added_vars = []
             
             for a in network.links:
+            
+                if bushes[r].contains(a):
+                    bushes[r].linkflows[a] = cp.xc[(a,r)].solution_value
             
                 price = -(-gamma_plus_cons[a].dual_value + gamma_minus_cons[a].dual_value)
 
@@ -163,15 +162,12 @@ for iter in range(0, 30): # OA loop
                 #    print("\t\tmissing", r, a.start)
 
                 a.dual = price
-                if bushes[r].contains(a):
-                    bushes[r].link_RC[a] = price
-                elif price < best_r_price - 0.0001:
+                if a not in bushes[r].linkflows and price < best_r_price - 0.0001:
                     new_col = True
                     '''
                     best_link = a
                     best_r_price = price
                     '''
-                    bushes[r].addLink(a)
                     best_price = min(best_price, price)  
                     added_vars.append(a)
                     
@@ -182,7 +178,7 @@ for iter in range(0, 30): # OA loop
                 bushes[r].processNewLinks()
             '''
                 
-            removed_vars = bushes[r].processNewLinks()      
+            removed_vars = bushes[r].addLinks(added_vars)      
             
             
             for a in added_vars:
