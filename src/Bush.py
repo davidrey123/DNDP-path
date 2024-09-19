@@ -93,7 +93,7 @@ class Bush:
         
         # Use a list as a priority queue
         queue = []
-        heapq.heappush(queue, self.origin.id)  # Assume each node has a unique node_id
+        heapq.heappush(queue, self.origin)  # Assume each node has a unique node_id
         self.origin.visited = True
         
         self.sorted = []
@@ -102,9 +102,8 @@ class Bush:
         while queue:
             #print(queue)
             # Use heappop for consistent smallest element first
-            vertex_id = heapq.heappop(queue)
+            vertex = heapq.heappop(queue)
             #print(vertex_id)
-            vertex = self.network.findNode(vertex_id)  # You need to be able to fetch nodes by ID
             #print(vertex)
             self.sorted.append(vertex)
             vertex.top_order = idx
@@ -119,7 +118,7 @@ class Bush:
                 if not j.visited:
                     j.in_degree -= 1
                     if j.in_degree == 0:
-                        heapq.heappush(queue, j.id)
+                        heapq.heappush(queue, j)
                         j.visited = True   
 
     
