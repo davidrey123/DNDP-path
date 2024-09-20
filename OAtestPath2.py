@@ -57,7 +57,7 @@ def rmp_path(rmp, network, y_ub):
 
 
     if rmp.solve_details.status == 'infeasible' or rmp.solve_details.status == 'integer infeasible':
-        return 'infeasible',1e15,{},None
+        return 'infeasible',1e15,{}
 
     else:
         OFV = rmp.objective_value
@@ -78,7 +78,7 @@ def rmp_path(rmp, network, y_ub):
         for r in network.origins:
             for s in network.zones:
                 if r.getDemand(s) > 0:
-                    r.bush.duals[s] = max(rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0)
+                    r.bush.dem_duals[s] = max(rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0)
 
 
         return RMP_status,OFV,yopt
@@ -89,7 +89,8 @@ def CG(rmp, network, y_ub):
     conv = False
     
     
-
+    tot_t_solve = 0
+    tot_t_price = 0
     while conv == False:        
         t1 = time.time()
         
@@ -113,6 +114,9 @@ def CG(rmp, network, y_ub):
                 
         tot_time = time.time() - t1
         print("\t", OFV, minrc, round(tot_time, 2), round(t_solve, 2), round(t_price, 2), nvars)
+        
+        tot_t_solve += t_solve
+        tot_t_price += t_price
 
         #if self.params.PRINT_BB_INFO:
         #    npaths = len(self.getPaths())
@@ -133,10 +137,10 @@ def CG(rmp, network, y_ub):
         #npaths = len(self.getPaths())
         #print('CG: %s\t%d\t%d\t%.1f\t%.2f' % (CG_status,nCG,npaths,OFV,minrc))        
 
-        return CG_status,OFV,yRMP
+        return CG_status,OFV,yRMP,tot_t_price,tot_t_solve
 
     else:
-        return CG_status,1e15,yRMP
+        return CG_status,1e15,yRMP,tot_t_price,tot_t_solve
 
 
   
@@ -203,11 +207,7 @@ dem_cons = {}
 
 
 
-for r in network.origins:
-    for s in network.zones:
-        if r.getDemand(s) > 0:
-            r.bush.dem_cons[s] = rmp.add_constraint(sum(rmp.h[p] for p in r.bush.paths[s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))   
-            
+
          
 #for a in network.links:
 #    rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*a.t_ff)
@@ -218,6 +218,9 @@ rmp.minimize(sum(rmp.mu[a] for a in network.links))
 for a in network.links2:
     rmp.add_constraint(rmp.x[a] <= rmp.y[a] * network.TD)
 
+
+t_price = 0
+t_solve = 0
 for iter in range(0, 30):
 
     t0 = time.time()
@@ -225,10 +228,11 @@ for iter in range(0, 30):
       
     
         
-    CG_status, obj, y_sol = CG(rmp, network, y_ub)
+    CG_status, obj, y_sol, cg_t_price, cg_t_solve = CG(rmp, network, y_ub)
+    t_price += cg_t_price
+    t_solve += cg_t_solve
     
-    
-    print(iter, obj, round(time.time() - t0, 2))
+    print(iter, obj, round(time.time() - t0, 2), round(t_price, 2), round(t_solve, 2))
     
     
     

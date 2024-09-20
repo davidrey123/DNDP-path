@@ -168,8 +168,8 @@ def CG(rmp, network, paths, OAcuts, y_ub):
 net = 'SiouxFalls'
 ins = 'SF_DNDP_20_1'
 
-net = 'EasternMassachusetts'
-ins = 'EM_DNDP_10_1'
+#net = 'EasternMassachusetts'
+#ins = 'EM_DNDP_10_1'
 
 tot_time = time.time()
 

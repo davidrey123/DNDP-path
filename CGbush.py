@@ -112,6 +112,7 @@ class CGbush:
                         self.linkflows[a] = flow
                     elif a.dual > 0.0001:
                         rem = True
+                        removed.append(a)
                         del self.linkflows[a]
                     elif not rem and a.dual > best_rc:
                         best_rc = a.dual
@@ -119,6 +120,7 @@ class CGbush:
                     curr = a.end
                     
                 if not rem:
+                    removed.append(best)
                     del self.linkflows[best]
                 
             else:
