@@ -137,6 +137,7 @@ for iter in range(0, 30): # OA loop
                     #    print(a, r, a.x, bush_flows[(a,r)])
 
         t_price = 0
+        t_acyclic = 0
         
         best_price = 0
         
@@ -183,8 +184,10 @@ for iter in range(0, 30): # OA loop
             '''
             
             t2 = time.time()
-            removed_vars = bushes[r].addLinks(added_vars)      
+            t3 = time.time()
             
+            removed_vars = bushes[r].addLinks(added_vars)      
+            t_acyclic += time.time() - t3
             
             for a in added_vars:
                 new_xc = None
@@ -229,7 +232,9 @@ for iter in range(0, 30): # OA loop
         
             t_price += time.time() - t2
         
-        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2), round(t_solve, 2), round(t_price, 2))
+        nvars = sum(len(bushes[r].linkflows) for r in network.origins)
+        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2), round(t_solve, 2), round(t_price, 2), round(t_acyclic, 2), nvars, round(nvars*1.0/len(network.origins)/len(network.links), 2))
+        
         
         if not new_col or abs(lastCGobj - obj) < 0.0001:
             break
