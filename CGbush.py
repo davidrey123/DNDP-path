@@ -97,7 +97,11 @@ class CGbush:
                     cycleflow = min(cycleflow, self.linkflows[curr.pred])
                     curr = curr.pred.end
                     
-                # remove links with 0 flow from cycle
+                # find link with highest reduced cost and 0 flow to remove
+                
+                best_rc = -1e15
+                best = None
+                rem = False
                 
                 curr = start
                 while curr != end:
@@ -106,10 +110,16 @@ class CGbush:
                     flow -= cycleflow
                     if flow > 0.0001:
                         self.linkflows[a] = flow
-                    else:
+                    elif a.dual > 0.0001:
+                        rem = True
                         del self.linkflows[a]
-                        removed.append(a)
+                    elif not rem and a.dual > best_rc:
+                        best_rc = a.dual
+                        best = a
                     curr = a.end
+                    
+                if not rem:
+                    del self.linkflows[best]
                 
             else:
                 break

@@ -17,8 +17,8 @@ def getOAcut(network):
 
     return OAcut
 
-#net = 'SiouxFalls'
-#ins = 'SF_DNDP_20_1'
+net = 'SiouxFalls'
+ins = 'SF_DNDP_20_1'
 
 net = 'EasternMassachusetts'
 ins = 'EM_DNDP_10_1'
@@ -49,11 +49,9 @@ for a in network.links2:
 
 
     
-y_ub = 0
+y_ub = 1
 
-if y_ub == 1:
-    for a in network.links2:
-        a.y = 1
+
             
 cp = Model()
 
@@ -75,8 +73,12 @@ mu_cons = cp.add_constraint(-sum(a.y_cp * a.cost for a in network.links2) >= -ne
 
 phi_cons = {}
 
+if y_ub == 1:
+    for a in network.links2:
+        a.y = 1
+
 #for a in network.links:
-#    cp.add_constraint(cp.mu[a] >= a.x_cp*a.t_ff)
+#   cp.add_constraint(a.mu_cp >= a.x_cp*a.t_ff)
     
 cp.minimize(sum(a.mu_cp for a in network.links))
 
@@ -193,6 +195,7 @@ for iter in range(0, 30): # OA loop
                     '''
                     best_price = min(best_price, price)  
                     added_vars.append(a)
+                    #print("\t\t", a, r, price)
                     
            
             t_dual += time.time() - t4
@@ -252,7 +255,8 @@ for iter in range(0, 30): # OA loop
         print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2), round(t_solve, 2), round(t_price, 2), round(t_dual, 2), round(t_addvar, 2), round(t_acyclic, 2), nvars, round(nvars*1.0/len(network.origins)/len(network.links), 2))
         
         
-        if not new_col or abs(lastCGobj - obj) < 0.0001:
+        #if not new_col or abs(lastCGobj - obj) < 0.0001:
+        if not new_col:
             break
 
         lastCGobj = obj

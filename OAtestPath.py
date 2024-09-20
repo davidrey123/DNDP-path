@@ -122,7 +122,11 @@ def CG(rmp, network, paths, OAcuts, y_ub):
 
         minrc = pricing(duals, network, paths)
         
-        print("\t", OFV, minrc)
+        nvars = 0
+        for r in paths:
+            for s in paths[r]:
+                nvars += len(paths[r][s])
+        print("\t", OFV, minrc, nvars)
 
         #if self.params.PRINT_BB_INFO:
         #    npaths = len(self.getPaths())
@@ -177,7 +181,7 @@ bush_flows = {}
 
 lastObj = 0
 
-y_ub = 0
+y_ub = 1
 
 for a in network.links2:
     a.y = 0
@@ -199,7 +203,9 @@ for r in network.origins:
             p = network.trace(r,s)
             paths[r][s].append(p)
             
-            
+for a in network.links2:
+    a.y = y_ub
+             
 rmp = Model()
 
 rmp.x = {a:rmp.continuous_var(lb=0,ub=network.TD) for a in network.links}
@@ -240,6 +246,7 @@ for iter in range(0, 30):
     
         
     CG_status, obj, y_sol = CG(rmp, network, paths, OAcuts, y_ub)
+    
     
     print(iter, obj, round(time.time() - t0, 2))
     
