@@ -2,6 +2,7 @@
 import time
 from src import Params
 from src import Network
+import Bushify
 from docplex.mp.model import Model
 
 def getOAcut(network):
@@ -15,40 +16,19 @@ def getOAcut(network):
 
     return OAcut
     
-def pricing(duals, network, paths):
+def pricing(network):
         
     t0_pricing = time.time()
 
     new = 0
     minrc = 1e15
-    
-    for a in network.links:
-        a.dual = duals['link'][a]
+
 
     for r in network.origins:
-        network.dijkstras(r,'RC')
-
-        for s in network.zones:
-
-            if r.getDemand(s) > 0:
-
-                rc = - duals['dem'][(r,s)] + s.cost                    
-
-                if rc <= - 0.0001:
-                    p = network.trace(r,s)
-                    paths[r][s].append(p)
-                    new += 1
-                    
-                    new_hp = rmp.continuous_var(lb=0)
-                    rmp.h[p] = new_hp
-                    dem_cons[(r,s)].lhs.add_term(new_hp, 1)
-                    
-                    #link_cons[a] = rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in getPaths(network, paths) if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
-                    for a in p.links:
-                        link_cons[a].lhs.add_term(new_hp, -1)
-
-                if rc < minrc:
-                    minrc = rc
+        bush_rc, bush_new = r.bush.pricing(rmp)
+        minrc = min(minrc, bush_rc)
+        new += bush_new
+        
 
     #if self.params.PRINT_BB_INFO:
     #    print('pricing',new,minrc)
@@ -63,7 +43,7 @@ def getPaths(network, paths):
                     all_paths.append(p)
         return all_paths  
 
-def rmp_path(rmp, network, paths, OAcuts, y_ub):
+def rmp_path(rmp, network, y_ub):
         
     #---to do: recode such that lp is setup once and only new paths and cuts are added iteratively
 
@@ -91,21 +71,19 @@ def rmp_path(rmp, network, paths, OAcuts, y_ub):
         for a in network.links:
             a.x = rmp.x[a].solution_value
 
-        dual_link = {} 
-        for a in network.links:                    
-            dual_link[a] = max(rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value,0)                    
 
-        dual_dem = {}
+        for a in network.links:                    
+            a.dual = max(rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value,0)                    
+
         for r in network.origins:
             for s in network.zones:
                 if r.getDemand(s) > 0:
-                    dual_dem[(r,s)] = max(rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0)
+                    r.bush.duals[s] = max(rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0)
 
-        duals = {'link':dual_link,'dem':dual_dem}
 
-        return RMP_status,OFV,yopt,duals
+        return RMP_status,OFV,yopt
 
-def CG(rmp, network, paths, OAcuts, y_ub):
+def CG(rmp, network, y_ub):
 
     nCG = 0
     conv = False
@@ -116,7 +94,7 @@ def CG(rmp, network, paths, OAcuts, y_ub):
         t1 = time.time()
         
         t0 = time.time()
-        RMP_status,OFV,yRMP,duals = rmp_path(rmp, network, paths, OAcuts, y_ub)
+        RMP_status,OFV,yRMP = rmp_path(rmp, network, y_ub)
         t_solve = time.time()-t0
         
         if RMP_status == 'infeasible':
@@ -124,14 +102,14 @@ def CG(rmp, network, paths, OAcuts, y_ub):
             break
 
         t0 = time.time()
-        minrc = pricing(duals, network, paths)
+        minrc = pricing(network)
         t_price = time.time()-t0
         
         
         nvars = 0
-        for r in paths:
-            for s in paths[r]:
-                nvars += len(paths[r][s])
+        for r in network.origins:
+            for s in r.bush.paths[r]:
+                nvars += len(r.bush.paths[s])
                 
         tot_time = time.time() - t1
         print("\t", OFV, minrc, round(tot_time, 2), round(t_solve, 2), round(t_price, 2), nvars)
@@ -168,8 +146,8 @@ def CG(rmp, network, paths, OAcuts, y_ub):
 net = 'SiouxFalls'
 ins = 'SF_DNDP_20_1'
 
-net = 'EasternMassachusetts'
-ins = 'EM_DNDP_10_1'
+#net = 'EasternMassachusetts'
+#ins = 'EM_DNDP_10_1'
 
 tot_time = time.time()
 
@@ -183,8 +161,6 @@ network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 
 
 
-OAcuts = []
-
 bush_flows = {}
 
 lastObj = 0
@@ -195,21 +171,8 @@ for a in network.links2:
     a.y = 0
     
     
-    
-paths = {r:{s:[] for s in network.zones} for r in network.origins}
 
 
-
-    
-for r in network.origins:        
-    network.dijkstras(r,'UE')
-
-    for s in network.zones:
-
-        if r.getDemand(s) > 0:
-
-            p = network.trace(r,s)
-            paths[r][s].append(p)
             
 for a in network.links2:
     a.y = y_ub
@@ -217,7 +180,17 @@ for a in network.links2:
 rmp = Model()
 
 rmp.x = {a:rmp.continuous_var(lb=0,ub=network.TD) for a in network.links}
-rmp.h = {p:rmp.continuous_var(lb=0) for p in getPaths(network, paths)}
+rmp.h = {}
+
+
+
+for a in network.links:
+    a.link_cons = rmp.add_constraint(rmp.x[a] + 0 >= 0, 'link_%d_%d' % (a.start.id,a.end.id)) # add +0 to make it linear expr
+
+for r in network.origins:
+    r.bush = Bushify.Bushify(r, network, rmp)
+    
+    
 rmp.mu = {a:rmp.continuous_var(lb=0) for a in network.links}
 
 rmp.y = {a:rmp.continuous_var(lb=0,ub=y_ub) for a in network.links2}
@@ -225,16 +198,15 @@ rmp.y = {a:rmp.continuous_var(lb=0,ub=y_ub) for a in network.links2}
 
 rmp.add_constraint(sum(rmp.y[a] * a.cost for a in network.links2) <= network.B)
 
-link_cons = {}
+
 dem_cons = {}
 
-for a in network.links:
-    link_cons[a] = rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in getPaths(network, paths) if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
+
 
 for r in network.origins:
     for s in network.zones:
         if r.getDemand(s) > 0:
-            dem_cons[(r,s)] = rmp.add_constraint(sum(rmp.h[p] for p in paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))   
+            r.bush.dem_cons[s] = rmp.add_constraint(sum(rmp.h[p] for p in r.bush.paths[s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))   
             
          
 #for a in network.links:
@@ -253,7 +225,7 @@ for iter in range(0, 30):
       
     
         
-    CG_status, obj, y_sol = CG(rmp, network, paths, OAcuts, y_ub)
+    CG_status, obj, y_sol = CG(rmp, network, y_ub)
     
     
     print(iter, obj, round(time.time() - t0, 2))
@@ -283,6 +255,6 @@ for a in network.links:
     if a.y > 0:
         print("\n")
         for r in network.origins:
-            if a in bushes[r]:
+            if a in r.bush:
                 print(a, r, bush_flows[(a,r)])
 '''
