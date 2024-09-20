@@ -87,22 +87,23 @@ for a in network.links2:
 
 
 
-gamma_plus_cons = {}
-gamma_minus_cons = {}
+
 
 for a in network.links:
-    gamma_plus_cons[a] = cp.add_constraint(a.x_cp - sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
-    gamma_minus_cons[a] = cp.add_constraint(-a.x_cp + sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
+    a.gamma_plus_cons = cp.add_constraint(a.x_cp - sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
+    a.gamma_minus_cons = cp.add_constraint(-a.x_cp + sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
     
-    
-eta_plus_cons = {}
-eta_minus_cons = {}
 
 OAcut_idx = 0
 
-for r in network.origins:  
-    for i in network.nodes:                    
 
+
+
+for i in network.nodes:     
+    i.eta_plus_cons = {}
+    i.eta_minus_cons = {}
+    
+    for r in network.origins:  
         if i.id == r.id:
             dem = -sum(r.getDemand(s) for s in network.zones)                
         else:
@@ -112,8 +113,8 @@ for r in network.origins:
         bush_out = i.getBushOutgoing(bushes[r])
 
         if len(bush_inc) > 0 or len(bush_out) > 0:
-            eta_plus_cons[(i, r)] = cp.add_constraint(sum(a.xr_cp[r] for a in bush_inc) - sum(a.xr_cp[r] for a in bush_out) >= dem)
-            eta_minus_cons[(i, r)] = cp.add_constraint(-sum(a.xr_cp[r] for a in bush_inc) + sum(a.xr_cp[r] for a in bush_out) >= -dem)
+            i.eta_plus_cons[r] = cp.add_constraint(sum(a.xr_cp[r] for a in bush_inc) - sum(a.xr_cp[r] for a in bush_out) >= dem)
+            i.eta_minus_cons[r] = cp.add_constraint(-sum(a.xr_cp[r] for a in bush_inc) + sum(a.xr_cp[r] for a in bush_out) >= -dem)
 
 
         
@@ -147,10 +148,18 @@ for iter in range(0, 30): # OA loop
 
         t_price = 0
         t_acyclic = 0
+        t_dual = 0
+        t_addvar = 0
+        
         
         best_price = 0
         
         for r in network.origins:
+            t2 = time.time()
+            
+            
+            t4 = time.time()
+            
             best_r_price = 0
             best_link = None
             
@@ -161,17 +170,17 @@ for iter in range(0, 30): # OA loop
                 if bushes[r].contains(a):
                     bushes[r].linkflows[a] = a.xr_cp[r].solution_value
             
-                price = -(-gamma_plus_cons[a].dual_value + gamma_minus_cons[a].dual_value)
+                price = -(-a.gamma_plus_cons.dual_value + a.gamma_minus_cons.dual_value)
 
-                if (a.end, r) in eta_plus_cons:
-                    price += -(eta_plus_cons[(a.end, r)].dual_value) 
-                    price += -(-eta_minus_cons[(a.end, r)].dual_value)
+                if r in a.end.eta_plus_cons:
+                    price += -(a.end.eta_plus_cons[r].dual_value) 
+                    price += -(-a.end.eta_minus_cons[r].dual_value)
                 #else:
                 #    print("\t\tmissing", r, a.end)
 
-                if (a.start, r) in eta_plus_cons:
-                    price += -(- eta_plus_cons[(a.start, r)].dual_value)
-                    price += -(eta_minus_cons[(a.start, r)].dual_value)
+                if r in a.start.eta_plus_cons:
+                    price += -(- a.start.eta_plus_cons[r].dual_value)
+                    price += -(a.start.eta_minus_cons[r].dual_value)
                 #else:
                 #    print("\t\tmissing", r, a.start)
 
@@ -185,19 +194,15 @@ for iter in range(0, 30): # OA loop
                     best_price = min(best_price, price)  
                     added_vars.append(a)
                     
-            '''
-            if best_link is not None:
-                bushes[r].addLink(best_link)
-                best_price = min(best_price, best_r_price)        
-                bushes[r].processNewLinks()
-            '''
+           
+            t_dual += time.time() - t4
             
-            t2 = time.time()
             t3 = time.time()
             
             removed_vars = bushes[r].addLinks(added_vars)      
             t_acyclic += time.time() - t3
             
+            t5 = time.time()
             for a in added_vars:
                 new_xc = None
                 if r in a.xr_cp:
@@ -209,40 +214,42 @@ for iter in range(0, 30): # OA loop
                 #gamma_plus_cons[a] = cp.add_constraint(a.x_cp - sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
                 #gamma_minus_cons[a] = cp.add_constraint(-a.x_cp + sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
                 
-                gamma_plus_cons[a].lhs.add_term(new_xc, -1)
-                gamma_minus_cons[a].lhs.add_term(new_xc, 1)
+                a.gamma_plus_cons.lhs.add_term(new_xc, -1)
+                a.gamma_minus_cons.lhs.add_term(new_xc, 1)
             
-                #eta_plus_cons[(i, r)] = cp.add_constraint(sum(a.xr_cp[r] for a in bush_inc) - sum(a.xr_cp[r] for a in bush_out) >= dem)
-                #eta_minus_cons[(i, r)] = cp.add_constraint(-sum(a.xr_cp[r] for a in bush_inc) + sum(a.xr_cp[r] for a in bush_out) >= -dem)
+                #i.eta_plus_cons[r] = cp.add_constraint(sum(a.xr_cp[r] for a in bush_inc) - sum(a.xr_cp[r] for a in bush_out) >= dem)
+                #i.eta_minus_cons[r] = cp.add_constraint(-sum(a.xr_cp[r] for a in bush_inc) + sum(a.xr_cp[r] for a in bush_out) >= -dem)
                 
-                eta_plus_cons[(a.end, r)].lhs.add_term(new_xc, 1)
-                eta_plus_cons[(a.start, r)].lhs.add_term(new_xc, -1)
-                eta_minus_cons[(a.end, r)].lhs.add_term(new_xc, -1)
-                eta_minus_cons[(a.start, r)].lhs.add_term(new_xc, 1)
+                a.end.eta_plus_cons[r].lhs.add_term(new_xc, 1)
+                a.start.eta_plus_cons[r].lhs.add_term(new_xc, -1)
+                a.end.eta_minus_cons[r].lhs.add_term(new_xc, -1)
+                a.start.eta_minus_cons[r].lhs.add_term(new_xc, 1)
             
+            t_addvar += time.time() - t5
             
             for a in removed_vars:
             
                 old_xc = a.xr_cp[r]
                 
                 # remove from constraints
-                gamma_plus_cons[a].lhs.remove_term(old_xc)
-                gamma_minus_cons[a].lhs.remove_term(old_xc)
+                a.gamma_plus_cons.lhs.remove_term(old_xc)
+                a.gamma_minus_cons.lhs.remove_term(old_xc)
                 
-                eta_plus_cons[(a.end, r)].lhs.remove_term(old_xc)
-                eta_plus_cons[(a.start, r)].lhs.remove_term(old_xc)
-                eta_minus_cons[(a.end, r)].lhs.remove_term(old_xc)
-                eta_minus_cons[(a.end, r)].lhs.remove_term(old_xc)
+                a.end.eta_plus_cons[r].lhs.remove_term(old_xc)
+                a.start.eta_plus_cons[r].lhs.remove_term(old_xc)
+                a.end.eta_minus_cons[r].lhs.remove_term(old_xc)
+                a.start.eta_minus_cons[r].lhs.remove_term(old_xc)
             
                 # actually delete variable
                 #cp.get_cplex().variables.delete(old_xc._index)
                 cp.add_constraint(old_xc == 0)
                 del a.xr_cp[r]
         
+            
             t_price += time.time() - t2
         
         nvars = sum(len(bushes[r].linkflows) for r in network.origins)
-        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2), round(t_solve, 2), round(t_price, 2), round(t_acyclic, 2), nvars, round(nvars*1.0/len(network.origins)/len(network.links), 2))
+        print("\t", cg_iter, obj, best_price, round(time.time() - t1, 2), round(t_solve, 2), round(t_price, 2), round(t_dual, 2), round(t_addvar, 2), round(t_acyclic, 2), nvars, round(nvars*1.0/len(network.origins)/len(network.links), 2))
         
         
         if not new_col or abs(lastCGobj - obj) < 0.0001:
@@ -255,7 +262,7 @@ for iter in range(0, 30): # OA loop
     for a in network.links:
         a.x = a.x_cp.solution_value
 
-    if lastObj > 0 and (obj - lastObj) / lastObj < 0.0001:
+    if lastObj > 0 and (obj - lastObj) / lastObj < 0.001:
         for a in network.links2:
             a.y = a.y_cp.solution_value
         break
