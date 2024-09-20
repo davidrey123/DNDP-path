@@ -47,8 +47,7 @@ bushes = {}
 for a in network.links2:
     a.y = 0
 
-for r in network.origins:
-    bushes[r] = CGbush.CGbush(r, network)
+
     
 y_ub = 0
 
@@ -57,22 +56,32 @@ if y_ub == 1:
         a.y = 1
             
 cp = Model()
-cp.x = {a:cp.continuous_var(lb=0,ub=network.TD) for a in network.links}
-cp.xc = {(a,r):cp.continuous_var(lb=0,ub=network.TD) for r in network.origins for a in bushes[r].linkflows.keys()}
-cp.y = {a:cp.continuous_var(lb=0, ub=y_ub) for a in network.links2}
-cp.mu = {a:cp.continuous_var(lb=0,ub=1E10) for a in network.links}
 
-mu_cons = cp.add_constraint(-sum(cp.y[a] * a.cost for a in network.links2) >= -network.B)
+for a in network.links:
+    a.x_cp = cp.continuous_var(lb=0,ub=network.TD)
+    a.xr_cp = {}
+    a.mu_cp = cp.continuous_var(lb=0,ub=1E10)
+
+for a in network.links2:
+    a.y_cp = cp.continuous_var(lb=0, ub=y_ub)
+
+for r in network.origins:
+    bushes[r] = CGbush.CGbush(r, network)
+    
+    for a in bushes[r].linkflows:
+        a.xr_cp[r] = cp.continuous_var(lb=0,ub=network.TD)
+
+mu_cons = cp.add_constraint(-sum(a.y_cp * a.cost for a in network.links2) >= -network.B)
 
 phi_cons = {}
 
 #for a in network.links:
-#    cp.add_constraint(cp.mu[a] >= cp.x[a]*a.t_ff)
+#    cp.add_constraint(cp.mu[a] >= a.x_cp*a.t_ff)
     
-cp.minimize(sum(cp.mu[a] for a in network.links))
+cp.minimize(sum(a.mu_cp for a in network.links))
 
 for a in network.links2:
-    cp.add_constraint(-cp.x[a] + cp.y[a] * network.TD >= 0)
+    cp.add_constraint(-a.x_cp + a.y_cp * network.TD >= 0)
     
     
 
@@ -82,8 +91,8 @@ gamma_plus_cons = {}
 gamma_minus_cons = {}
 
 for a in network.links:
-    gamma_plus_cons[a] = cp.add_constraint(cp.x[a] - sum(cp.xc[(a,r)] for r in network.origins if bushes[r].contains(a)) >= 0)
-    gamma_minus_cons[a] = cp.add_constraint(-cp.x[a] + sum(cp.xc[(a,r)] for r in network.origins if bushes[r].contains(a)) >= 0)
+    gamma_plus_cons[a] = cp.add_constraint(a.x_cp - sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
+    gamma_minus_cons[a] = cp.add_constraint(-a.x_cp + sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
     
     
 eta_plus_cons = {}
@@ -103,8 +112,8 @@ for r in network.origins:
         bush_out = i.getBushOutgoing(bushes[r])
 
         if len(bush_inc) > 0 or len(bush_out) > 0:
-            eta_plus_cons[(i, r)] = cp.add_constraint(sum(cp.xc[(a,r)] for a in bush_inc) - sum(cp.xc[(a,r)] for a in bush_out) >= dem)
-            eta_minus_cons[(i, r)] = cp.add_constraint(-sum(cp.xc[(a,r)] for a in bush_inc) + sum(cp.xc[(a,r)] for a in bush_out) >= -dem)
+            eta_plus_cons[(i, r)] = cp.add_constraint(sum(a.xr_cp[r] for a in bush_inc) - sum(a.xr_cp[r] for a in bush_out) >= dem)
+            eta_minus_cons[(i, r)] = cp.add_constraint(-sum(a.xr_cp[r] for a in bush_inc) + sum(a.xr_cp[r] for a in bush_out) >= -dem)
 
 
         
@@ -150,7 +159,7 @@ for iter in range(0, 30): # OA loop
             for a in network.links:
             
                 if bushes[r].contains(a):
-                    bushes[r].linkflows[a] = cp.xc[(a,r)].solution_value
+                    bushes[r].linkflows[a] = a.xr_cp[r].solution_value
             
                 price = -(-gamma_plus_cons[a].dual_value + gamma_minus_cons[a].dual_value)
 
@@ -191,20 +200,20 @@ for iter in range(0, 30): # OA loop
             
             for a in added_vars:
                 new_xc = None
-                if (a,r) in cp.xc:
-                    new_xc = cp.xc[(a,r)]
+                if r in a.xr_cp:
+                    new_xc = a.xr_cp[r]
                 else:
                     new_xc = cp.continuous_var(lb=0,ub=network.TD)
-                    cp.xc[(a,r)] = new_xc
+                    a.xr_cp[r] = new_xc
                 
-                #gamma_plus_cons[a] = cp.add_constraint(cp.x[a] - sum(cp.xc[(a,r)] for r in network.origins if bushes[r].contains(a)) >= 0)
-                #gamma_minus_cons[a] = cp.add_constraint(-cp.x[a] + sum(cp.xc[(a,r)] for r in network.origins if bushes[r].contains(a)) >= 0)
+                #gamma_plus_cons[a] = cp.add_constraint(a.x_cp - sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
+                #gamma_minus_cons[a] = cp.add_constraint(-a.x_cp + sum(a.xr_cp[r] for r in network.origins if bushes[r].contains(a)) >= 0)
                 
                 gamma_plus_cons[a].lhs.add_term(new_xc, -1)
                 gamma_minus_cons[a].lhs.add_term(new_xc, 1)
             
-                #eta_plus_cons[(i, r)] = cp.add_constraint(sum(cp.xc[(a,r)] for a in bush_inc) - sum(cp.xc[(a,r)] for a in bush_out) >= dem)
-                #eta_minus_cons[(i, r)] = cp.add_constraint(-sum(cp.xc[(a,r)] for a in bush_inc) + sum(cp.xc[(a,r)] for a in bush_out) >= -dem)
+                #eta_plus_cons[(i, r)] = cp.add_constraint(sum(a.xr_cp[r] for a in bush_inc) - sum(a.xr_cp[r] for a in bush_out) >= dem)
+                #eta_minus_cons[(i, r)] = cp.add_constraint(-sum(a.xr_cp[r] for a in bush_inc) + sum(a.xr_cp[r] for a in bush_out) >= -dem)
                 
                 eta_plus_cons[(a.end, r)].lhs.add_term(new_xc, 1)
                 eta_plus_cons[(a.start, r)].lhs.add_term(new_xc, -1)
@@ -214,7 +223,7 @@ for iter in range(0, 30): # OA loop
             
             for a in removed_vars:
             
-                old_xc = cp.xc[(a,r)]
+                old_xc = a.xr_cp[r]
                 
                 # remove from constraints
                 gamma_plus_cons[a].lhs.remove_term(old_xc)
@@ -228,7 +237,7 @@ for iter in range(0, 30): # OA loop
                 # actually delete variable
                 #cp.get_cplex().variables.delete(old_xc._index)
                 cp.add_constraint(old_xc == 0)
-                del cp.xc[(a,r)]
+                del a.xr_cp[r]
         
             t_price += time.time() - t2
         
@@ -244,11 +253,11 @@ for iter in range(0, 30): # OA loop
     print(iter, obj, round(time.time() - t0, 2))
 
     for a in network.links:
-        a.x = cp.x[a].solution_value
+        a.x = a.x_cp.solution_value
 
     if lastObj > 0 and (obj - lastObj) / lastObj < 0.0001:
         for a in network.links2:
-            a.y = cp.y[a].solution_value
+            a.y = a.y_cp.solution_value
         break
 
     lastObj = obj
@@ -256,7 +265,7 @@ for iter in range(0, 30): # OA loop
     OAcut = getOAcut(network)
     
     for a in network.links:
-        cp.add_constraint(cp.mu[a] - cp.x[a]*OAcut['a'][a] >=  OAcut['b'][a])
+        cp.add_constraint(a.mu_cp - a.x_cp*OAcut['a'][a] >=  OAcut['b'][a])
         OAcut_idx += 1
     
     
