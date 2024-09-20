@@ -14,30 +14,34 @@ class CGbush:
         
         sptree = network.getSPTree(self.origin)
         for n in network.nodes:
-            if n != self.origin:
+            if n in sptree and n != self.origin:
                 self.linkflows[sptree[n]] = 0
                 
                 
-        self.topologicalSort()
+        #self.topologicalSort()
     
 
         
     def addLinks(self, newlinks):
     
         removed = []
+        added = set()
         
         for a in newlinks:
             
             # check if adding it creates cycle
             self.linkflows[a] = self.origin.totaldemand
-            removed.extend(self.removeCycle(a.end, a.start))
+            
+            if not a in added:
+                removed.extend(self.removeCycle(a.end, a.start))
+                added.add(a)
                 
             # add link to bush
             #print("\t\tadding", self.origin, a)
             
         
-        if len(removed) > 0:
-            self.topologicalSort()
+        
+        #self.topologicalSort()
 
         return removed
         
@@ -153,6 +157,16 @@ class CGbush:
                 # If indegree becomes 0, push it to the queue
                 if j.in_degree == 0:
                     q.append(j)
+                    
+        if len(self.sorted) != len(self.network.nodes):
+            print("Graph contains cycle!", self.origin.id, self.sorted)
+            for n in self.network.nodes:
+                if n.top_order < 0:
+                    print(n)
+            print("--")
+            for a in self.linkflows.keys():
+                print("\t", a, self.linkflows[a])
+            exit()
         
     def testTopologicalSort(self):
     

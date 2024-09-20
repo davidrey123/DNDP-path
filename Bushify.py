@@ -48,34 +48,39 @@ class Bushify:
         
         # add TD to each path
 
+        added = set()
         
-        if self.origin.id == 2:
+        if self.origin.id == 1:
             print("newpath", s, path, self.origin.totaldemand)
             
         # look for cycles created by each link
         hasCycle = False
         for a in path.links:
             #print("trying to add link ", a)
+            
+            #if a not in added:
             flowremoved = self.removeCycle(a.end, a.start)
             if flowremoved > 0:
                 hasCycle = True
+                #added.add(a)
                 
-                
+            
             if a in self.linkflows:
                 self.linkflows[a] += self.origin.totaldemand - flowremoved
             else:
                 self.linkflows[a] = self.origin.totaldemand - flowremoved
-                
+            
+            print("\t\t", a, flowremoved, self.linkflows[a])
             self.topologicalSort()
         
         self.addPath(s, path, rmp)
         
         return hasCycle
                     
-    def regeneratePaths(self, rmp, rem_dem):
+    def regeneratePaths(self, rmp, rem_dem, newpaths):
 
-        if self.origin.id == 2:
-            print("starting regenerate", self.origin, sum(self.origin.getDemand(s) for s in self.network.zones))
+        #if self.origin.id == 1:
+        #    print("\tstarting regenerate", self.origin, sum(self.origin.getDemand(s) for s in self.network.zones))
         new = 0
         self.removeAllPaths(rmp)
     
@@ -84,14 +89,24 @@ class Bushify:
         outflow = sum(self.linkflows[a] for a in origin_out)
         
         
+        for s in newpaths.keys():
+            new += 1
+            
+            maxflow = 1e15
+            for a in newpaths[s].links:
+                maxflow = min(self.linkflows[a], maxflow)
+
+            for a in newpaths[s].links:
+                self.linkflows[a] -= maxflow
+                self.addPath(s, newpaths[s], rmp)
 
         while outflow > 0.000001:
             removed_flow = 0
             
-            #if self.origin.id == 2:
-            #    print("start regenerate loop", outflow, self.origin, sum(rem_dem[s] for s in rem_dem.keys()), sum(self.origin.getDemand(s) for s in self.network.zones))
-            #    for a in self.linkflows.keys():
-            #        print("\t", a, self.linkflows[a])
+            if self.origin.id == 1:
+                print("\tstart regenerate loop", outflow, self.origin, sum(rem_dem[s] for s in rem_dem.keys()), sum(self.origin.getDemand(s) for s in self.network.zones))
+                for a in self.linkflows.keys():
+                    print("\t\t", a, self.linkflows[a])
 
             #    print("rem dem", sum(rem_dem[s] for s in rem_dem.keys()))
             #    for s in rem_dem.keys():
@@ -100,10 +115,10 @@ class Bushify:
             # max used tree
             self.maxUsedTree()
             
-            #if self.origin.id == 2:
-            #    print("maxtree check", self.sorted)
-            #    for n in self.sorted:
-            #        print("\t", n, n.cost, n.pred)
+            if self.origin.id == 1:
+                print("maxtree check", self.sorted)
+                for n in self.sorted:
+                    print("\t", n, n.cost, n.pred)
             
             # or s in destination with positive remaining inflow, trace path to origin
             
@@ -139,23 +154,32 @@ class Bushify:
                             
                             removed_flow += maxflow
                         
-                            #if self.origin.id == 2:
+                            if self.origin.id == 1:
                                 
-                            #    print("removed", maxflow, s, self.origin.getDemand(s), rem_dem[s], trace.links,  sum(rem_dem[s] for s in rem_dem.keys()), sum(self.linkflows[a] for a in origin_out))
-                            #    for a in self.linkflows.keys():
-                            #        print("\t", a, self.linkflows[a])
+                                print("\tremoved", maxflow, s, self.origin.getDemand(s), rem_dem[s], trace.links,  sum(rem_dem[s] for s in rem_dem.keys()), sum(self.linkflows[a] for a in origin_out))
+                                for a in self.linkflows.keys():
+                                    print("\t\t", a, self.linkflows[a])
                                     
                             rem_dem[s] -= maxflow
-                        #else:
-                        #    if self.origin.id == 2:
-                        #        print("cannot remove", maxflow, s, rem_dem[s], trace.links)
+                        #elif self.origin.id == 1:
+                        #    print("\tcannot remove", maxflow, s, rem_dem[s], trace.links)
+                            
+                            
                         
             outflow = sum(self.linkflows[a] for a in origin_out)
             
             if outflow > 0.001 and removed_flow < 0.00001:
                 print("regenerate failed", self.origin.id)
+
                 exit()
             # remove flow and store path if flow is large enough. Maybe 10% of dest inflow?
+        
+        if sum(rem_dem[s] for s in rem_dem.keys()) > 0.001:
+            print("end regenerate", self.origin.id, sum(rem_dem[s] for s in rem_dem.keys()))
+            for a in self.linkflows.keys():
+                print("\t\t", a, round(self.linkflows[a], 3))
+                
+            exit()
             
         return new
 
@@ -169,7 +193,7 @@ class Bushify:
             
         for u in self.sorted:
             for uv in u.getBushOutgoing(self):
-                temp = max(self.linkflows[uv], u.cost)
+                temp = min(self.linkflows[uv], u.cost)
                 if temp > uv.end.cost:
                     uv.end.cost = temp
                     uv.end.pred = uv
@@ -280,9 +304,15 @@ class Bushify:
         #    new = self.regeneratePaths(rmp, rem_dem)
         
         
-        new = self.regeneratePaths(rmp, rem_dem)
+        new = self.regeneratePaths(rmp, rem_dem, newpaths)
+        
+        #print("\t", self.origin.id)
+        
+        #for s in self.network.zones:
+        #    if self.origin.getDemand(s) > 0:
+        #        print("\t\t", s, len(self.paths[s]), self.origin.getDemand(s))
 
-        return new, minrc
+        return minrc, new
         
     
     def minRCPath(self, rmp):

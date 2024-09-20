@@ -24,7 +24,6 @@ net = 'EasternMassachusetts'
 ins = 'EM_DNDP_10_1'
 
 
-
 # test on BMC_DNDP_10_1 it has a difference between FS_NETS relaxed MILP and path-based CG
 
 
@@ -49,7 +48,7 @@ for a in network.links2:
 
 
     
-y_ub = 1
+y_ub = 0
 
 
             

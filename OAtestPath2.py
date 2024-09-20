@@ -99,6 +99,7 @@ def CG(rmp, network, y_ub):
         t_solve = time.time()-t0
         
         if RMP_status == 'infeasible':
+            print("\tINFEASIBLE")
             CG_status = 'infeasible'
             break
 

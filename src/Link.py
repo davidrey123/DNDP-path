@@ -2,6 +2,7 @@ from src import Params
 
 class Link:
 
+
     # construct this Link with the given parameters
     def __init__(self, id, start, end, t_ff, C, alpha, beta, cost):
         self.id = id
@@ -17,6 +18,7 @@ class Link:
         self.OAcuts = []
         self.OABcuts = []
         
+
         self.visit_order = -1
         
         if start is not None:
@@ -112,3 +114,6 @@ class Link:
         reducedCost = self.end.cost - self.start.cost
         tt = self.getTravelTime(self.x, type)
         return tt - reducedCost
+
+    def __hash__(self):
+        return hash(self.id)
