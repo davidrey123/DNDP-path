@@ -242,6 +242,8 @@ class Network:
         curr = s
 
         output = Path.Path()
+        output.origin = r
+        output.dest = s
         
         while curr != r and curr is not None:
             ij = curr.pred

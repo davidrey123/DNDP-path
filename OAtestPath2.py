@@ -108,10 +108,7 @@ def CG(rmp, network, y_ub):
         t_price = time.time()-t0
         
         
-        nvars = 0
-        for r in network.origins:
-            for s in r.bush.paths[r]:
-                nvars += len(r.bush.paths[s])
+        nvars = sum(r.bush.numPaths() for r in network.origins)
                 
         tot_time = time.time() - t1
         print("\t", OFV, minrc, round(tot_time, 2), round(t_solve, 2), round(t_price, 2), nvars)
@@ -210,14 +207,14 @@ dem_cons = {}
 
 
          
-#for a in network.links:
-#    rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*a.t_ff)
+for a in network.links:
+    rmp.add_constraint(rmp.mu[a] >= rmp.x[a]*a.t_ff)
        
 rmp.minimize(sum(rmp.mu[a] for a in network.links))
 
 
-for a in network.links2:
-    rmp.add_constraint(rmp.x[a] <= rmp.y[a] * network.TD)
+#for a in network.links2:
+#    rmp.add_constraint(rmp.x[a] <= rmp.y[a] * network.TD)
 
 
 t_price = 0
