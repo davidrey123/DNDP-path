@@ -25,7 +25,7 @@ def pricing(network):
 
 
     for r in network.origins:
-        bush_rc, bush_new = r.bush.pricing(rmp)
+        bush_rc, bush_new = r.bush.normal_pricing(rmp)
         minrc = min(minrc, bush_rc)
         new += bush_new
         
@@ -176,8 +176,7 @@ for a in network.links2:
 
 
             
-for a in network.links2:
-    a.y = y_ub
+
              
 rmp = Model()
 
@@ -192,6 +191,8 @@ for a in network.links:
 for r in network.origins:
     r.bush = Bushify.Bushify(r, network, rmp)
     
+for a in network.links2:
+    a.y = y_ub
     
 rmp.mu = {a:rmp.continuous_var(lb=0) for a in network.links}
 

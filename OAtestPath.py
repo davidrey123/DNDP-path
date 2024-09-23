@@ -192,7 +192,7 @@ bush_flows = {}
 
 lastObj = 0
 
-y_ub = 0
+y_ub = 1
 
 for a in network.links2:
     a.y = 0

@@ -37,8 +37,8 @@ class Bushify:
                 
         self.paths[s].append(path)
         
-        #if s in self.dem_cons: # remove corner case of initialization
-        #    self.dem_cons[s].lhs.add_term(rmp.h[path], 1)
+        if s in self.dem_cons: # remove initialization case
+            self.dem_cons[s].lhs.add_term(rmp.h[path], 1)
 
         for a in path.links:
             if a not in self.linkflows:
@@ -229,15 +229,13 @@ class Bushify:
             
         del rmp.h[path]
         
-               
-    def pricing(self, rmp):
-    
+    def rebuildLinkFlows(self, rmp):
         self.linkflows = {}
         
 
         # rebuild link flows
         for s in self.network.zones:
-            
+
             #if self.origin.id==2:
             #    print("check dem", s, self.origin.getDemand(s), sum(rmp.h[p].solution_value for p in self.paths[s]))
             if self.origin.getDemand(s) > 0:   
@@ -251,7 +249,13 @@ class Bushify:
                             self.linkflows[a] += pathflow
                         else:
                             self.linkflows[a] = pathflow
+    
+    
+    
+    def pricing(self, rmp):
+    
         
+        self.rebuildLinkFlows(rmp)
         
         newpaths = []
         
@@ -280,7 +284,7 @@ class Bushify:
         self.checkFlowConservation(rem_dem)
         
         # RC dijkstras
-        self.network.dijkstras(self.origin,'RC')
+        self.network.dijkstras(self.origin,'RC2')
 
         
         # attempt to add paths. If cycle is detected, add links from new paths with max flow and remove cycles for added links. Then regenerate paths from link flows
@@ -368,7 +372,20 @@ class Bushify:
 
         return minrc, new
         
+    def pathManagement(self, rmp):
     
+        self.rebuildLinkFlows(rmp)
+        
+        
+        if self.removeCycles():
+            cycles = True
+            
+        self.checkFlowConservation(rem_dem)
+        
+        if cycles:
+            self.regeneratePaths(rmp, rem_dem, newpaths)
+            
+            
     def minRCPath(self, rmp):
     
         minrc = 1e15
@@ -401,7 +418,7 @@ class Bushify:
         
          
     def normal_pricing(self, rmp):
-        self.network.dijkstras(self.origin,'RC')
+        self.network.dijkstras(self.origin,'RC2')
 
         new = 0
         minrc = 1e15

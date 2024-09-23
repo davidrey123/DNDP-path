@@ -53,7 +53,7 @@ class Link:
             if self.beta > 1e-4: # for handling the case of beta = 0
                 output += x * self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
             
-        elif type == 'RC':
+        elif type == 'RC' or type == 'RC2':
             output = self.dual
             
         else:
