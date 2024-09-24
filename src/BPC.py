@@ -449,7 +449,8 @@ class BPC:
                     rmp.add_constraint(sum(rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s), 'dem_%d_%d' % (r.id,s.id))
     
         for a in self.network.links:
-            rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))           
+            rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
+            rmp.add_constraint(rmp.mu[a] >= rmp.x[a] * a.t_ff)
                
         for a in self.network.links2:            
             rmp.add_constraint(rmp.x[a] <= rmp.y[a] * self.network.TD)
