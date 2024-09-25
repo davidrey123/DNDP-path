@@ -31,7 +31,8 @@ class BPC:
         self.rt_OA = 0.0
         self.rt_TAP = 0.0
         self.rt_RMP = 0.0
-        self.rt_pricing = 0.0        
+        self.rt_pricing = 0.0
+        self.rt_rootNode = 0.0
         
         self.rmp = None
         self.cntUnscaledInf = 0 
@@ -633,9 +634,6 @@ class BPC:
                 
                 #---LB is obtained from LP relaxation of OA MP
                 CG_status,can.LB,yCG = self.CG(can)
-                
-                if self.nBB == 0:
-                    self.rootNodeLB = can.LB
                
                 if CG_status == 'infeasible':
                     if self.params.PRINT_BB_INFO:
@@ -752,6 +750,10 @@ class BPC:
                     for a in self.network.links2:
                         if a.id == can.ybr:
                             print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
+
+            if self.nBB == 0:
+                self.rootNodeLB = can.LB
+                self.rt_rootNode = time.time() - self.t0                
                 
             can.active = False
             candidates = self.getCandidates()

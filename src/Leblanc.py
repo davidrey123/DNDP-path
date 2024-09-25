@@ -16,12 +16,14 @@ class Leblanc:
         self.yopt = None
         self.params = Params.Params()
         self.t0 = 0.0
+        self.rootNodeLB = 0
         
         self.nBB = 0
         self.nSO = 0
         self.nUE = 0
         self.rt = 0.0
         self.rt_TAP = 0.0
+        self.rt_rootNode = 0.0        
         
         n = BB_node.BB_node(self.network, 0, 0, self.LB, self.inf, [], [], False)
         self.BB_nodes.append(n)
@@ -162,9 +164,12 @@ class Leblanc:
                 fixed = can.fixed0 + can.fixed1
                 free = [a.id for a in self.network.links2 if a.id not in fixed]            
                 free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
-                can.ybr = free_sorted[0]
-                
+                can.ybr = free_sorted[0]                
                 self.branch(can)
+         
+            if self.nBB == 0:
+                self.rootNodeLB = can.LB
+                self.rt_rootNode = time.time() - self.t0            
          
             can.active = False
             candidates = self.getCandidates()

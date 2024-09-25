@@ -20,14 +20,16 @@ class FS_NETS:
         self.params = Params.Params()
         self.ydict = YDict.YDict()
         self.OA_tol = self.params.BB_tol
-        self.t0 = 0.0        
+        self.t0 = 0.0 
+        self.rootNodeLB = 0
         
         self.nBB = 0
         self.nSO = 0
         self.nUE = 0
         self.rt = 0.0
         self.rt_TAP = 0.0
-        self.rt_MILP = 0.0        
+        self.rt_MILP = 0.0
+        self.rt_rootNode = 0.0
         
         self.milp = None
         self.OAcuts = []
@@ -473,15 +475,18 @@ class FS_NETS:
                 free = [a.id for a in self.network.links2 if a.id not in fixed]            
                 free_sorted = sorted(free, key = lambda ele: can.score[ele], reverse = True)
                 can.ybr = free_sorted[0]
+                self.branch(can)
                 
                 #if self.params.PRINT_BB_INFO:                    
                 #    for a in self.network.links2:
                 #        print(a,can.score[a.id])
                 #        if a.id == can.ybr:
                 #            print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))
-                
-                self.branch(can)
          
+            if self.nBB == 0:
+                self.rootNodeLB = can.LB
+                self.rt_rootNode = time.time() - self.t0            
+            
             can.active = False
             candidates = self.getCandidates()
                

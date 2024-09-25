@@ -28,7 +28,8 @@ class BC:
         self.nUE = 0
         self.rt = 0.0
         self.rt_TAP = 0.0
-        self.rt_LP = 0.0   
+        self.rt_LP = 0.0
+        self.rt_rootNode = 0.0        
         
         self.LP = None
         self.cntUnscaledInf = 0 
@@ -524,9 +525,6 @@ class BC:
                 
                 #---LB is obtained from LP relaxation of OA MP
                 LP_status,can.LB,yLP = self.solveLP(can)
-                
-                if self.nBB == 0:
-                    self.rootNodeLB = can.LB                
                
                 if LP_status == 'infeasible':
                     if self.params.PRINT_BB_INFO:
@@ -643,6 +641,10 @@ class BC:
                     for a in self.network.links2:
                         if a.id == can.ybr:
                             print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))                
+
+            if self.nBB == 0:
+                self.rootNodeLB = can.LB
+                self.rt_rootNode = time.time() - self.t0
                 
             can.active = False
             candidates = self.getCandidates()
