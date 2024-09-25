@@ -4,7 +4,6 @@ from src import Leblanc
 from src import FS_NETS
 from src import BPC
 from src import BC
-from src import BC2
 
 
 '''
@@ -34,10 +33,9 @@ network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 print(net,ins)
 
 run = 'BPC'
-#run = 'BC'
-#run = 'BC2'
-#run = 'FS_NETS'
-#run = 'Leblanc'
+run = 'BC'
+run = 'FS_NETS'
+run = 'Leblanc'
 print(run)
 
 if run == 'BPC':
@@ -49,11 +47,7 @@ if run == 'BPC':
     
 elif run == 'BC':
     bc = BC.BC(network)
-    bc.BB()    
-    
-elif run == 'BC2':
-    bc2 = BC2.BC2(network)
-    bc2.BB()        
+    bc.BB()  
     
 elif run == 'FS_NETS':
     fs_nets = FS_NETS.FS_NETS(network)
