@@ -373,8 +373,9 @@ class BC:
             
         for a in self.network.links:
             lp.add_constraint(sum(lp.xc[(a,s)] for s in self.network.zones) == lp.x[a])
+            lp.add_constraint(lp.mu[a] >= lp.x[a] * a.t_ff)
                 
-        for i in self.network.nodes:                    
+        for i in self.network.nodes:          
             for s in self.network.zones:            
                 
                 if i.id == s.id:
