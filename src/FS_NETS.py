@@ -262,13 +262,16 @@ class FS_NETS:
         
         nOA = 0
         UB_OA = self.inf
+        LB_OA = can.LB
         yOA = {}
-        Icuts = []        
+        Icuts = []  
         
+        '''
         for n in self.BB_nodes:
             if n.id == can.parent:
                 LB_OA = n.LB #---value to be returned that will serve as the LB of the BB node
                 break
+        '''
         
         #---reset LB of mu
         self.milp.get_var_by_name('mu').lb = LB_OA
@@ -293,7 +296,6 @@ class FS_NETS:
                 LB_OA = max(LB_OA,UB_OA)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
-                return nOA,LB_OA,yOA,MILP_status
                         
             if MILP_OFV >= self.UB:
                 #---search can be stopped and milp obj can be used as the LB of the BB node
@@ -301,7 +303,6 @@ class FS_NETS:
                 LB_OA = max(LB_OA,MILP_OFV)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by bounding in OA_link')
-                return nOA,LB_OA,yOA,MILP_status
             
             #---update LB of mu
             self.milp.get_var_by_name('mu').lb = MILP_OFV
