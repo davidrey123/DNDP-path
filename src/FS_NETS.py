@@ -297,41 +297,42 @@ class FS_NETS:
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by feasibility (due to interdiction cuts)')
                         
-            if MILP_OFV >= self.UB:
+            elif MILP_OFV >= self.UB:
                 #---search can be stopped and milp obj can be used as the LB of the BB node
                 conv_OA = True
                 LB_OA = max(LB_OA,MILP_OFV)
                 if self.params.PRINT_BB_INFO:
                     print('-----------------------------------> convergence by bounding in OA_link')
             
-            #---update LB of mu
-            self.milp.get_var_by_name('mu').lb = MILP_OFV
-            
-            #---update interdiction cuts
-            Icut = self.milp.add_constraint(sum(self.milp.y[a] + yMILP[a] - 2*self.milp.y[a]*yMILP[a] for a in self.network.links2) >= 1)
-            Icuts.append(Icut)            
-            
-            if self.ydict.hasSO(yMILP) == True:
-                tstt = self.ydict.getSO(yMILP)
-                if self.params.PRINT_BB_INFO:
-                    print('hasSO')
-            
             else:
-                t0_TAP = time.time()
-                tstt = self.network.tapas('SO',yMILP)              
-                self.ydict.insertSO(yMILP, tstt)
-                self.rt_TAP += time.time() - t0_TAP
-                self.getOAcut()
-                self.nSO += 1
-            
-            if tstt < UB_OA:
-                if self.params.PRINT_BB_INFO:
-                    print('-----------------------------------> update UB in OA_link')
-                UB_OA = tstt
-                yOA = yMILP
+                #---update LB of mu
+                self.milp.get_var_by_name('mu').lb = MILP_OFV
                 
-                for a in self.network.links2:
-                    can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')
+                #---update interdiction cuts
+                Icut = self.milp.add_constraint(sum(self.milp.y[a] + yMILP[a] - 2*self.milp.y[a]*yMILP[a] for a in self.network.links2) >= 1)
+                Icuts.append(Icut)            
+                
+                if self.ydict.hasSO(yMILP) == True:
+                    tstt = self.ydict.getSO(yMILP)
+                    if self.params.PRINT_BB_INFO:
+                        print('hasSO')
+                
+                else:
+                    t0_TAP = time.time()
+                    tstt = self.network.tapas('SO',yMILP)              
+                    self.ydict.insertSO(yMILP, tstt)
+                    self.rt_TAP += time.time() - t0_TAP
+                    self.getOAcut()
+                    self.nSO += 1
+                
+                if tstt < UB_OA:
+                    if self.params.PRINT_BB_INFO:
+                        print('-----------------------------------> update UB in OA_link')
+                    UB_OA = tstt
+                    yOA = yMILP
+                    
+                    for a in self.network.links2:
+                        can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')
             
             gap = (UB_OA-MILP_OFV)/UB_OA
             if self.params.PRINT_BB_INFO:
