@@ -269,9 +269,13 @@ class BC:
             self.getOAcuts()                            
             self.nSO += 1
             
-            if tstt < tsttBest:
-                tsttBest = tstt
-                yBest = yLS
+            yCost = sum(b.cost*yLS[b] for b in yLS)
+            
+            if yCost <= self.network.B:
+            
+                if tstt < tsttBest:
+                    tsttBest = tstt
+                    yBest = yLS
         
         return yBest
     
@@ -374,7 +378,7 @@ class BC:
             
         for a in self.network.links:
             lp.add_constraint(sum(lp.xc[(a,s)] for s in self.network.zones) == lp.x[a])
-            lp.add_constraint(lp.mu[a] >= lp.x[a] * a.t_ff)
+            #lp.add_constraint(lp.mu[a] >= lp.x[a] * a.t_ff)
                 
         for i in self.network.nodes:          
             for s in self.network.zones:            

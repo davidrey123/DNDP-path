@@ -278,12 +278,16 @@ class BPC:
                 
             tstt = self.network.tapas('SO_OA_cuts',yLS)
             self.ydict.insertSO(yLS, tstt)
-            self.getOAcuts()                            
+            self.getOAcuts()
             self.nSO += 1
             
-            if tstt < tsttBest:
-                tsttBest = tstt
-                yBest = yLS
+            yCost = sum(b.cost*yLS[b] for b in yLS)
+            
+            if yCost <= self.network.B:
+            
+                if tstt < tsttBest:
+                    tsttBest = tstt
+                    yBest = yLS
         
         return yBest
     
@@ -451,7 +455,7 @@ class BPC:
     
         for a in self.network.links:
             rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
-            rmp.add_constraint(rmp.mu[a] >= rmp.x[a] * a.t_ff)
+            #rmp.add_constraint(rmp.mu[a] >= rmp.x[a] * a.t_ff)
                
         for a in self.network.links2:            
             rmp.add_constraint(rmp.x[a] <= rmp.y[a] * self.network.TD)
