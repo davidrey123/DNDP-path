@@ -87,8 +87,12 @@ class Link:
             x = 0.0
             
         return -self.t_ff * self.alpha * self.beta * pow(x, self.beta) / pow(self.C + add_cap, self.beta+1)
+      
+    def getPrimitiveTravelTime(self, x):  
+        return self.getPrimitiveTravelTimeC(x, 0)
         
-    def getPrimitiveTravelTime(self, x):
+        
+    def getPrimitiveTravelTimeC(self, x, add_cap):
         
         if x < 0 and x > -1e-4:
             x = 0.0        
@@ -97,10 +101,13 @@ class Link:
             return Params.INFTY
             
         if self.beta > 1e-4: # for handling the case of beta = 0
-            return x * self.t_ff + ((self.C + self.add_cap) / (self.beta + 1)) * self.t_ff * self.alpha * pow(x / (self.C + self.add_cap), self.beta+1)
+            return x * self.t_ff + ((self.C + add_cap) / (self.beta + 1)) * self.t_ff * self.alpha * pow(x / (self.C + add_cap), self.beta+1)
         
         else:
             return x * self.t_ff       
+            
+    def intdtdy(self, x, add_cap):
+        return - self.t_ff * self.alpha * self.beta * pow(x, self.beta+1) / ( (self.beta+1) * pow(self.C+add_cap, self.beta+1))
 
     def getCapacity(self):
         return self.C
