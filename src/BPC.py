@@ -630,7 +630,6 @@ class BPC:
                     print('--> prune by check',status)
                     
                 prune = True
-                runOA = True                
                 runUE = True
                  
                 for a in self.network.links2:
@@ -658,29 +657,32 @@ class BPC:
                 elif can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
                         print('--> prune by bounding')
-                    prune = True                    
+                    prune = True
+                    
+                else:
+                    #---RMP solution is feasible ==> runOA
+                    runOA = True
                    
-                elif CG_status == 'integral':
+                if CG_status == 'integral':
                     if self.params.PRINT_BB_INFO:
                         print('--> CG integral')
-
-                    #---CG solution is integral and better than UB ==> runOA
-                    runOA = True
-                    
-                    if self.params.runUEifCGIntegral:
-                        runUE = True
                         
                     for a in self.network.links2:
                         can.y[a] = round(yCG[a])
                         
+                    if self.params.runUEifCGIntegral:
+                        runUE = True
+                        
                 #---remove Branch cuts
-                self.removeBranchCuts(Bcuts0,Bcuts1)
-                          
+                self.removeBranchCuts(Bcuts0,Bcuts1)            
+
             if runOA:
                 
                 t0_OA = time.time()
                 
                 if self.params.solveSO:
+                #---solve SO before OA
+                #if status == 'fixed' or status == 'stop':     
 
                     #---look for can.y in ydict (hash), solve SO-TAP if not found
                     if self.ydict.hasSO(can.y) == True:
@@ -691,8 +693,7 @@ class BPC:
                     else:                        
                         sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
-                        self.getOAcuts()                        
-                        self.nOA += 1
+                        self.getOAcuts()
 
                 else:
                     
@@ -700,6 +701,7 @@ class BPC:
                     self.getOAcuts()
 
                 self.rt_OA += time.time() - t0_OA
+                self.nOA += 1
                  
             if runUE:
                 
@@ -733,7 +735,8 @@ class BPC:
                     
                     for n in self.BB_nodes:                    
                         if n.active == True and n.LB >= self.UB:
-                            n.active = False
+                            n.active = False   
+
                             
             #---add interdiction cuts
             if self.params.useInterdictionCuts and runUE:
