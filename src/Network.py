@@ -22,8 +22,7 @@ class Network:
         self.TC = 0 # total cost
         self.params = Params.Params()
         
-        
-        
+        self.ins = ins        
         
         self.allPAS = PASList.PASList()        
         
@@ -242,8 +241,6 @@ class Network:
         curr = s
 
         output = Path.Path()
-        output.origin = r
-        output.dest = s
         
         while curr != r and curr is not None:
             ij = curr.pred
@@ -390,9 +387,7 @@ class Network:
             a.x = flowmap[a]
         
     def setY(self, y):
-        if y is None:
-            return
-            
+    
         newlinks = []
         removedlinks = []
         

@@ -24,7 +24,7 @@ class BC:
         self.rootNodeLB = 0
         
         self.nBB = 0
-        self.nSO = 0
+        self.nOA = 0
         self.nUE = 0
         self.rt = 0.0
         self.rt_TAP = 0.0
@@ -232,7 +232,7 @@ class BC:
             tstt = self.network.tapas('SO_OA_cuts',yKNP)
             self.ydict.insertSO(yKNP, tstt)
             self.getOAcuts()                            
-            self.nSO += 1        
+            self.nOA += 1        
             
             if tstt < tsttBest:
                 tsttBest = tstt
@@ -249,7 +249,7 @@ class BC:
         tstt = self.network.tapas('SO_OA_cuts',yKNP)
         self.ydict.insertSO(yKNP, tstt)
         self.getOAcuts()                            
-        self.nSO += 1
+        self.nOA += 1
         
         yBest = yKNP
         tsttBest = tstt
@@ -267,7 +267,7 @@ class BC:
             tstt = self.network.tapas('SO_OA_cuts',yLS)
             self.ydict.insertSO(yLS, tstt)
             self.getOAcuts()                            
-            self.nSO += 1
+            self.nOA += 1
             
             yCost = sum(b.cost*yLS[b] for b in yLS)
             
@@ -285,7 +285,7 @@ class BC:
         tstt = self.network.tapas('SO_OA_cuts',yBest)
         self.ydict.insertSO(yBest, tstt)
         self.getOAcuts()                            
-        self.nSO += 1
+        self.nOA += 1
         
         y1 = {a:1 for a in self.network.links2}
         
@@ -297,7 +297,7 @@ class BC:
             tstt = self.network.tapas('SO_OA_cuts',yLS)
             self.ydict.insertSO(yLS, tstt)       
             self.getOAcuts()                            
-            self.nSO += 1
+            self.nOA += 1
                     
         return yBest    
         
@@ -313,7 +313,7 @@ class BC:
         
         self.network.tapas('SO_OA_cuts',y1)
         self.getOAcuts()
-        self.nSO += 1
+        self.nOA += 1
         
         for a in self.network.links2:
             can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')         
@@ -572,7 +572,7 @@ class BC:
                         sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
                         self.getOAcuts()                        
-                        self.nSO += 1
+                        self.nOA += 1
 
                 else:
                     
@@ -668,7 +668,7 @@ class BC:
             #    print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))            
             
             if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-                print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*self.gap))
+                print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nOA,self.nUE,self.LB,self.UB,100*self.gap))
             
             if self.gap <= self.params.BB_tol:
                 conv = True
@@ -685,7 +685,7 @@ class BC:
         self.rt = time.time() - self.t0
 
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))
+            print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nOA,self.nUE,self.UB,100*self.gap))
             print(self.rt_TAP)
             print(self.rt_OA)            
             print(self.rt_LP)

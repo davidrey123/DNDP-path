@@ -25,7 +25,7 @@ class BPC:
         self.rootNodeLB = 0
         
         self.nBB = 0
-        self.nSO = 0
+        self.nOA = 0
         self.nUE = 0
         self.rt = 0.0
         self.rt_OA = 0.0
@@ -157,7 +157,7 @@ class BPC:
                 addOAcut = True
                 for cut in a.OAcuts: 
                     
-                    #---check if a.x or a.getTravelTime(a.x,'SO') is sufficiently different from existing OA cuts        
+                    #---check if a.x is sufficiently different from existing OA cuts        
                     if abs(a.x - cut['x']) <= self.params.OAcut_tol*a.C:
                         addOAcut = False
                         break
@@ -186,7 +186,7 @@ class BPC:
                 addOABcut = True
                 for cut in a.OABcuts: 
                     
-                    #---check if a.x is sufficiently different from existing OABB cuts        
+                    #---check if a.x is sufficiently different from existing OABcuts        
                     if abs(a.x - cut['x']) <= self.params.OAcut_tol*a.C:
                         addOABcut = False
                         break
@@ -244,7 +244,7 @@ class BPC:
             tstt = self.network.tapas('SO_OA_cuts',yKNP)
             self.ydict.insertSO(yKNP, tstt)
             self.getOAcuts()                            
-            self.nSO += 1        
+            self.nOA += 1        
             
             if tstt < tsttBest:
                 tsttBest = tstt
@@ -261,7 +261,7 @@ class BPC:
         tstt = self.network.tapas('SO_OA_cuts',yKNP)
         self.ydict.insertSO(yKNP, tstt)
         self.getOAcuts()                            
-        self.nSO += 1
+        self.nOA += 1
         
         yBest = yKNP
         tsttBest = tstt
@@ -279,7 +279,7 @@ class BPC:
             tstt = self.network.tapas('SO_OA_cuts',yLS)
             self.ydict.insertSO(yLS, tstt)
             self.getOAcuts()
-            self.nSO += 1
+            self.nOA += 1
             
             yCost = sum(b.cost*yLS[b] for b in yLS)
             
@@ -297,7 +297,7 @@ class BPC:
         tstt = self.network.tapas('SO_OA_cuts',yBest)
         self.ydict.insertSO(yBest, tstt)
         self.getOAcuts()                            
-        self.nSO += 1
+        self.nOA += 1
         
         y1 = {a:1 for a in self.network.links2}
         
@@ -309,7 +309,7 @@ class BPC:
             tstt = self.network.tapas('SO_OA_cuts',yLS)
             self.ydict.insertSO(yLS, tstt)       
             self.getOAcuts()                            
-            self.nSO += 1
+            self.nOA += 1
                     
         return yBest    
         
@@ -325,7 +325,7 @@ class BPC:
         
         self.network.tapas('SO_OA_cuts',y1)
         self.getOAcuts()
-        self.nSO += 1
+        self.nOA += 1
         
         for a in self.network.links2:
             can.score[a.id] = a.x * a.getTravelTime(a.x,'SO')         
@@ -573,6 +573,13 @@ class BPC:
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+'---')
+            
+        if self.params.PRINT_LOG:
+            inss = self.network.ins.split('_')
+            insshort = inss[0]+'_'+inss[2]+'_'+inss[3]            
+            filename = 'log_'+insshort+'.txt'
+            print('writing log in',filename)
+            logfile = open(filename, "w")
         
         self.network.resetTapas()
  
@@ -592,6 +599,10 @@ class BPC:
             y0 = {a:0 for a in self.network.links2}
             self.network.tapas('UE',y0)
             self.M = self.network.getBeckmannOFV()
+            
+        if self.params.PRINT_LOG:
+            npaths = len(self.getPaths())
+            logfile.write('NA\t%d\t%d\t%d\t%.1f\t%.1f\t%.2f\n' % (npaths,self.nOA,self.nUE,self.LB,self.UB,self.inf))            
         
         conv = False
         while conv == False:                    
@@ -681,7 +692,7 @@ class BPC:
                         sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
                         self.getOAcuts()                        
-                        self.nSO += 1
+                        self.nOA += 1
 
                 else:
                     
@@ -777,7 +788,12 @@ class BPC:
             #    print('--> can (after): %d\t%d\t%.1f\t%.1f\t%s\t%s' % (can.id, can.parent, can.LB, can.UB, can.solved, status))            
             
             if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-                print('==> %d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,self.nSO,self.nUE,self.LB,self.UB,100*self.gap))
+                npaths = len(self.getPaths())
+                print('==> %d\t%d\t%d\t%d\t%.1f\t%.1f\t%.2f%%' % (self.nBB,npaths,self.nOA,self.nUE,self.LB,self.UB,100*self.gap))
+            
+            if self.params.PRINT_LOG:
+                npaths = len(self.getPaths())
+                logfile.write('%d\t%d\t%d\t%d\t%.1f\t%.1f\t%.2f\n' % (self.nBB,npaths,self.nOA,self.nUE,self.LB,self.UB,100*self.gap))
             
             if self.gap <= self.params.BB_tol:
                 conv = True
@@ -794,7 +810,8 @@ class BPC:
         self.rt = time.time() - self.t0
 
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
-            print('%s\t%.1f\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,self.nSO,self.nUE,self.UB,100*self.gap))
+            npaths = len(self.getPaths())
+            print('%s\t%.1f\t%d\t%d\t%d\t%d\t%.1f\t%.2f%%' % (conv,self.rt,self.nBB,npaths,self.nOA,self.nUE,self.UB,100*self.gap))
             print(self.rt_TAP)
             print(self.rt_OA)
             print(self.rt_RMP)
@@ -804,6 +821,9 @@ class BPC:
             
             if self.params.useValueFunctionCuts:
                 print(self.nOABcuts,self.nVFcuts)
+                
+        if self.params.PRINT_LOG:
+            logfile.close()
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+' end---')
