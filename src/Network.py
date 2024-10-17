@@ -390,7 +390,9 @@ class Network:
             a.x = flowmap[a]
         
     def setY(self, y):
-    
+        if y is None:
+            return
+            
         newlinks = []
         removedlinks = []
         

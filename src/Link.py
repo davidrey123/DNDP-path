@@ -14,6 +14,7 @@ class Link:
         self.beta = beta
         self.x = 0
         self.y = 1
+        self.add_cap = 0
         self.cost = cost
         self.OAcuts = []
         self.OABcuts = []
@@ -37,6 +38,9 @@ class Link:
         return str(self)
 
     def getTravelTime(self, x, type):
+        return self.getTravelTimeC(x, 0, type)
+        
+    def getTravelTimeC(self, x, add_cap, type):
         
         if x < 0 and x > -1e-4:
             x = 0.0        
@@ -45,13 +49,13 @@ class Link:
             return Params.INFTY
             
         if type == 'UE':
-            output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
+            output = self.t_ff * (1 + self.alpha * pow(x / (self.C + add_cap), self.beta))
         
         elif type == 'SO' or type == 'SO_OA_cuts':
-            output = self.t_ff * (1 + self.alpha * pow(x / self.C, self.beta))
+            output = self.t_ff * (1 + self.alpha * pow(x / (self.C + add_cap), self.beta))
             
             if self.beta > 1e-4: # for handling the case of beta = 0
-                output += x * self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
+                output += x * self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta-1) / self.C
             
         elif type == 'RC' or type == 'RC2':
             output = self.dual
@@ -62,6 +66,9 @@ class Link:
         return output
 
     def getDerivativeTravelTime(self, x):
+        return self.getDerivativeTravelTimeCx(x, 0)
+    
+    def getDerivativeTravelTimeCx(self, x, add_cap):
         
         if x < 0 and x > -1e-4:
             x = 0.0
@@ -70,10 +77,16 @@ class Link:
             return Params.INFTY
             
         if self.beta > 1e-4: # for handling the case of beta = 0
-            return self.t_ff * self.alpha * self.beta * pow(x / self.C, self.beta-1) / self.C
+            return self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta-1) / self.C
         
         else:
             return 0.0
+    
+    def getDerivativeTravelTimeCy(self, x, add_cap):
+        if x < 0 and x > -1e-4:
+            x = 0.0
+            
+        return -self.t_ff * self.alpha * self.beta * pow(x, self.beta) / pow(self.C + add_cap, self.beta+1)
         
     def getPrimitiveTravelTime(self, x):
         
@@ -84,7 +97,7 @@ class Link:
             return Params.INFTY
             
         if self.beta > 1e-4: # for handling the case of beta = 0
-            return x * self.t_ff + (self.C / (self.beta + 1)) * self.t_ff * self.alpha * pow(x / self.C, self.beta+1)
+            return x * self.t_ff + ((self.C + self.add_cap) / (self.beta + 1)) * self.t_ff * self.alpha * pow(x / (self.C + self.add_cap), self.beta+1)
         
         else:
             return x * self.t_ff       

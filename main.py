@@ -4,6 +4,7 @@ from src import Leblanc
 from src import FS_NETS
 from src import BPC
 from src import BC
+from src import OA_CNDP
 
 
 '''
@@ -32,11 +33,22 @@ inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 print(net,ins)
 
+test = OA_CNDP.OA_CNDP(network)
+test.solve()
+
+
+
+'''
+
 run = 'BPC'
 run = 'BC'
 run = 'FS_NETS'
 run = 'Leblanc'
 print(run)
+
+
+
+
 
 if run == 'BPC':
     bpc = BPC.BPC(network)
@@ -56,3 +68,4 @@ elif run == 'FS_NETS':
 elif run == 'Leblanc':
     leblanc = Leblanc.Leblanc(network)
     leblanc.BB()
+'''
