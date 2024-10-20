@@ -38,7 +38,7 @@ class Link:
         return str(self)
 
     def getTravelTime(self, x, type):
-        return self.getTravelTimeC(x, 0, type)
+        return self.getTravelTimeC(x, self.add_cap, type)
         
     def getTravelTimeC(self, x, add_cap, type):
         
@@ -55,7 +55,7 @@ class Link:
             output = self.t_ff * (1 + self.alpha * pow(x / (self.C + add_cap), self.beta))
             
             if self.beta > 1e-4: # for handling the case of beta = 0
-                output += x * self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta-1) / self.C
+                output += x * self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta-1) / (self.C + self.add_cap)
             
         elif type == 'RC' or type == 'RC2':
             output = self.dual
@@ -89,7 +89,7 @@ class Link:
         return -self.t_ff * self.alpha * self.beta * pow(x, self.beta) / pow(self.C + add_cap, self.beta+1)
       
     def getPrimitiveTravelTime(self, x):  
-        return self.getPrimitiveTravelTimeC(x, 0)
+        return self.getPrimitiveTravelTimeC(x, self.add_cap)
         
         
     def getPrimitiveTravelTimeC(self, x, add_cap):
@@ -98,7 +98,10 @@ class Link:
             x = 0.0        
         
         if self.y == 0:
-            return Params.INFTY
+            if x > 0:
+                return Params.INFTY
+            else:
+                return 0
             
         if self.beta > 1e-4: # for handling the case of beta = 0
             return x * self.t_ff + ((self.C + add_cap) / (self.beta + 1)) * self.t_ff * self.alpha * pow(x / (self.C + add_cap), self.beta+1)

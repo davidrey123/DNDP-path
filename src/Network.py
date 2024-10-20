@@ -15,6 +15,7 @@ class Network:
         self.links = []
         self.zones = []
         self.origins = []
+
         
         self.links2 = []
         self.type = 'UE'
@@ -120,6 +121,7 @@ class Network:
             
         file.close()
 
+    
 
     def readTrips(self,tripsFile,scal_time,scal_flow,inflate_trips):
         
