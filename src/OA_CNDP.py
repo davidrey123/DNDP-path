@@ -10,7 +10,7 @@ class OA_CNDP:
         self.network = network
         
         
-        self.g = {a:0.01*a.id for a in self.network.links}
+        self.g = {a:0.01*a.cost for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -63,7 +63,7 @@ class OA_CNDP:
             print(iteration, lb, ub, gap, elapsed, B_f, B_l - B_f)
             
             #for a in self.varlinks:
-            #    print("\t", a, yhat[a], last_yhat[a])
+            #    print("\t", a, yhat[a], a.C/2)
             
  
             if elapsed > timelimit:
@@ -128,7 +128,7 @@ class OA_CNDP:
         self.rmp = Model()
         self.rmp.mu = {a:self.rmp.continuous_var(lb=0,ub=1e10) for a in self.network.links}
         #self.rmp.eta = {a:self.rmp.continuous_var(lb=-1e10,ub=1e10) for a in self.network.links}
-        self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.C*2) for a in self.varlinks}
+        self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.C/2) for a in self.varlinks}
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
         self.rmp.xc = {(a,r):self.rmp.continuous_var(lb=0, ub=r.totaldemand) for a in self.network.links for r in self.network.origins}
         
