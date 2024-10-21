@@ -422,9 +422,8 @@ class BPC:
                         #---update RMP constraints
                         self.rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).lhs.add_term(self.rmp.h[p], 1)
                         
-                        for a in self.network.links:
-                            if a in p.links:
-                                self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).lhs.add_term(self.rmp.h[p], -1)
+                        for a in p.links:
+                            self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).lhs.add_term(self.rmp.h[p], -1)
                         
                         new += 1
                     

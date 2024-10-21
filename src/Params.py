@@ -70,7 +70,7 @@ class Params:
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
 
-        self.PRINT_BB_INFO = False #---prints detailed BB info
+        self.PRINT_BB_INFO = True #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
         self.PRINT_LOG = True #---outputs instance log file - used in BPC only for now
