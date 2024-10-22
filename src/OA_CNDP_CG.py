@@ -193,7 +193,7 @@ class OA_CNDP_CG:
                 
                     rc = - dem_duals[(r,s)] + s.cost                    
                     
-                    if rc <= - self.CG_tol:
+                    if rc < - self.CG_tol:
                         p = self.network.trace(r,s)
                         self.paths[r][s].append(p) #---is it needed to store paths if directly adding to RMP?
                         
@@ -233,7 +233,7 @@ class OA_CNDP_CG:
                 npaths = len(self.getPaths())
                 print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
                 
-            if minrc >= -self.CG_tol:
+            if minrc > -self.CG_tol:
                 conv = True
                 
             nCG += 1
