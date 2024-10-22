@@ -18,7 +18,11 @@ class Heap:
         self.heapSize = 0
         self.maxSize = 0
         
-        
+    def compare(self, i, j):
+        if abs(i.cost - j.cost) > 1e-10:
+            return i.cost - j.cost
+        else:
+            return i.id - j.id
 
     # Heapifies a sub-tree taking the 
     # given index as the root. 
@@ -27,9 +31,9 @@ class Heap:
         l = self.lChild(i) 
         r = self.rChild(i) 
         smallest = i 
-        if l < self.heapSize and self.arr[l].cost < self.arr[i].cost: 
+        if l < self.heapSize and self.compare(self.arr[l], self.arr[i]) < 0: 
             smallest = l 
-        if r < self.heapSize and self.arr[r].cost < self.arr[smallest].cost: 
+        if r < self.heapSize and self.compare(self.arr[r], self.arr[smallest]) < 0: 
             smallest = r 
         if smallest != i: 
             temp = self.arr[i] 
@@ -123,7 +127,7 @@ class Heap:
             raise Exception("bad order for "+str(node.id))
         
 
-        while i != 0 and self.arr[self.parent(i)].cost > self.arr[i].cost: 
+        while i != 0 and self.compare(self.arr[self.parent(i)], self.arr[i]) > 0: 
 
             parent_idx = self.parent(i)
             
@@ -173,7 +177,7 @@ class Heap:
             # The max heap property is checked 
             # and if violation occurs, 
             # it is restored. 
-            while i != 0 and self.arr[self.parent(i)].cost > self.arr[i].cost: 
+            while i != 0 and self.compare(self.arr[self.parent(i)], self.arr[i]) > 0: 
                 parent_idx = self.parent(i)
                 temp = self.arr[i] 
                 self.arr[i] = self.arr[parent_idx] 

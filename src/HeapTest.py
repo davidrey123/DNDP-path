@@ -89,4 +89,4 @@ def test():
         print(h.removeMin().cost)
 
 
-    raise Exception("crash")
+    raise Exception("terminate")
