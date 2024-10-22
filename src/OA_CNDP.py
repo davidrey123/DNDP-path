@@ -10,7 +10,7 @@ class OA_CNDP:
         self.network = network
         
         
-        self.g = {a:0.01*a.cost for a in self.network.links}
+        self.g = {a:a.cost for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0

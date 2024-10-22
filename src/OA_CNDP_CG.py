@@ -11,7 +11,7 @@ class OA_CNDP_CG:
         self.CG_tol = 1e-4
         self.inf = 1e+9
         
-        self.g = {a:0.01*a.cost for a in self.network.links}
+        self.g = {a:a.cost for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -35,6 +35,7 @@ class OA_CNDP_CG:
         lb = 0
         gap = 1
         cutoff = 0.01
+        tap_time = 0
         
         last_xhat = {a:0 for a in self.network.links}
         last_yhat = {a:0 for a in self.varlinks}
@@ -55,7 +56,10 @@ class OA_CNDP_CG:
             B_l = self.calcBeckmann(x_l, yhat)
             
             # solve TAP -> x, UB
+            t1 = time.time()
             xhat, obj_f = self.TAP(yhat)
+            t1 = time.time()-t1
+            tap_time += t1
             B_f = self.calcBeckmann(xhat, yhat)
             ub = min(ub, obj_f)
             # add VF cut
@@ -71,7 +75,7 @@ class OA_CNDP_CG:
             else:
                 gap = 1
             
-            print(iteration, lb, ub, gap, elapsed, B_f, B_l - B_f)
+            print(iteration, lb, ub, gap, elapsed, tap_time, B_f, B_l - B_f)
             
             #for a in self.varlinks:
             #    print("\t", a, yhat[a], a.C/2)

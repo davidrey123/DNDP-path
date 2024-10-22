@@ -19,14 +19,17 @@ net = 'Barcelona'
 ins = 'B_DNDP_20_2'
 
 net = 'EasternMassachusetts'
-ins = 'EM_DNDP_10_1'
+ins = 'EM_CNDP_1'
 
 net = 'BerlinMitteCenter'
 ins = 'BMC_DNDP_10_1'
 '''
 
 net = 'SiouxFalls'
-ins = 'SF_CNDP_10_1'
+ins = 'SF_CNDP_1'
+
+net = 'EasternMassachusetts'
+ins = 'EM_CNDP_1'
 
 b_prop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3}
