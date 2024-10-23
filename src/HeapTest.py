@@ -21,9 +21,9 @@ def test():
     n3 = Node.Node(3)
     n3.cost = 12
     n4 = Node.Node(4)
-    n4.cost = 8
+    n4.cost = 3
     n5 = Node.Node(5)
-    n5.cost = 2
+    n5.cost = 5
     n6 = Node.Node(6)
     n6.cost = 14
 
@@ -41,7 +41,7 @@ def test():
 
     # Printing the root element which is 
     # actually the maximum element. 
-    print("The current minimum element is " + str(h.getMin().cost) 
+    print("The current minimum element is " + str(h.getMin().id)+" "+str(h.getMin().cost) 
             + "\n") 
 
     # Deleting key at index 2. 
@@ -52,7 +52,7 @@ def test():
     print("After deleting "+str(n.cost)+" the current size of the heap is "
             + str(h.size()) + "\n") 
 
-    print("The current minimum element is " + str(h.getMin().cost) 
+    print("The current minimum element is " + str(h.getMin().id) +" "+str(h.getMin().cost) 
             + "\n") 
 
     n6.cost = 1
