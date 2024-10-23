@@ -33,6 +33,10 @@ def test():
     h.insert(n4)
     h.insert(n5)
     h.insert(n6)
+    
+    
+    n5.cost = 3
+    h.insert(n5)
 
     # Printing the current size 
     # of the heap. 
@@ -55,6 +59,14 @@ def test():
     print("The current minimum element is " + str(h.getMin().id) +" "+str(h.getMin().cost) 
             + "\n") 
 
+    n = h.removeMin() 
+    
+    print("After deleting "+str(n.cost)+" the current size of the heap is "
+            + str(h.size()) + "\n") 
+
+    print("The current minimum element is " + str(h.getMin().id) +" "+str(h.getMin().cost) 
+            + "\n") 
+            
     n6.cost = 1
     h.insert(n6)
 
