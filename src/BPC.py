@@ -753,9 +753,7 @@ class BPC:
                 
                 t0_OA = time.time()
                 
-                if self.params.solveSO:
-                #---solve SO before OA
-                #if status == 'fixed' or status == 'stop':     
+                if self.params.solveSO:    
 
                     #---look for can.y in ydict (hash), solve SO-TAP if not found
                     if self.ydict.hasSO(can.y) == True:

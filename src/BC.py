@@ -192,9 +192,9 @@ class BC:
                     self.nOABcuts += 1
                                
                     
-    def getVFcut(self):
+    def getVFcut1(self, beck):
         
-        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= self.network.getBeckmannOFV() + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
+        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= beck + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
         self.nVFcuts += 1
     
     def knapsack(self, yvec):
@@ -338,9 +338,15 @@ class BC:
         self.nUE += 1
         self.UB = can.UB
         
-        if self.params.useValueFunctionCuts:
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
+            beck = self.network.getBeckmannOFV()            
             self.getOABcuts()
-            self.getVFcut()
+        
+            if self.params.useValueFunctionCuts1:
+                self.getVFcut1(beck)
+                
+            if self.params.useValueFunctionCuts2:
+                self.ydict.insertBeck(yBest, beck)
         
         #---add best y for which we ran UE
         if self.params.useInterdictionCuts:
@@ -371,7 +377,7 @@ class BC:
         lp.mu = {a:lp.continuous_var(lb=0) for a in self.network.links}
         lp.y = {a:lp.continuous_var(lb=0,ub=1) for a in self.network.links2}
         
-        if self.params.useValueFunctionCuts:
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
             lp.muB = {a:lp.continuous_var(lb=0) for a in self.network.links}
   
         lp.add_constraint(sum(lp.y[a] * a.cost for a in self.network.links2) <= self.network.B)                   
@@ -478,11 +484,15 @@ class BC:
         #---initialize OA cuts
         self.initOAcuts(self.params.initOAheuristic,self.BB_nodes[0])
         
-        if self.params.useValueFunctionCuts:
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
             
             y0 = {a:0 for a in self.network.links2}
-            self.network.tapas('UE',y0)
-            self.M = self.network.getBeckmannOFV()            
+            tstt = self.network.tapas('UE',y0)
+            self.ydict.insertUE(y0, tstt)
+            beck = self.network.getBeckmannOFV()
+            self.ydict.insertBeck(y0, beck)
+            self.getOABcuts()
+            self.M = beck          
     
         conv = False
         while conv == False:                    
@@ -509,8 +519,7 @@ class BC:
                 if self.params.PRINT_BB_INFO:
                     print('--> prune by check',status)
 
-                prune = True
-                runOA = True                
+                prune = True              
                 runUE = True
                  
                 for a in self.network.links2:
@@ -538,20 +547,21 @@ class BC:
                 elif can.LB >= self.UB:
                     if self.params.PRINT_BB_INFO:
                         print('--> prune by bounding')
-                    prune = True                    
+                    prune = True
+                    
+                else:
+                    #---LP solution is feasible ==> runOA
+                    runOA = True                    
                    
-                elif LP_status == 'integral':
+                if LP_status == 'integral':
                     if self.params.PRINT_BB_INFO:
                         print('--> LP integral')
-
-                    #---CG solution is integral and better than UB ==> runOA
-                    runOA = True
+                        
+                    for a in self.network.links2:
+                        can.y[a] = round(yLP[a])                        
                     
                     if self.params.runUEifCGIntegral:
                         runUE = True
-                        
-                    for a in self.network.links2:
-                        can.y[a] = round(yLP[a])
                         
                 #---remove Branch cuts
                 self.removeBranchCuts(Bcuts0,Bcuts1)                        
@@ -571,15 +581,15 @@ class BC:
                     else:                        
                         sotstt = self.network.tapas('SO_OA_cuts',can.y)                        
                         self.ydict.insertSO(can.y, sotstt)
-                        self.getOAcuts()                        
-                        self.nOA += 1
+                        self.getOAcuts()
 
                 else:
                     
-                    #---get OA cuts from RMP x solution
+                    #---get OA cuts from LP x solution
                     self.getOAcuts()
 
-                self.rt_OA += time.time() - t0_OA                                        
+                self.rt_OA += time.time() - t0_OA
+                self.nOA += 1                                        
                  
             if runUE:
                 
@@ -596,9 +606,13 @@ class BC:
                     self.ydict.insertUE(can.y, can.UB)
                     self.nUE += 1  
                     
-                    if self.params.useValueFunctionCuts:
+                    if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
+                        beck = self.network.getBeckmannOFV()
+                        self.ydict.insertBeck(can.y, beck)
                         self.getOABcuts()
-                        self.getVFcut()
+                        
+                        if self.params.useValueFunctionCuts1:
+                            self.getVFcut1(beck)
                         
                 self.rt_TAP += time.time() - t0_TAP                        
                 
@@ -692,7 +706,7 @@ class BC:
             print(self.yopt)
             print(self.cntUnscaledInf)
             
-            if self.params.useValueFunctionCuts:
+            if self.params.useValueFunctionCuts1:
                 print(self.nOABcuts,self.nVFcuts)
         
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
