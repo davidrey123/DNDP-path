@@ -204,9 +204,9 @@ class BPC:
                     self.nOABcuts += 1
                                
                     
-    def getVFcut(self):
+    def getVFcut1(self, beck):
         
-        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= self.network.getBeckmannOFV() + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
+        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= beck + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
         self.nVFcuts += 1
     
     def knapsack(self, yvec):
@@ -350,9 +350,15 @@ class BPC:
         self.nUE += 1
         self.UB = can.UB
         
-        if self.params.useValueFunctionCuts:
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
+            beck = self.network.getBeckmannOFV()            
             self.getOABcuts()
-            self.getVFcut()
+        
+            if self.params.useValueFunctionCuts1:
+                self.getVFcut1(beck)
+                
+            if self.params.useValueFunctionCuts2:
+                self.ydict.insertBeck(yBest, beck)
         
         #---add best y for which we ran UE
         if self.params.useInterdictionCuts:
@@ -402,6 +408,10 @@ class BPC:
         
         for a in self.network.links:
             a.dual = can.duals['link'][a]
+            if abs(a.dual) <= self.CG_tol:
+                a.dual = 0.0
+                
+            #print('a,a.dual',a.start.id,a.end.id,a.dual)
         
         for r in self.network.origins:
             self.network.dijkstras(r,'RC')
@@ -409,10 +419,11 @@ class BPC:
             for s in self.network.zones:
                 
                 if r.getDemand(s) > 0:
-                
-                    rc = - can.duals['dem'][(r,s)] + s.cost                    
                     
-                    if rc <= - self.CG_tol:
+                    rc = - can.duals['dem'][(r,s)] + s.cost
+                    
+                    if rc < - self.CG_tol:
+                        
                         p = self.network.trace(r,s)
                         self.paths[r][s].append(p) #---is it needed to store paths if directly adding to RMP?
                         
@@ -422,10 +433,15 @@ class BPC:
                         #---update RMP constraints
                         self.rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).lhs.add_term(self.rmp.h[p], 1)
                         
-                        for a in p.links:
-                            self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).lhs.add_term(self.rmp.h[p], -1)
+                        for a in self.network.links:
+                            if a in p.links:
+                                self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).lhs.add_term(self.rmp.h[p], -1)
                         
                         new += 1
+                        
+                        #plist = list(p.links)
+                        #psorted = sorted(plist, key=lambda tup: tup.id)
+                        #print(r,s,psorted)
                     
                     if rc < minrc:
                         minrc = rc
@@ -442,7 +458,7 @@ class BPC:
         rmp.mu = {a:rmp.continuous_var(lb=0) for a in self.network.links}
         rmp.y = {a:rmp.continuous_var(lb=0,ub=1) for a in self.network.links2}
         
-        if self.params.useValueFunctionCuts:
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
             rmp.muB = {a:rmp.continuous_var(lb=0) for a in self.network.links}
   
         rmp.add_constraint(sum(rmp.y[a] * a.cost for a in self.network.links2) <= self.network.B)                   
@@ -480,9 +496,57 @@ class BPC:
     def removeBranchCuts(self,Bcuts0,Bcuts1):
                        
         self.rmp.remove_constraints(Bcuts0)
-        self.rmp.remove_constraints(Bcuts1)                
+        self.rmp.remove_constraints(Bcuts1)
+        
+    def addVFCut2(self,can):
+        
+        #---construct most restrictive y
+        yhat = {}
+        for a in self.network.links2:
+            if a.id in can.fixed1:
+                yhat[a] = 1
+            else:
+                yhat[a] = 0
+                
+        t0_TAP = time.time()
+        
+        if self.ydict.hasBeck(yhat) == True:
+            beck = self.ydict.getBeck(yhat)
+            if self.params.PRINT_BB_INFO:
+                print('--> has Beckmann',yhat,beck)                    
+        
+        else:
+            #---solve UE TAP to get Beckmann value
+            tstt = self.network.tapas('UE',yhat)
+            self.ydict.insertUE(yhat, tstt)
+            beck = self.network.getBeckmannOFV()
+            self.ydict.insertBeck(yhat, beck)
+            self.nUE += 1  
+            
+            self.getOABcuts()
+                
+        self.rt_TAP += time.time() - t0_TAP
+                       
+        VFcut2 = self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= beck)
+        
+        self.nVFcuts += 1
+                
+        return VFcut2
+    
+    def removeVFCut2(self,VFcut2):
+                       
+        self.rmp.remove_constraint(VFcut2)
         
     def solveRMP(self,can):
+        
+        '''
+        for r in self.network.origins:
+            for s in self.network.zones:
+                for p in self.paths[r][s]:
+                    plist = list(p.links)
+                    psorted = sorted(plist, key=lambda tup: tup.id)
+                    print(r,s,psorted)
+        '''
         
         t0_RMP = time.time()
         
@@ -548,7 +612,7 @@ class BPC:
             if self.params.PRINT_BB_INFO:
                 npaths = len(self.getPaths())
                 print('CG: %d\t%d\t%.1f\t%.2f' % (nCG,npaths,OFV,minrc))
-            
+                            
             if minrc >= -self.CG_tol:
                 conv = True
             
@@ -566,7 +630,6 @@ class BPC:
         
         else:
             return CG_status,self.inf,yRMP
-  
 
     def BB(self):
         
@@ -574,9 +637,10 @@ class BPC:
             print('---'+self.__class__.__name__+'---')
             
         if self.params.PRINT_LOG:
-            inss = self.network.ins.split('_')
-            insshort = inss[0]+'_'+inss[2]+'_'+inss[3]            
-            filename = 'log_'+insshort+'.txt'
+            #inss = self.network.ins.split('_')
+            #insshort = inss[0]+'_'+inss[2]+'_'+inss[3]            
+            #filename = 'log_'+insshort+'.txt'
+            filename = 'log_temp.txt'
             print('writing log in',filename)
             logfile = open(filename, "w")
         
@@ -593,11 +657,15 @@ class BPC:
         #---initialize OA cuts
         self.initOAcuts(self.params.initOAheuristic,self.BB_nodes[0])
         
-        if self.params.useValueFunctionCuts:
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
             
             y0 = {a:0 for a in self.network.links2}
-            self.network.tapas('UE',y0)
-            self.M = self.network.getBeckmannOFV()
+            tstt = self.network.tapas('UE',y0)
+            self.ydict.insertUE(y0, tstt)
+            beck = self.network.getBeckmannOFV()
+            self.ydict.insertBeck(y0, beck)
+            self.getOABcuts()
+            self.M = beck
             
         if self.params.PRINT_LOG:
             npaths = len(self.getPaths())
@@ -645,6 +713,9 @@ class BPC:
                 #---add Branch cuts
                 Bcuts0,Bcuts1 = self.addBranchCuts(can)
                 
+                if self.params.useValueFunctionCuts2:
+                    VFcut2 = self.addVFCut2(can)
+                
                 #---LB is obtained from LP relaxation of OA MP
                 CG_status,can.LB,yCG = self.CG(can)
                
@@ -673,7 +744,10 @@ class BPC:
                         runUE = True
                         
                 #---remove Branch cuts
-                self.removeBranchCuts(Bcuts0,Bcuts1)            
+                self.removeBranchCuts(Bcuts0,Bcuts1)
+                
+                if self.params.useValueFunctionCuts2:
+                    self.removeVFCut2(VFcut2)
 
             if runOA:
                 
@@ -714,12 +788,16 @@ class BPC:
                 else:
                     #---solve UE TAP to get UB                     
                     can.UB = self.network.tapas('UE',can.y)
-                    self.ydict.insertUE(can.y, can.UB)                    
+                    self.ydict.insertUE(can.y, can.UB)
                     self.nUE += 1  
                     
-                    if self.params.useValueFunctionCuts:
+                    if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
+                        beck = self.network.getBeckmannOFV()
+                        self.ydict.insertBeck(can.y, beck)
                         self.getOABcuts()
-                        self.getVFcut()
+                        
+                        if self.params.useValueFunctionCuts1:
+                            self.getVFcut1(beck)
                         
                 self.rt_TAP += time.time() - t0_TAP
                 
@@ -821,7 +899,7 @@ class BPC:
             print(self.yopt)
             print(self.cntUnscaledInf)
             
-            if self.params.useValueFunctionCuts:
+            if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
                 print(self.nOABcuts,self.nVFcuts)
                 
         if self.params.PRINT_LOG:

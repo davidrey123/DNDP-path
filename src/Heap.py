@@ -1,11 +1,6 @@
-# Created on : May 18, 2024, 10:07:58 AM
-# Author     : michael
+from src import Params
 
-# Python code to depict 
-# the implementation of a max heap. 
-
-class Heap: 
-
+class Heap:
 
     # Number of elements in the 
     # Max heap currently. 
@@ -19,7 +14,7 @@ class Heap:
         self.maxSize = 0
         
     def compare(self, i, j):
-        if abs(i.cost - j.cost) > 1e-10:
+        if abs(i.cost - j.cost) > Params.Params().SP_tol:
             return i.cost - j.cost
         else:
             return i.id - j.id

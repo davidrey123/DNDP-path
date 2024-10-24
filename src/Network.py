@@ -15,7 +15,6 @@ class Network:
         self.links = []
         self.zones = []
         self.origins = []
-
         
         self.links2 = []
         self.type = 'UE'
@@ -45,7 +44,7 @@ class Network:
         
         self.B = self.TC * B_prop # budget        
         
-        print('Total scaled demand %.1f' % self.TD)
+        #print('Total scaled demand %.1f' % self.TD)
         #print('Total cost %.1f - Budget %.1f' % (self.TC, self.B))
         
     def setType(self, type):
@@ -121,7 +120,6 @@ class Network:
             
         file.close()
 
-    
 
     def readTrips(self,tripsFile,scal_time,scal_flow,inflate_trips):
         
@@ -222,18 +220,28 @@ class Network:
 
             Q = Heap.Heap()
             Q.insert(origin)
+            
+            #if type == 'RC':
+            #    print('origin',origin)
 
             while Q.size() > 0:
 
                 u = Q.removeMin()
+                
+                #if type == 'RC':
+                #    print('u',u)
 
                 for uv in u.outgoing:
                     v = uv.end
                     tt = uv.getTravelTime(uv.x, type)
 
-                    if u.cost + tt < v.cost:
+                    #if u.cost + tt < v.cost:
+                    if u.cost + tt < v.cost and v.cost - u.cost - tt >= self.params.SP_tol:
                         v.cost = u.cost + tt
                         v.pred = uv
+                        
+                        #if type == 'RC':
+                        #    print('v',v,v.pred,v.cost)
 
                         if v.isThruNode():
                             Q.insert(v)

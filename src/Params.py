@@ -1,4 +1,3 @@
-
 INFTY = 1.0e9
 
 class Params:   
@@ -16,6 +15,9 @@ class Params:
         
         
     def __init__(self):
+        
+        #---SP params
+        self.SP_tol = 1e-6
         
         #---TAP params
         self.msa_max_iter = 500        
@@ -53,7 +55,8 @@ class Params:
         self.min_gap_SO_OA_cuts = 1E-1 
         self.runUEifCGIntegral = True
         self.useInterdictionCuts = True
-        self.useValueFunctionCuts = False
+        self.useValueFunctionCuts1 = False
+        self.useValueFunctionCuts2 = False
         #self.initOAheuristic = 'kBestKNP'
         self.initOAheuristic = 'LocalSearchKNP'
         #self.initOAheuristic = 'LocalSearchY1'
@@ -70,7 +73,7 @@ class Params:
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
 
-        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_BB_INFO = False #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
-        self.PRINT_LOG = True #---outputs instance log file - used in BPC only for now
+        self.PRINT_LOG = False #---outputs instance log file - used in BPC only for now
