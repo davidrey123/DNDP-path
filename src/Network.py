@@ -452,25 +452,20 @@ class Network:
         for r in self.origins:
             r.bush = None
             
-        for ij in self.links:
-            ij.x = 0
+        for a in self.links:
+            a.x = 0
                 
         self.params = Params.Params()
         
         self.allPAS = PASList.PASList()
     
     def tapas(self, type, y):
-        return self.tapas_ubstop(type, y, 1.0E20)
         
-    def tapas_ubstop(self, type, y, ub):
         if not self.params.warmstart:
             self.resetTapas()
             
         self.setY(y)
         self.setType(type)
-        
-        #print(type)
-        #print(y)
         
         iter = 1
         max_iter = self.params.tapas_max_iter
@@ -526,15 +521,10 @@ class Network:
                                     
                 # choose a random subset of active PASs
                 # shift flow within each chosen PAS
-                
-                
                     
                 r.bush.branchShifts()
-
             
-                printed = False
-                    
-                              
+                printed = False                              
                 for a in r.bush.relevantPAS.forward:
                     for p in r.bush.relevantPAS.forward[a]:
                         if self.params.PRINT_TAPAS_INFO and not printed:
@@ -558,7 +548,6 @@ class Network:
                 # in the case that no flow shifting occurred, do not try to equilibrate more
                 if not modified:
                     break
-
                             
             tstt = self.getTSTT(type)
             sptt = self.getSPTT(type)
@@ -571,12 +560,9 @@ class Network:
                 print(str(iter)+"\t"+str(tstt)+"\t"+str(sptt)+"\t"+str(gap)+"\t"+str(aec))
                 
                 #printLinkFlows();
-            #if tstt * (1-gap) > ub:
-            if sptt > ub:
-                break
+
             if gap < min_gap:
                 break
-                
                 
             # there's an issue where PAS are labeled as not cost effective because the difference in cost is small, less than 5% of the reduced cost
             # for low network gaps, this is causing PAS to not flow shift
@@ -597,11 +583,9 @@ class Network:
                     
                 if self.params.PRINT_TAPAS_INFO:
                     print("Adjusting parameters due to small gap "+str(self.params.pas_cost_mu)+" "+str(self.params.line_search_gap))
-            '''    
-            
+            '''             
             
             if (last_iter_gap - gap) < min_gap:
-                
                 
                 self.params.line_search_gap = max(self.params.line_search_gap/10, self.params.min_line_search_gap)
                 
@@ -618,32 +602,19 @@ class Network:
                     self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
                     self.params.resetPAS()
                 
-                
                 if self.params.PRINT_TAP_ITER:
                     print('TAPAS gap check', self.params.bush_gap, self.params.pas_cost_mu, self.params.pas_flow_mu, self.params.pas_cost_epsilon)
                     print("\t", self.params.good_bush_gap, self.params.good_pas_cost_mu, self.params.good_pas_flow_mu, self.params.good_pas_cost_epsilon)
                 
             last_iter_gap = gap
             iter += 1
-            
-    
-        #if iter > 98:
-        #    for r in self.origins:
-            #if r.id == 22:
-        #        r.bush.printFlows()
-                
-        #    raise Exception("convergence failed")
-            
+        
+        #---rounding link flows for numerical stability
+        for a in self.links:
+            a.x = round(a.x,self.params.rd)
+            print(a.start.id,a.end.id,a.x)
             
         return self.getTSTT('UE')
-            
-    #def getXDict(self):
-    #    output = {}
-    #    for ij in self.links:
-    #        print(self.links)
-    #        output[(ij.start, ij.end)] = ij.x
-    #        print(ij.x)
-    #    return output
         
     def findPAS(self, ij, bush):
         
@@ -679,8 +650,7 @@ class Network:
                 if p.isEffective(self.type, bush, self.params.pas_cost_mu, bush.origin.getProductions()*self.params.pas_flow_mu, self.params):
                     return p
           
-        return None
-        
+        return None        
         
     def equilibratePAS(self, iter):
         output = False
@@ -691,8 +661,7 @@ class Network:
                     output = True
                     p.lastIterFlowShift = iter
 
-        return output
-        
+        return output        
         
     def removeAPAS(self, p):
         self.allPAS.remove(p)

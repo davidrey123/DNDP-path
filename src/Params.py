@@ -16,6 +16,9 @@ class Params:
         
     def __init__(self):
         
+        #---Numerical rounding precision (in decimals)
+        self.rd = 6
+        
         #---SP params
         self.SP_tol = 1e-6
         

@@ -174,7 +174,7 @@ class BC:
                 addOABcut = True
                 for cut in a.OABcuts: 
                     
-                    #---check if a.x is sufficiently different from existing OABB cuts        
+                    #---check if a.x is sufficiently different from existing OAB cuts        
                     if abs(a.x - cut['x']) <= self.params.OAcut_tol*a.C:
                         addOABcut = False
                         break
@@ -454,6 +454,10 @@ class BC:
                 for OAcut in a.OAcuts:
                     maxscore = max(self.lp.x[a].solution_value * OAcut['a'] + OAcut['b'],maxscore)                    
                 can.score[a.id] = self.lp.x[a].solution_value * maxscore
+            
+            #---set link flows to generate OA cuts
+            for a in self.network.links:
+                a.x = round(self.lp.x[a].solution_value,self.params.rd) 
                 
             #---check LP solution integrality
             LP_status, can.frac = self.checkIntegral(yopt)
@@ -654,8 +658,8 @@ class BC:
                     self.branch_unfixed(can)
                     
                 if self.params.PRINT_BB_INFO:
-                    #print(fixed,frac)
-                    #print(can.score)
+                    print(fixed,frac)
+                    print(can.score)
                     for a in self.network.links2:
                         if a.id == can.ybr:
                             print('--> branch on link %s (id: %d)' % ((a.start.id, a.end.id), can.ybr))                

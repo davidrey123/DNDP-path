@@ -539,15 +539,6 @@ class BPC:
         
     def solveRMP(self,can):
         
-        '''
-        for r in self.network.origins:
-            for s in self.network.zones:
-                for p in self.paths[r][s]:
-                    plist = list(p.links)
-                    psorted = sorted(plist, key=lambda tup: tup.id)
-                    print(r,s,psorted)
-        '''
-        
         t0_RMP = time.time()
         
         self.rmp.solve(log_output=False)
@@ -576,14 +567,15 @@ class BPC:
 
             dual_link = {} 
             for a in self.network.links:
-                a.x = self.rmp.x[a].solution_value #---used for OA cut generation if solveSO==False
-                dual_link[a] = max(self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value,0)                    
+                #---set link flows to generate OA cuts and get duals
+                a.x = round(self.rmp.x[a].solution_value,self.params.rd) 
+                dual_link[a] = round(max(self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).dual_value,0),self.params.rd)
         
             dual_dem = {}
             for r in self.network.origins:
                 for s in self.network.zones:
                     if r.getDemand(s) > 0:
-                        dual_dem[(r,s)] = max(self.rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0)
+                        dual_dem[(r,s)] = round(max(self.rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).dual_value,0),self.params.rd)
                 
             can.duals = {'link':dual_link,'dem':dual_dem}
             
