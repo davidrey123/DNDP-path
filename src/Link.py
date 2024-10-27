@@ -110,7 +110,7 @@ class Link:
             return x * self.t_ff       
             
     def intdtdy(self, x, add_cap):
-        return - self.t_ff * self.alpha * self.beta * pow(x, self.beta+1) / ( (self.beta+1) * pow(self.C+add_cap, self.beta+1))
+        return - self.t_ff * self.alpha * self.beta * pow(x, self.beta+1) / ( (self.beta+1) * pow(self.C + add_cap, self.beta+1))
 
     def getCapacity(self):
         return self.C

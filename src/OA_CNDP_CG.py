@@ -28,6 +28,8 @@ class OA_CNDP_CG:
         for a in self.network.links:
             if a.cost > 0:
                 self.varlinks.append(a)
+                
+        print("yvars", len(self.varlinks))
         
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
         self.link_cons = dict()
@@ -76,22 +78,27 @@ class OA_CNDP_CG:
             if ub > obj_f:
                 ub = obj_f
                 best_y = yhat
+                
+            
 
             # add VF cut
             if self.isYDifferent(yhat, last_yhat):
+                print("\tSolving TAP")
                 t1 = time.time()
                 xhat, obj_f = self.TAP(yhat, last_yhat)
                 t1 = time.time()-t1
                 tap_time += t1
                 B_f = self.calcBeckmann(xhat, yhat)
                 
-            
+                #self.addVFCut(x_l, xhat, yhat)
+                self.addVFCut2(x_l, xhat, yhat)
             else:
                 print("\tSkipping TAP")
                 #self.addVFCutSameY(x_l, xhat, yhat)
             
+            self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
             
-            self.addVFCut(x_l, xhat, yhat)
+            
             
             #self.checkVFCut(x_l, yhat, x_l, xhat, yhat)
             # add TSTT cut
@@ -108,8 +115,8 @@ class OA_CNDP_CG:
             print(iteration, lb, ub, gap, elapsed, tap_time)
             print("\t", B_l, B_f, B_l-B_f)
             
-            for a in self.varlinks:
-                print("\t", a, yhat[a], last_yhat[a], best_y[a], a.C/2)
+            #for a in self.varlinks:
+            #    print("\t", a, yhat[a], last_yhat[a], best_y[a], a.C/2)
             
  
             if elapsed > timelimit:
@@ -139,88 +146,46 @@ class OA_CNDP_CG:
         return total
             
     def addVFCut(self, x_l, xhat, yhat):
+
+        # doesn't work
+        '''
+        vba = {a:self.rmp.continuous_var(lb=-1e300, ub=1e300) for a in self.network.links}
         
+        sum_b = 0
         for a in self.network.links:
             B1 = 0
             B2 = 0
-            xterm = 0
             
             y_ext = 0
             
             if a in self.varlinks:
                 y_ext = yhat[a]
+            else:
+                y_ext = 0
                 
             B1 = a.getPrimitiveTravelTimeC(x_l[a], y_ext)
             B2 = a.getPrimitiveTravelTimeC(xhat[a], y_ext)
 
+            #sum( (self.rmp.x[a] - x_l[a]) * a.getTravelTimeC(x_l[a], yhat_ext[a], "UE") for a in self.network.links) 
             xterm = (self.rmp.x[a] - x_l[a]) * a.getTravelTimeC(x_l[a], y_ext, "UE")
             
             yterm = 0
             
             if a in self.varlinks:
-                yterm = (self.rmp.y[a] - y_ext) * (a.intdtdy(x_l[a], y_ext) - a.intdtdy(xhat[a], y_ext))
-                
+                yterm = (self.rmp.y[a] - yhat[a]) * (a.intdtdy(x_l[a], yhat[a]) - a.intdtdy(xhat[a], yhat[a]))
+            #sum( (self.rmp.y[a] - yhat[a]) * (a.intdtdy(x_l[a], yhat[a]) - a.intdtdy(xhat[a], yhat[a])) for a in self.varlinks)
             
+            #print(a, B1-B2)
             self.rmp.add_constraint(self.rmp.eta[a] >= B1-B2 + xterm + yterm)
         
+            sum_b += B1-B2+xterm+yterm
+        #self.rmp.add_constraint(sum_b <= 0)
+
+        #self.rmp.add_constraint(sum(vba[a] for a in self.network.links) <= 0)
         '''    
-        B1 = self.calcBeckmann(x_l, yhat)
-        B2 = self.calcBeckmann(xhat, yhat)
         
-        for a in self.network.links:
-            if a in self.varlinks:
-                yhat_ext[a] = yhat[a]
-            else:
-                yhat_ext[a] = 0
-                
-        self.rmp.add_constraint(B1-B2 + sum( (self.rmp.x[a] - x_l[a]) * a.getTravelTimeC(x_l[a], yhat_ext[a], "UE") for a in self.network.links) + sum( (self.rmp.y[a] - yhat[a]) * (a.intdtdy(x_l[a], yhat[a]) - a.intdtdy(xhat[a], yhat[a])) for a in self.varlinks) <= 0)
-        '''
-    def addVFCutSameY(self, xl, xf, yl):
-    
-       
-            
-        
-        yl_ext = dict()
-        for a in self.network.links:
-            if a in self.varlinks:
-                yl_ext[a] = yl[a]
-            else:
-                yl_ext[a] = 0
-                
-        #for a in self.network.links:
-        #    print("\tx", xl[a]-xf[a], a.getTravelTimeC(xf[a], yl_ext[a], "UE"))
-            
-        vfcheck = sum( a.getTravelTimeC(xf[a], yl_ext[a], "UE") * (xl[a] - xf[a]) for a in self.network.links)      
-        mult = 0.001/vfcheck
-        print("VFCUT check", 1e10*vfcheck, mult*vfcheck)
-        
-        
-                
-        lhs =  sum( mult * a.getTravelTimeC(xf[a], yl_ext[a], "UE") * (self.rmp.x[a] - xf[a]) for a in self.network.links)
-        #lhs += sum(a.intdtdy(xf[a], yl[a]) * (self.rmp.y[a] - yl[a]) for a in self.varlinks)
-        
-        ydiff = None
-        
-        for i in range(0, len(self.sameyvars)):
-            if not self.isYDifferent(self.sameyvars[i], yl):
-                ydiff = self.sameycuts[i]
-                break
-            
-        if ydiff == None:
-            ydiff = {a:self.rmp.continuous_var(lb=0, ub=a.C/2) for a in self.varlinks}
-            
-            for a in self.varlinks:
-                self.rmp.add_constraint(ydiff[a] >= yl[a] - self.rmp.y[a])
-                
-            self.sameyvars.append(yl)
-            self.sameycuts.append(ydiff)
-            
-        rhs = sum(a.getDerivativeTravelTimeCy(xf[a], 0) * ydiff[a] for a in self.varlinks)
-        #self.rmp.add_constraint(lhs <= rhs)
-        self.rmp.add_constraint(lhs <= 0)
-        self.rmp.add_constraint(sum( a.getTravelTimeC(xl[a], yl_ext[a], "UE") * (self.rmp.x[a] - xl[a]) for a in self.network.links) <= 0)
-        
-    def checkVFCut(self, x, y, x_l, xhat, yhat):
+        print("adding VF cut Delta B")
+           
         B1 = self.calcBeckmann(x_l, yhat)
         B2 = self.calcBeckmann(xhat, yhat)
         
@@ -231,13 +196,91 @@ class OA_CNDP_CG:
             else:
                 yhat_ext[a] = 0
                 
-        Bdiff = B1-B2
-        xdiff = sum( (x[a] - x_l[a]) * a.getTravelTimeC(x_l[a], yhat_ext[a], "UE") for a in self.network.links)
-        xdiff2 = sum( (x[a] - x_l[a]) * a.getTravelTimeC(xhat[a], yhat_ext[a], "UE") for a in self.network.links)
-        ydiff = sum( (y[a] - yhat[a]) * (a.intdtdy(x_l[a], yhat[a]) - a.intdtdy(xhat[a], yhat[a])) for a in self.varlinks)
+        self.rmp.add_constraint(B1-B2 + sum( (self.rmp.x[a] - x_l[a]) * a.getTravelTimeC(x_l[a], yhat_ext[a], "UE") for a in self.network.links) 
+        + sum( (self.rmp.y[a] - yhat[a]) * (a.intdtdy(x_l[a], yhat[a]) - a.intdtdy(xhat[a], yhat[a])) for a in self.varlinks) <= 0)
+    
+    def addVFCut2(self, xl, xf, yl):
+        lhs = sum(self.rmp.beta[a] for a in self.network.links)
         
-        print("VFcut", Bdiff, xdiff, ydiff, Bdiff+xdiff+ydiff)
-        print("VFcut2", Bdiff, xdiff2, ydiff, Bdiff+xdiff2+ydiff)
+        lhs -= self.calcBeckmann(xf, yl)
+        
+        lhs += sum( (self.rmp.y[a] - yl[a]) * a.intdtdy(xf[a], yl[a]) for a in self.varlinks)
+        
+        self.rmp.add_constraint(lhs <= 0)
+        
+        #self.checkVFCut(xl, yl, xl, xf, yl)
+        
+        
+    def addBeckmannOACut(self, xl, xf, yl, lastx):
+    
+        print("\tadding Beckmann OA cut")
+        
+        for a in self.network.links:
+            y_ext = 0
+            yterm = 0
+            
+            if a in self.varlinks:
+                y_ext = yl[a]
+                yterm = (self.rmp.y[a] - yl[a]) * a.intdtdy(xl[a], yl[a]) 
+                
+            xterm = (self.rmp.x[a] - xl[a]) * a.getTravelTimeC(xl[a], y_ext, "UE")
+                
+            B = a.getPrimitiveTravelTimeC(xl[a], y_ext)
+            
+            self.rmp.add_constraint(self.rmp.beta[a] >= B + yterm + xterm)
+            #print("\tBcut", xl[a], lastx[a], a.getTravelTimeC(xl[a], y_ext, "UE"))
+        
+    def addVFCutSameY(self, xl, xf, yl):
+    
+        print("adding VF cut same y")
+       
+            
+        
+        yl_ext = dict()
+        for a in self.network.links:
+            if a in self.varlinks:
+                yl_ext[a] = yl[a]
+            else:
+                yl_ext[a] = 0
+
+        ydiff = None
+        yl_old = None
+        
+        for i in range(0, len(self.sameyvars)):
+            if not self.isYDifferent(self.sameyvars[i], yl):
+                ydiff = self.sameycuts[i]
+                yl_old = self.sameyvars[i]
+                break
+            
+        if ydiff == None:
+            ydiff = {a:self.rmp.continuous_var(lb=0, ub=a.C) for a in self.varlinks}
+            yl_old = yl
+            
+            for a in self.varlinks:
+                self.rmp.add_constraint(ydiff[a] >= yl[a] - self.rmp.y[a])
+                
+            
+            self.sameyvars.append(yl)
+            self.sameycuts.append(ydiff)
+            
+            rhs = sum(a.getPrimitiveTravelTimeC(xf[a], yl_ext[a]) for a in self.network.links)  
+            rhs += sum(-a.getDerivativeTravelTimeCy(xf[a], 0) * ydiff[a] for a in self.varlinks)
+            
+            #self.rmp.add_constraint(sum(self.rmp.beta[a] for a in self.network.links) <= rhs)
+          
+        #print("\tcheck1", sum(self.rmp.beta[a].solution_value for a in self.network.links), sum(a.getPrimitiveTravelTimeC(xf[a], yl_ext[a]) for a in self.network.links)  )
+
+        for a in self.varlinks:
+            print("\t\tydiff", a, ydiff[a].solution_value, yl[a]-yl_old[a], a.getDerivativeTravelTimeCy(xf[a], 0))
+        #self.checkVFCut(xl, yl, xl, xf, yl)
+
+        
+    def checkVFCut(self, x, y, x_l, xhat, yhat):
+        for a in self.network.links:
+            if a in self.varlinks:
+                print("\tbeta", a, self.rmp.beta[a].solution_value, a.getPrimitiveTravelTimeC(x[a], y[a]), self.rmp.mu[a].solution_value)
+            else:
+                print("\tbeta", a, self.rmp.beta[a].solution_value, a.getPrimitiveTravelTimeC(x[a], 0), self.rmp.mu[a].solution_value)
     
     def addTSTTCut(self, xhat, yhat):
         for a in self.network.links:
@@ -273,13 +316,22 @@ class OA_CNDP_CG:
                     
                 
         self.rmp = Model()
+        
+        
+        self.rmp.parameters.read.scale = -1
+        
+        
         self.rmp.mu = {a:self.rmp.continuous_var(lb=0,ub=1e10) for a in self.network.links}
-        self.rmp.eta = {a:self.rmp.continuous_var(lb=-1e10,ub=1e10) for a in self.network.links}
+        self.rmp.beta = {a:self.rmp.continuous_var(lb=0) for a in self.network.links}
+        
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.C/2) for a in self.varlinks}
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
         self.rmp.h = {p:self.rmp.continuous_var(lb=0) for p in self.getPaths()}
         
-        self.rmp.add_constraint(sum(self.rmp.eta[a] for a in self.network.links) <= 0)
+        for a in self.network.links:
+            self.rmp.add_constraint(self.rmp.mu[a] >= self.rmp.x[a] * a.t_ff)
+        
+    
         for a in self.network.links:
             self.link_cons[a] = self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) >= 0)
             
@@ -297,6 +349,7 @@ class OA_CNDP_CG:
         new = 0
         minrc = self.inf
         
+        #print("len check", len(link_duals))
         for a in self.network.links:
             a.dual = link_duals[a]
         
@@ -337,6 +390,7 @@ class OA_CNDP_CG:
         
         while conv == False:
             RMP_status, OFV, link_duals, dem_duals = self.solveRMP()
+            #print("solved?", RMP_status)
             minrc = self.pricing(link_duals, dem_duals)
             
             if RMP_status == 'infeasible':
@@ -367,11 +421,15 @@ class OA_CNDP_CG:
         self.rmp.solve(log_output=False)
         t_solve = time.time() - t_solve
         
+        '''
         if self.rmp.solve_details.status == "optimal with unscaled infeasibilities":
-            self.rmp.parameters.mip.submip.scale.set(-1)
+            print(self.rmp.solve_details.status, "solve again")
+            self.rmp.parameters.read.scale = -1
             t_solve = time.time()
             self.rmp.solve(log_output=False)
             t_solve = time.time() - t_solve
+        '''
+        
         
         if self.rmp.solve_details.status == 'infeasible' or self.rmp.solve_details.status == 'integer infeasible':
             return 'infeasible',self.inf, dict(), dict()
