@@ -17,7 +17,7 @@ class OA_CNDP_CG:
         self.sameycuts = []
         self.sameyvars = []
         
-        self.g = {a:a.cost for a in self.network.links}
+        self.g = {a:100*a.cost for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -43,7 +43,7 @@ class OA_CNDP_CG:
         timelimit = 3600
         iteration = 0
         starttime = time.time()
-        ub = 1e15
+        ub = 1e100
         lb = 0
         gap = 1
         cutoff = 0.01
@@ -73,29 +73,32 @@ class OA_CNDP_CG:
             B_l = self.calcBeckmann(x_l, yhat)
             
             # solve TAP -> x, UB
-            
-            
-            if ub > obj_f:
-                ub = obj_f
-                best_y = yhat
-                
-            
 
             # add VF cut
             if self.isYDifferent(yhat, last_yhat):
-                print("\tSolving TAP")
+                if self.params.PRINT_BB_INFO:
+                    print("\tSolving TAP")
                 t1 = time.time()
                 xhat, obj_f = self.TAP(yhat, last_yhat)
                 t1 = time.time()-t1
                 tap_time += t1
                 B_f = self.calcBeckmann(xhat, yhat)
                 
+                
+                if ub > obj_f:
+                    ub = obj_f
+                    best_y = yhat
+                
                 #self.addVFCut(x_l, xhat, yhat)
                 self.addVFCut2(x_l, xhat, yhat)
             else:
-                print("\tSkipping TAP")
+                if self.params.PRINT_BB_INFO:
+                    print("\tSkipping TAP")
                 #self.addVFCutSameY(x_l, xhat, yhat)
+                
+                
             
+                
             self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
             
             
@@ -113,7 +116,9 @@ class OA_CNDP_CG:
                 gap = 1
             
             print(iteration, lb, ub, gap, elapsed, tap_time)
-            print("\t", B_l, B_f, B_l-B_f)
+            
+            if self.params.PRINT_BB_INFO:
+                print("\t", B_l, B_f, B_l-B_f)
             
             #for a in self.varlinks:
             #    print("\t", a, yhat[a], last_yhat[a], best_y[a], a.C/2)
@@ -213,7 +218,7 @@ class OA_CNDP_CG:
         
     def addBeckmannOACut(self, xl, xf, yl, lastx):
     
-        print("\tadding Beckmann OA cut")
+        #print("\tadding Beckmann OA cut")
         
         for a in self.network.links:
             y_ext = 0
