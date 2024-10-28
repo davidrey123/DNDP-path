@@ -4,6 +4,7 @@
 class YDict:
     def __init__(self):
         self.tstt_map = {}
+        self.beck_map = {}
         
     def insertSO(self, y, tstt):
         self.insertTSTT(y, tstt, 1)
@@ -71,4 +72,38 @@ class YDict:
                 return False
         return True
     
+    def insertBeck(self, y, beck):    
+    
+        hash = self.hashcode(y)
+        
+        ylist = None
+        
+        if hash in self.beck_map:
+            ylist = self.beck_map[hash]
+        else:
+            ylist = []
+            self.beck_map[hash] = ylist
+            
+        for ytuple in ylist:
+            if self.equals(y, ytuple[0]):
+                ytuple[1] = beck
+                return
+        
+        newtuple = [y, None]
+        newtuple[1] = beck
+        ylist.append(newtuple)
+                
+    def getBeck(self, y):
+        hash = self.hashcode(y)
+        
+        if hash in self.beck_map:
+            ylist = self.beck_map[hash]
+
+            for ytuple in ylist:
+                if self.equals(y, ytuple[0]):
+                    return ytuple[1]
+        return None
+    
+    def hasBeck(self, y):
+        return self.getBeck(y) is not None
      
