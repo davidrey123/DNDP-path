@@ -11,6 +11,8 @@ class OA_CNDP_CG:
         self.CG_tol = 1e-4
         self.inf = 1e+9
         
+        self.solveSO_only = True
+        
         self.last_xhat = None
         self.last_obj_f = 1000000000
         
@@ -45,6 +47,9 @@ class OA_CNDP_CG:
         starttime = time.time()
         ub = 1e100
         lb = 0
+        
+        last_lb = 0
+        
         gap = 1
         cutoff = 0.01
         tap_time = 0
@@ -53,6 +58,10 @@ class OA_CNDP_CG:
         last_yhat = {a:-1 for a in self.varlinks}
         last_x_l = {a:-1 for a in self.network.links}
         best_y = {a:-1 for a in self.network.links}
+        
+        yhat = None
+        xhat = None
+        x_l = None
         
         B_f = 10000000
         obj_f = 100000000
@@ -63,6 +72,7 @@ class OA_CNDP_CG:
             iteration += 1
             
             # solve RMP -> y, LB
+
             CG_status, obj_l, x_l, yhat = self.CG()
             
             if CG_status == "infeasible":
@@ -71,49 +81,58 @@ class OA_CNDP_CG:
             
             lb = obj_l
             B_l = self.calcBeckmann(x_l, yhat)
-            
             # solve TAP -> x, UB
 
-            # add VF cut
-            if self.isYDifferent(yhat, last_yhat):
-                if self.params.PRINT_BB_INFO:
-                    print("\tSolving TAP")
-                t1 = time.time()
-                xhat, obj_f = self.TAP(yhat, last_yhat)
-                t1 = time.time()-t1
-                tap_time += t1
-                B_f = self.calcBeckmann(xhat, yhat)
+            if not self.solveSO_only: 
+                # add VF cut
+                if self.isYDifferent(yhat, last_yhat):
+                    if self.params.PRINT_BB_INFO:
+                        print("\tSolving TAP")
+                    t1 = time.time()
+                    
+   
+                    
+                    xhat, obj_f = self.TAP(yhat, last_yhat)
+                    
+
+                    t1 = time.time()-t1
+                    tap_time += t1
+                    B_f = self.calcBeckmann(xhat, yhat)
+
+
+                    if ub > obj_f:
+                        ub = obj_f
+                        best_y = yhat
+
+                    #self.addVFCut(x_l, xhat, yhat)
+                    self.addVFCut2(x_l, xhat, yhat)
+                else:
+                    if self.params.PRINT_BB_INFO:
+                        print("\tSkipping TAP")
+                    #self.addVFCutSameY(x_l, xhat, yhat)
                 
+
                 
-                if ub > obj_f:
-                    ub = obj_f
-                    best_y = yhat
-                
-                #self.addVFCut(x_l, xhat, yhat)
-                self.addVFCut2(x_l, xhat, yhat)
-            else:
-                if self.params.PRINT_BB_INFO:
-                    print("\tSkipping TAP")
-                #self.addVFCutSameY(x_l, xhat, yhat)
-                
-                
+                self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
             
                 
-            self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
-            
-            
-            
+                
             #self.checkVFCut(x_l, yhat, x_l, xhat, yhat)
             # add TSTT cut
-            self.addTSTTCut(xhat, yhat)
+                self.addTSTTCut(xhat, yhat)
+            else:
+                self.addTSTTCut(x_l, yhat)
             
-
+            
             
             elapsed = time.time() - starttime
-            if lb > 0:
-                gap = (ub - lb)/lb
+            if self.solveSO_only:
+                gap = (lb - last_lb)/lb
             else:
-                gap = 1
+                if lb > 0:
+                    gap = (ub - lb)/lb
+                else:
+                    gap = 1
             
             print(iteration, lb, ub, gap, elapsed, tap_time)
             
@@ -130,6 +149,7 @@ class OA_CNDP_CG:
             last_xhat = xhat
             last_yhat = yhat
             last_x_l = x_l
+            last_lb = lb
     
     def calcOFV(self):
         output = self.network.getTSTT("UE")
