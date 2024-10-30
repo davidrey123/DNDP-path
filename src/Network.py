@@ -306,7 +306,7 @@ class Network:
                 totbushflow += r.bush.getFlow(ij)
             
             if abs(ij.x - totbushflow) > self.params.flow_epsilon:
-                print(ij, ij.x, totbushflow, ij.x-totbushflow, ij.getTravelTime(ij.x, self.type))
+                #print(ij, ij.x, totbushflow, ij.x-totbushflow, ij.getTravelTime(ij.x, self.type))
                 output = False
         return output
             
@@ -612,7 +612,7 @@ class Network:
         #---rounding link flows for numerical stability
         for a in self.links:
             a.x = round(a.x,self.params.rd)
-            print(a.start.id,a.end.id,a.x)
+            #print(a.start.id,a.end.id,a.x)
             
         return self.getTSTT('UE')
         

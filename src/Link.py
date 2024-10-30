@@ -18,7 +18,7 @@ class Link:
         self.cost = cost
         self.OAcuts = []
         self.OABcuts = []
-        
+        self.max_add_cap = self.C/2
 
         self.visit_order = -1
         

@@ -349,7 +349,7 @@ class OA_CNDP_CG:
         self.rmp.mu = {a:self.rmp.continuous_var(lb=0,ub=1e10) for a in self.network.links}
         self.rmp.beta = {a:self.rmp.continuous_var(lb=0) for a in self.network.links}
         
-        self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.C/2) for a in self.varlinks}
+        self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
         self.rmp.h = {p:self.rmp.continuous_var(lb=0) for p in self.getPaths()}
         
