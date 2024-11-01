@@ -3,8 +3,7 @@ from src import BB_node
 from src import Params
 from src import YDict
 from docplex.mp.model import Model
-import polytope as pc
-import numpy as np
+#import numpy as np
 import math
 
 
@@ -170,7 +169,7 @@ class DuGP_CNDP:
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
         self.rmp.xc = {(a,r):self.rmp.continuous_var(lb=0, ub=r.totaldemand) for a in self.network.links for r in self.network.origins}
-        self.rmp.logZ = self.rmp.continuous_var()
+        self.rmp.logZ = self.rmp.continuous_var(lb=1e-100, ub=1e100)
         
         self.rmp.term1_lb = {a:1 for a in self.network.links}
         self.rmp.term2_lb = {a:1 for a in self.network.links}

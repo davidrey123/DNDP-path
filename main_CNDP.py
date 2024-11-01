@@ -6,11 +6,11 @@ from src import BPC
 from src import BC
 from src import OA_CNDP
 from src import OA_CNDP_CG
-from src import HY_CNDP
+#from src import HY_CNDP
 from src import DuGP_CNDP
-import polytope as pc
+#import polytope as pc
 
-import numpy as np
+#import numpy as np
 
 
 '''
