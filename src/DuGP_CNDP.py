@@ -166,10 +166,12 @@ class DuGP_CNDP:
     
     def initRMP(self):
         self.rmp = Model()
-        self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
-        self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
-        self.rmp.xc = {(a,r):self.rmp.continuous_var(lb=0, ub=r.totaldemand) for a in self.network.links for r in self.network.origins}
-        self.rmp.logZ = self.rmp.continuous_var(lb=1e-100, ub=1e100)
+
+        self.rmp.logy = {a:self.rmp.continuous_var(lb=-1e100, ub=math.log(a.max_add_cap)) for a in self.varlinks}
+        self.rmp.logx = {a:self.rmp.continuous_var(lb=-1e100, ub=math.log(self.network.TD)) for a in self.network.links}
+        
+        self.rmp.logZ = self.rmp.continuous_var()
+
         
         self.rmp.term1_lb = {a:1 for a in self.network.links}
         self.rmp.term2_lb = {a:1 for a in self.network.links}
@@ -191,7 +193,7 @@ class DuGP_CNDP:
         self.rmp.logGamma3 = {a:self.rmp.continuous_var(lb=0) for a in self.varlinks}
         
         
-        
+        '''
         for a in self.network.links:
             self.rmp.add_constraint(sum(self.rmp.xc[(a,r)] for r in self.network.origins) == self.rmp.x[a])
             
@@ -208,7 +210,7 @@ class DuGP_CNDP:
                 self.rmp.add_constraint(sum(self.rmp.xc[(a,r)] for a in i.incoming) - sum(self.rmp.xc[(a,r)] for a in i.outgoing) == dem)
                 
         self.rmp.minimize(self.rmp.logZ)  
-        
+        '''
         
         
     def solveRMP(self):
@@ -231,8 +233,8 @@ class DuGP_CNDP:
             return 'infeasible',self.inf, dict(), dict()
         RMP_status = self.rmp.solve_details.status
         
-        x = {a: self.rmp.x[a].solution_value for a in self.network.links}
-        y = {a: self.rmp.y[a].solution_value for a in self.varlinks}
+        x = {a: math.exp(self.rmp.logx[a].solution_value) for a in self.network.links}
+        y = {a: math.exp(self.rmp.logy[a].solution_value) for a in self.varlinks}
         
         OFV = self.calcOFV(x, y)
         
@@ -312,7 +314,9 @@ class DuGP_CNDP:
             if a in self.varlinks:
                 #print(a, self.delta_a3[a], self.rmp.gamma3_lb[a])
                 self.rmp.add_constraint(self.rmp.logGamma3[a] + math.log(self.delta_a3[a]) >= math.log(self.rmp.term3_lb[a]))
+                self.rmp.add_constraint(self.rmp.logGamma3[a] * self.delta_a3[a] == math.log(self.g[a]) + self.logy[a])
             
+            self.rmp.add_constraint(self.rmp.logGamma1[a] * self.delta_a1[a] == self.rmp.logx[a] + math.log(a.t_ff))
         
         # loop and add constraint on violated condensation
         

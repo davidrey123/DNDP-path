@@ -11,6 +11,8 @@ from src import DuGP_CNDP
 #import polytope as pc
 
 #import numpy as np
+from src import OA_CNDP_CS
+
 
 
 '''
@@ -26,6 +28,8 @@ p = pc.Polytope(A, b)
 print( [0.5, 0.5] in p)
 print(pc.extreme(p))
 '''
+
+
 
 
 
@@ -46,7 +50,8 @@ print(net,ins)
 
 #test = OA_CNDP.OA_CNDP(network)
 #test = OA_CNDP_CG.OA_CNDP_CG(network)
-test = DuGP_CNDP.DuGP_CNDP(network)
+#test = DuGP_CNDP.DuGP_CNDP(network)
+test = OA_CNDP_CS.OA_CNDP_CS(network)
 test.solve()
 
 
