@@ -14,6 +14,7 @@ class Heap:
         self.maxSize = 0
         self.node_costs = node_costs
         self.ext_compare = ext_compare
+        self.heap_index = dict()
         
     def compare(self, i, j):
         if self.ext_compare:
@@ -43,8 +44,8 @@ class Heap:
             self.arr[i] = self.arr[smallest] 
             self.arr[smallest] = temp 
             
-            self.arr[i].heap_idx = i
-            temp.heap_idx = smallest
+            self.heap_index[self.arr[i]] = i
+            self.heap_index[temp] = smallest
             
             self.Heapify(smallest) 
         
@@ -95,7 +96,7 @@ class Heap:
             return None
         if self.heapSize == 1: 
             self.heapSize -= 1
-            self.arr[0].heap_idx = -1
+            del self.heap_index[self.arr[0]] 
             return self.arr[0] 
 
         # Storing the maximum element 
@@ -108,14 +109,14 @@ class Heap:
         #        raise Exception("heap failed "+str(root.cost)+" "+str(self.arr[i].cost))
         
         self.arr[0] = self.arr[self.heapSize - 1] 
-        self.arr[0].heap_idx = 0
+        self.heap_index[self.arr[0]] = 0
         self.heapSize -= 1
         
         # To restore the property 
         # of the Max heap. 
         self.Heapify(0) 
         
-        root.heap_idx = -1
+        del self.heap_index[root]
         
 
         return root 
@@ -124,7 +125,7 @@ class Heap:
     # index 'i' to new_val. 
     def decreaseKey(self, node): 
         
-        i = node.heap_idx
+        i = self.heap_index[node]
         
         if self.arr[i].id != node.id:
             raise Exception("bad order for "+str(node.id))
@@ -138,8 +139,8 @@ class Heap:
             self.arr[i] = self.arr[parent_idx] 
             self.arr[parent_idx] = temp 
             
-            self.arr[i].heap_idx = i
-            temp.heap_idx = parent_idx
+            self.heap_index[self.arr[i]] = i
+            self.heap_index[temp] = parent_idx
             
             i = parent_idx
 
@@ -153,14 +154,14 @@ class Heap:
 
     def printHeap(self):
         for i in range(0, self.heapSize):
-            print("\t", self.arr[i].id, self.arr[i].heap_idx)
+            print("\t", self.arr[i].id, self.heap_index[self.arr[i]])
 
 
     # Inserts a new key 'x' in the Max Heap. 
     def insert(self, x): 
 
         # if x is already in heap, then decreaseKey instead of inserting a copy
-        if x.heap_idx >= 0:
+        if x in self.heap_index:
             self.decreaseKey(x)
         else: 
             # To check whether the key 
@@ -175,7 +176,7 @@ class Heap:
             else:
                 self.arr.append(x)
                 self.maxSize += 1
-            x.heap_idx = i
+            self.heap_index[x] = i
 
             # The max heap property is checked 
             # and if violation occurs, 
@@ -185,8 +186,8 @@ class Heap:
                 temp = self.arr[i] 
                 self.arr[i] = self.arr[parent_idx] 
                 self.arr[parent_idx] = temp 
-                self.arr[i].heap_idx = i
-                temp.heap_idx = parent_idx
+                self.heap_index[self.arr[i]] = i
+                self.heap_index[temp] = parent_idx
 
                 i = parent_idx 
 

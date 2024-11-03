@@ -7,6 +7,7 @@ from src import Params
 from src import PASList
 from src import Heap
 import time
+import threading
 
 class Network:
 
@@ -220,42 +221,108 @@ class Network:
     def apsp(self, type, get_paths=True):
     
         
+        if self.params.num_threads == 1:
+            self.memoizeLinkCosts(type)
+
+
+            output_costs = {r: dict() for r in self.origins}
         
+            output_paths = None
+
+            if get_paths:
+                output_paths = {r: dict() for r in self.origins}
+
+
+            for r in self.origins:
+                node_costs, node_pred = self.dijkstras_sep(r, 'memoized')
+
+
+                for s in self.zones:
+                    if r.getDemand(s) > 0:
+                        output_costs[r][s] = node_costs[s]
+
+                        if get_paths:
+                            path_rs = self.trace_sep(node_pred, r, s)
+                            output_paths[r][s] = path_rs
+
+                            path_rs.cost = node_costs[s]
+
+
+
+            return output_costs, output_paths
+        else:
+            return self.apsp_threaded(type, get_paths)
+        
+    def apsp_threaded(self, type, get_paths=True):
+    
+        t1 = time.time()
+    
+    
         self.memoizeLinkCosts(type)
         
-        
-        output_costs = dict()
+        output_costs = {r: dict() for r in self.origins}
         
         output_paths = None
         
         if get_paths:
-            output_paths = dict()
+            output_paths = {r: dict() for r in self.origins}
+            
+            
+        break_points = []
         
-        for r in self.origins:
-            node_costs, node_pred = self.dijkstras_sep(r, 'memoized')
+        for i in range(0, self.params.num_threads+1):
+            break_points.append(round(i*len(self.origins) / self.params.num_threads))
             
-            if get_paths:
-                output_paths[r] = dict()
-                
-            output_costs[r] = dict()
+        threads = []
             
-            for s in self.zones:
-                if r.getDemand(s) > 0:
-                    output_costs[r][s] = node_costs[s]
-                
-                    if get_paths:
-                        path_rs = self.trace_sep(node_pred, r, s)
-                        output_paths[r][s] = path_rs
-
-                        path_rs.cost = node_costs[s]
-                        
+        for i in range(0, self.params.num_threads):
+            thread = threading.Thread(target=self.apsp_threaded_help, args=('memoized', get_paths, break_points[i], break_points[i+1], output_costs, output_paths))
+            threads.append(thread)
+            
+        for i in range(0, len(threads)):
+            threads[i].start()
+            
+        for i in range(0, len(threads)):
+            threads[i].join()
+            
+        
+        
+        t1 = time.time() - t1
+        
+        self.dijkstras_time += t1    
         
         
         return output_costs, output_paths
+        
+    def apsp_threaded_help(self, type, get_paths, start_idx, end_idx, output_costs, output_paths):
+    
+        
+        for idx in range(start_idx, end_idx):
+            r = self.origins[idx]
+            node_costs, node_pred = self.dijkstras_sep(r, 'memoized')
+            
+            output_costs_r = dict()
+            output_paths_r = dict()
+            
+            for s in self.zones:
+                if r.getDemand(s) > 0:
+                    output_costs_r[s] = node_costs[s]
+                
+                    if get_paths:
+                        path_rs = self.trace_sep(node_pred, r, s)
+                        output_paths_r[s] = path_rs
+
+                        #path_rs.cost = node_costs[s]
+            
+            
+            output_costs[r] = output_costs_r
+            
+            if get_paths:
+                output_paths[r] = output_paths_r
     
     def dijkstras_sep(self, origin, type):
         
-        t1 = time.time()
+        
         
         node_costs = {n: Params.INFTY for n in self.nodes}
         node_pred = {n: None for n in self.nodes}
@@ -294,9 +361,7 @@ class Network:
                     if v.isThruNode():
                         Q.insert(v)
                         
-        t1 = time.time() - t1
         
-        self.dijkstras_time += t1
                         
         return node_costs, node_pred
                         

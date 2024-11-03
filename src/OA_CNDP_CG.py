@@ -152,6 +152,7 @@ class OA_CNDP_CG:
             last_lb = lb
             
         print("dijkstras time", self.network.dijkstras_time)
+        print("pricing time", self.rt_pricing)
     
     def calcOFV(self):
         output = self.network.getTSTT("UE")
