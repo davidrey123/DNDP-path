@@ -623,9 +623,18 @@ class Bush:
         elif l in self.flow:
             del self.flow[l]
             #print(f"The self.flow of l is {self.flow[l]}")
-
+            
+    def hasHighReducedCost(self, link, type, percent, minPathCosts):
+        reducedCost = minPathCosts[link.end] - minPathCosts[link.start]
+        tt = link.getTravelTime(link.x, type)        
+        return tt - reducedCost > tt*percent
+ 
+    def getReducedCost(self, link, type, minPathCosts):
+        reducedCost = minPathCosts[link.end] - minPathCosts[link.start]
+        tt = link.getTravelTime(link.x, type)
+        return tt - reducedCost
         
-    def checkPAS(self, minPathTree):
+    def checkPAS(self, minPathTree, minPathCosts):
         
         
         #print(self.origin)
@@ -660,7 +669,7 @@ class Bush:
                 #    print("\tlink", l, self.origin, self.getFlow(l), l.getReducedCost(self.network.type), l.hasHighReducedCost(self.network.type, self.network.params.bush_gap))
 
                 # check for links with high reduced cost and positive flow, not just links not on the shortest path
-                if l not in included and l.end != self.origin and self.getFlow(l) > self.network.params.bush_gap * self.origin.totaldemand and l.hasHighReducedCost(self.network.type, self.network.params.bush_gap):
+                if l not in included and l.end != self.origin and self.getFlow(l) > self.network.params.bush_gap * self.origin.totaldemand and self.hasHighReducedCost(l, self.network.type, self.network.params.bush_gap, minPathCosts):
                     
                     #print(f"included is {included}")
                     #print(f"l.end is {l.end} and l.start is {l.start}")
@@ -673,7 +682,7 @@ class Bush:
                     # we need a PAS!
 
                     if self.network.params.PRINT_PAS_INFO:
-                        print("\tneed PAS for link", l, self.origin, self.getFlow(l), l.getReducedCost(self.network.type), l.hasHighReducedCost(self.network.type, self.network.params.bush_gap))
+                        print("\tneed PAS for link", l, self.origin, self.getFlow(l), self.getReducedCost(l, self.network.type, minPathCosts), self.hasHighReducedCost(l, self.network.type, self.network.params.bush_gap, minPathCosts))
 
  
 
@@ -707,8 +716,9 @@ class Bush:
                                 
                             #newPAS = None
                             
+                            #if self.network.params.branch_shifts:
                             if l.start != self.origin and (newPAS is None or not newPAS.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu, self.network.params)):
-                                
+
                                 # branch shift
                                 if self.network.params.PRINT_BRANCH_INFO:
                                     print("\t\tbranch shift!")

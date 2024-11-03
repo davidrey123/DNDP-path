@@ -132,15 +132,7 @@ class Link:
         self.x = (1 - stepsize) * self.x + stepsize * self.xstar
         self.xstar = 0
         
-    def hasHighReducedCost(self, type, percent):
-        reducedCost = self.end.cost - self.start.cost
-        tt = self.getTravelTime(self.x, type)        
-        return tt - reducedCost > tt*percent
- 
-    def getReducedCost(self, type):
-        reducedCost = self.end.cost - self.start.cost
-        tt = self.getTravelTime(self.x, type)
-        return tt - reducedCost
+    
 
     def __hash__(self):
         return hash(self.id)

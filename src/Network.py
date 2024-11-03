@@ -219,7 +219,7 @@ class Network:
             
     def apsp(self, type, get_paths=True):
     
-        t1 = time.time()
+        
         
         self.memoizeLinkCosts(type)
         
@@ -249,13 +249,13 @@ class Network:
 
                         path_rs.cost = node_costs[s]
                         
-        t1 = time.time() - t1
         
-        self.dijkstras_time += t1
         
         return output_costs, output_paths
     
     def dijkstras_sep(self, origin, type):
+        
+        t1 = time.time()
         
         node_costs = {n: Params.INFTY for n in self.nodes}
         node_pred = {n: None for n in self.nodes}
@@ -293,6 +293,10 @@ class Network:
 
                     if v.isThruNode():
                         Q.insert(v)
+                        
+        t1 = time.time() - t1
+        
+        self.dijkstras_time += t1
                         
         return node_costs, node_pred
                         
@@ -392,13 +396,8 @@ class Network:
             return output
 
     def getSPTree(self, r):
-        self.dijkstras(r, self.type)        
-        output = {}        
-        for n in self.nodes:
-            if n != r and n.cost < Params.INFTY:
-                output[n] = n.pred
+        return self.dijkstras_sep(r, self.type)   
         
-        return output
     
     # returns the total system travel time
     def getTSTT(self, type):
@@ -610,24 +609,34 @@ class Network:
             self.params.good_bush_gap = 0
             self.params.good_pas_cost_epsilon = 0
             
-            minPathTrees = {r: self.getSPTree(r) for r in self.origins}
+            minPathTrees = dict()
+            minPathCosts = dict()
+            
+            for r in self.origins:
+                minPathCosts[r], minPathTrees[r] = self.getSPTree(r)
+            
+            
             # for every origin
             for r in self.origins:
             
-                #minPathTree = minPathTrees[r]
-                minPathTree = self.getSPTree(r)
+                minPathTree = minPathTrees[r]
+                minPathCost = minPathCosts[r]
+                
+                #minPathCost, minPathTree = self.getSPTree(r)
             
                 # remove all cyclic flows and topological sort
                 if self.params.PRINT_TAPAS_INFO:
                     print("removing cycles", r)
-                    
+                
                 r.bush.removeCycles()
                 # find tree of least cost routes
+                
+                
                             
                 if self.params.PRINT_TAPAS_INFO:
                     print("checking for PAS", r)
-                                
-                r.bush.checkPAS(minPathTree)
+                             
+                r.bush.checkPAS(minPathTree, minPathCost)
                 
                 if self.params.PRINT_PAS_INFO:
                     print("num PAS", r, r.bush.relevantPAS.size())
@@ -640,7 +649,7 @@ class Network:
                 # choose a random subset of active PASs
                 # shift flow within each chosen PAS
                 
-            #for r in self.origins:        
+            for r in self.origins:        
                 r.bush.branchShifts()
             
                 printed = False                              
