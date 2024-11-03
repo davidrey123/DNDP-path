@@ -6,8 +6,9 @@ from src import BPC
 from src import BC
 from src import OA_CNDP
 from src import OA_CNDP_CG
-from src import HY_CNDP
+#from src import HY_CNDP
 from src import DuGP_CNDP
+from src import CNDP_MILP
 #import polytope as pc
 
 #import numpy as np
@@ -49,8 +50,8 @@ network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 print(net,ins)
 
 #test = OA_CNDP.OA_CNDP(network)
-#test = OA_CNDP_CG.OA_CNDP_CG(network)
-test = HY_CNDP.HY_CNDP(network)
+test = OA_CNDP_CG.OA_CNDP_CG(network)
+#test = CNDP_MILP.CNDP_MILP(network, 10, 10)
 #test = OA_CNDP_CS.OA_CNDP_CS(network)
 test.solve()
 

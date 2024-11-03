@@ -11,7 +11,7 @@ class OA_CNDP_CG:
         self.CG_tol = 1e-4
         self.inf = 1e+9
         
-        self.solveSO_only = True
+        self.solveSO_only = False
         
         self.last_xhat = None
         self.last_obj_f = 1000000000
