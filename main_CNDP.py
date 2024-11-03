@@ -37,8 +37,8 @@ print(pc.extreme(p))
 net = 'Braess'
 ins = 'Braess_CNDP_1'
 
-#net = 'SiouxFalls'
-#ins = 'SF_CNDP_1'
+net = 'SiouxFalls'
+ins = 'SF_CNDP_1'
 
 #net = 'EasternMassachusetts'
 #ins = 'EM_CNDP_10_1'
@@ -51,7 +51,7 @@ print(net,ins)
 
 #test = OA_CNDP.OA_CNDP(network)
 #test = OA_CNDP_CG.OA_CNDP_CG(network)
-test = CNDP_MILP.CNDP_MILP(network, 10, 10)
+test = CNDP_MILP.CNDP_MILP(network, 10, 10, 10)
 #test = OA_CNDP_CS.OA_CNDP_CS(network)
 test.solve()
 

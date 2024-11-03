@@ -8,7 +8,7 @@ from src import Heap
 
 class CNDP_MILP:
     
-    def __init__(self, network, num_x_pieces, num_y_pieces):
+    def __init__(self, network, num_x_pieces, num_y_pieces, k_paths):
         self.network = network
         self.CG_tol = 1e-4
         self.inf = 1e+9
@@ -47,11 +47,16 @@ class CNDP_MILP:
         
         self.num_x_pieces = num_x_pieces
         self.num_y_pieces = num_y_pieces
+        self.k_paths = k_paths
         
     def solve(self):
         
         
         # initialize paths
+        self.createPaths(self.k_paths)
+        
+        if self.params.PRINT_BB_INFO:
+            print("init RMP")
         
         t1 = time.time()
         
@@ -106,28 +111,41 @@ class CNDP_MILP:
         return total
             
     
-    def createPaths(self):
+    def createPaths(self, k):
   
+        if self.params.PRINT_BB_INFO:
+            print("starting path enumeration")
+        
+        # solve UE to have  path costs corresponding to feasible link flows
+        self.network.tapas("UE", None)
+        
+        t1 = time.time()
+            
         for r in self.network.origins:
             for s in self.network.zones:
                 if r.getDemand(s) > 0:
         
                     self.printAllPaths(r, s)
+                    
+                    self.paths[r][s].sort(key=lambda path: path.cost)
+                    self.paths[r][s] = self.paths[r][s][0:k]
+                   
         
+        t1 = time.time() - t1
         
         if self.params.PRINT_BB_INFO:
-            print("finished path enumeration", len(self.getPaths()))
+            print("finished path enumeration", len(self.getPaths()), t1)
    
-      
+    
+    
+
+    
     def initRMP(self):   
     
         # init paths
         
         
-        self.createPaths()
         
-        if self.params.PRINT_BB_INFO:
-            print("init RMP")
                     
         epsilon = 1e-4
                 
@@ -135,7 +153,7 @@ class CNDP_MILP:
         
         
         self.rmp.parameters.read.scale = -1
-        
+        self.rmp.parameters.timelimit = self.params.BB_timelimit
         
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
@@ -374,6 +392,7 @@ class CNDP_MILP:
             output.links.add(self.network.findLink(nodelist[i], nodelist[i+1]))
             
         #print(output.links)
+        output.cost = output.getTravelTime("UE")
         self.paths[output.r][output.s].append(output)
  
     def printAllPathsUtil(self, u, d, visited, path):

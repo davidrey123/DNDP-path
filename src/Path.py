@@ -6,6 +6,7 @@ class Path:
         self.links = set()
         self.id = self.next_id
         self.next_id += 1
+        self.cost = 0
         
 
         
@@ -32,3 +33,5 @@ class Path:
         for a in self.links:
             output += a.getTravelTime(a.x, type)
         return output
+        
+    
