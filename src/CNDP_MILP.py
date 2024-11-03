@@ -4,6 +4,7 @@ from src import Params
 from src import YDict
 from src import Path
 from docplex.mp.model import Model
+from src import Heap
 
 class CNDP_MILP:
     
@@ -51,6 +52,9 @@ class CNDP_MILP:
         
         
         # initialize paths
+        
+        t1 = time.time()
+        
         self.initRMP()
         
         RMP_status, ofv, x, y = self.solveRMP()
@@ -71,7 +75,10 @@ class CNDP_MILP:
             if a in self.varlinks:
                 y_ext = y[a]
             print(a, x[a], x_f[a], y_ext)
-            
+        
+        t1 = time.time()-t1
+        
+        print(obj, t1)
         
    
     
@@ -96,32 +103,14 @@ class CNDP_MILP:
             
     
     def createPaths(self):
-        n1 = self.network.findNode(1)
-        n2 = self.network.findNode(2)
-        n3 = self.network.findNode(3)
-        n4 = self.network.findNode(4)
+  
+        for r in self.network.origins:
+            for s in self.network.zones:
+                if r.getDemand(s) > 0:
         
-        p1 = Path.Path()
-        p1.r = n1
-        p1.s = n4
-        p2 = Path.Path()
-        p2.r = n1
-        p2.s = n4
-        p3 = Path.Path()
-        p3.r = n1
-        p3.s = n4
+                    self.printAllPaths(r, s)
         
-        p1.links.add(self.network.findLink(n1, n2))
-        p1.links.add(self.network.findLink(n2, n4))
         
-        p2.links.add(self.network.findLink(n1, n3))
-        p2.links.add(self.network.findLink(n3, n4))
-        
-        p3.links.add(self.network.findLink(n1, n2))
-        p3.links.add(self.network.findLink(n2, n3))
-        p3.links.add(self.network.findLink(n3, n4))
-        
-        self.paths[n1][n4] = [p1, p2, p3]
    
       
     def initRMP(self):   
@@ -360,4 +349,54 @@ class CNDP_MILP:
         # z = -a/c x - b/c y - d/c
         
         return -a/c, -b/c, -d/c
+ 
+ 
+    def addPath(self, nodelist):
+        output = Path.Path()
+        output.r = nodelist[0]
+        output.s = nodelist[-1]
+        
+        for i in range(0, len(nodelist)-1):
+            output.links.add(self.network.findLink(nodelist[i], nodelist[i+1]))
+            
+        #print(output.links)
+        self.paths[output.r][output.s].append(output)
+ 
+    def printAllPathsUtil(self, u, d, visited, path):
+ 
+        # Mark the current node as visited and store in path
+        visited[u]= True
+        path.append(u)
+ 
+        # If current vertex is same as destination, then print
+        # current path[]
+        if u == d:
+            #print (path)
+            self.addPath(path)
+        else:
+            # If current vertex is not destination
+            # Recur for all the vertices adjacent to this vertex
+            for ui in u.outgoing:
+                i = ui.end
+                if visited[i]== False:
+                    self.printAllPathsUtil(i, d, visited, path)
+                     
+        # Remove current vertex from path[] and mark it as unvisited
+        path.pop()
+        visited[u]= False
+  
+  
+    # Prints all paths from 's' to 'd'
+    def printAllPaths(self, s, d):
+ 
+        # Mark all the vertices as not visited
+        visited ={i:False for i in self.network.nodes}
+ 
+        # Create an array to store paths
+        path = []
+ 
+        # Call the recursive helper function to print all paths
+        self.printAllPathsUtil(s, d, visited, path)
+  
+
  
