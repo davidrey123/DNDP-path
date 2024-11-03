@@ -57,6 +57,9 @@ class CNDP_MILP:
         
         self.initRMP()
         
+        if self.params.PRINT_BB_INFO:
+            print("solving RMP")
+            
         RMP_status, ofv, x, y = self.solveRMP()
         
         
@@ -68,15 +71,16 @@ class CNDP_MILP:
         
         print(RMP_status, ofv, obj)
         
-         
+        ''' 
         for a in self.network.links:
             y_ext = 0
             
             if a in self.varlinks:
                 y_ext = y[a]
             print(a, x[a], x_f[a], y_ext)
-        
+        '''
         t1 = time.time()-t1
+        
         
         print(obj, t1)
         
@@ -111,13 +115,19 @@ class CNDP_MILP:
                     self.printAllPaths(r, s)
         
         
+        if self.params.PRINT_BB_INFO:
+            print("finished path enumeration", len(self.getPaths()))
    
       
     def initRMP(self):   
     
         # init paths
         
+        
         self.createPaths()
+        
+        if self.params.PRINT_BB_INFO:
+            print("init RMP")
                     
         epsilon = 1e-4
                 
@@ -306,8 +316,12 @@ class CNDP_MILP:
                 
                 print("\t\t", self.xbounds[a][i], self.xbounds[a][i+1], self.rmp.zeta[a][i].solution_value)
         '''
+        '''
         for p in self.getPaths():
             print(p.links, self.rmp.sigma[p].solution_value, self.rmp.c[p].solution_value, self.rmp.mu[(p.r, p.s)].solution_value)
+        
+        
+        '''
         return RMP_status, OFV, x, y
         
    
