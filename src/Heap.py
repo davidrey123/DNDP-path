@@ -8,16 +8,24 @@ class Heap:
     maxSize = 0
 
     # Constructor function. 
-    def __init__(self): 
+    def __init__(self, node_costs=None, ext_compare=False): 
         self.arr = []
         self.heapSize = 0
         self.maxSize = 0
+        self.node_costs = node_costs
+        self.ext_compare = ext_compare
         
     def compare(self, i, j):
-        if abs(i.cost - j.cost) > Params.Params().SP_tol:
-            return i.cost - j.cost
+        if self.ext_compare:
+            if abs(self.node_costs[i] - self.node_costs[j]) > Params.Params().SP_tol:
+                return self.node_costs[i] - self.node_costs[j]
+            else:
+                return i.id - j.id
         else:
-            return i.id - j.id
+            if abs(i.cost - j.cost) > Params.Params().SP_tol:
+                return i.cost - j.cost
+            else:
+                return i.id - j.id
 
     # Heapifies a sub-tree taking the 
     # given index as the root. 

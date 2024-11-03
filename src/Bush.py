@@ -623,9 +623,9 @@ class Bush:
             #print(f"The self.flow of l is {self.flow[l]}")
 
         
-    def checkPAS(self):
+    def checkPAS(self, minPathTree):
         
-        minPathTree = self.network.getSPTree(self.origin)
+        
         #print(self.origin)
         
         # only create 1 PAS per link per origin per iteration

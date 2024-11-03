@@ -16,6 +16,7 @@ class Link:
         self.y = 1
         self.add_cap = 0
         self.cost = cost
+        self.saved_tt = 0
         self.OAcuts = []
         self.OABcuts = []
         self.max_add_cap = self.C/2
@@ -42,6 +43,9 @@ class Link:
         
     def getTravelTimeC(self, x, add_cap, type):
         
+        if type == 'memoized':
+            return self.saved_tt
+            
         if x < 0 and x > -1e-4:
             x = 0.0        
         

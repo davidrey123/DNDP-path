@@ -50,8 +50,8 @@ network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 print(net,ins)
 
 #test = OA_CNDP.OA_CNDP(network)
-#test = OA_CNDP_CG.OA_CNDP_CG(network)
-test = CNDP_MILP.CNDP_MILP(network, 10, 10, 10)
+test = OA_CNDP_CG.OA_CNDP_CG(network)
+#test = CNDP_MILP.CNDP_MILP(network, 10, 10, 5)
 #test = OA_CNDP_CS.OA_CNDP_CS(network)
 test.solve()
 

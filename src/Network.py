@@ -6,6 +6,7 @@ from src import Bush
 from src import Params
 from src import PASList
 from src import Heap
+import time
 
 class Network:
 
@@ -24,6 +25,7 @@ class Network:
         
         self.ins = ins        
         
+        self.dijkstras_time = 0
         self.allPAS = PASList.PASList()        
         
         self.inf = 1e+9
@@ -47,6 +49,8 @@ class Network:
         #print('Total scaled demand %.1f' % self.TD)
         #print('Total cost %.1f - Budget %.1f' % (self.TC, self.B))
         
+
+            
     def setType(self, type):
         self.type = type
         
@@ -209,43 +213,151 @@ class Network:
 
         return None
     
+    def memoizeLinkCosts(self, type):
+        for a in self.links:
+            a.saved_tt = a.getTravelTime(a.x, type)
+            
+    def apsp(self, type, get_paths=True):
+    
+        t1 = time.time()
+        
+        self.memoizeLinkCosts(type)
+        
+        
+        output_costs = dict()
+        
+        output_paths = None
+        
+        if get_paths:
+            output_paths = dict()
+        
+        for r in self.origins:
+            node_costs, node_pred = self.dijkstras_sep(r, 'memoized')
+            
+            if get_paths:
+                output_paths[r] = dict()
+                
+            output_costs[r] = dict()
+            
+            for s in self.zones:
+                if r.getDemand(s) > 0:
+                    output_costs[r][s] = node_costs[s]
+                
+                    if get_paths:
+                        path_rs = self.trace_sep(node_pred, r, s)
+                        output_paths[r][s] = path_rs
 
+                        path_rs.cost = node_costs[s]
+                        
+        t1 = time.time() - t1
+        
+        self.dijkstras_time += t1
+        
+        return output_costs, output_paths
+    
+    def dijkstras_sep(self, origin, type):
+        
+        node_costs = {n: Params.INFTY for n in self.nodes}
+        node_pred = {n: None for n in self.nodes}
+        
+
+        node_costs[origin] = 0.0
+
+        Q = Heap.Heap(node_costs = node_costs, ext_compare = True)
+        Q.insert(origin)
+
+        #if type == 'RC':
+        #    print('origin',origin)
+
+        while Q.size() > 0:
+
+            u = Q.removeMin()
+
+            #if type == 'RC':
+            #    print('u',u)
+
+            for uv in u.outgoing:
+
+                v = uv.end
+                u_cost = node_costs[u]
+                v_cost = node_costs[v]
+                tt = uv.getTravelTime(uv.x, type)
+
+                #if u.cost + tt < v.cost:
+                if u_cost + tt < v_cost and v_cost - u_cost - tt >= self.params.SP_tol:
+                    node_costs[v] = u_cost + tt
+                    node_pred[v] = uv
+
+                    #if type == 'RC':
+                    #    print('v',v,v.pred,v.cost)
+
+                    if v.isThruNode():
+                        Q.insert(v)
+                        
+        return node_costs, node_pred
+                        
+    def trace_sep(self, node_pred, r, s):
+        curr = s
+
+        output = Path.Path()
+        output.r = r
+        output.s = s
+        
+        
+        while curr != r and curr is not None:
+            ij = node_pred[curr]
+
+            if ij is not None:
+                output.add(ij)
+                curr = node_pred[curr].start
+              
+        #print('trace',r,s,output)
+              
+        return output
+            
+                    
     def dijkstras(self, origin, type):
         
-            for n in self.nodes:
-                n.cost = Params.INFTY
-                n.pred = None
+        t1 = time.time()
+        
+        for n in self.nodes:
+            n.cost = Params.INFTY
+            n.pred = None
 
-            origin.cost = 0.0
+        origin.cost = 0.0
 
-            Q = Heap.Heap()
-            Q.insert(origin)
-            
+        Q = Heap.Heap()
+        Q.insert(origin)
+
+        #if type == 'RC':
+        #    print('origin',origin)
+
+        while Q.size() > 0:
+
+            u = Q.removeMin()
+
             #if type == 'RC':
-            #    print('origin',origin)
+            #    print('u',u)
 
-            while Q.size() > 0:
+            for uv in u.outgoing:
 
-                u = Q.removeMin()
-                
-                #if type == 'RC':
-                #    print('u',u)
+                v = uv.end
+                tt = uv.getTravelTime(uv.x, type)
 
-                for uv in u.outgoing:
-                    v = uv.end
-                    tt = uv.getTravelTime(uv.x, type)
+                #if u.cost + tt < v.cost:
+                if u.cost + tt < v.cost and v.cost - u.cost - tt >= self.params.SP_tol:
+                    v.cost = u.cost + tt
+                    v.pred = uv
 
-                    #if u.cost + tt < v.cost:
-                    if u.cost + tt < v.cost and v.cost - u.cost - tt >= self.params.SP_tol:
-                        v.cost = u.cost + tt
-                        v.pred = uv
-                        
-                        #if type == 'RC':
-                        #    print('v',v,v.pred,v.cost)
+                    #if type == 'RC':
+                    #    print('v',v,v.pred,v.cost)
 
-                        if v.isThruNode():
-                            Q.insert(v)
-            
+                    if v.isThruNode():
+                        Q.insert(v)
+        
+        t1 = time.time() - t1
+        
+        self.dijkstras_time += t1
 
     def trace(self, r, s):
         curr = s
@@ -317,12 +429,12 @@ class Network:
     def getSPTT(self, type):
         output = 0.0
 
+        rs_costs, rs_paths = self.apsp(type, get_paths=False)
+        
         for r in self.origins:
-            self.dijkstras(r, type)
-
             for s in self.zones:
                 if r.getDemand(s) > 0:
-                    output += r.getDemand(s) * s.cost
+                    output += rs_costs[r][s] * r.getDemand(s)
 
         return output
 
@@ -501,6 +613,8 @@ class Network:
             # for every origin
             for r in self.origins:
             
+                minPathTree = self.getSPTree(r)
+            
                 # remove all cyclic flows and topological sort
                 if self.params.PRINT_TAPAS_INFO:
                     print("removing cycles", r)
@@ -511,7 +625,7 @@ class Network:
                 if self.params.PRINT_TAPAS_INFO:
                     print("checking for PAS", r)
                                 
-                r.bush.checkPAS()
+                r.bush.checkPAS(minPathTree)
                 
                 if self.params.PRINT_PAS_INFO:
                     print("num PAS", r, r.bush.relevantPAS.size())
