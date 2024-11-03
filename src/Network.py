@@ -6,8 +6,11 @@ from src import Bush
 from src import Params
 from src import PASList
 from src import Heap
+from src import HeapMP
 import time
 import threading
+from multiprocessing import Process, Manager
+
 
 class Network:
 
@@ -222,6 +225,7 @@ class Network:
     
         
         if self.params.num_threads == 1:
+            t1 = time.time()
             self.memoizeLinkCosts(type)
 
 
@@ -247,16 +251,68 @@ class Network:
 
                             path_rs.cost = node_costs[s]
 
-
+            t1 = time.time() - t1
+        
+            self.dijkstras_time += t1    
 
             return output_costs, output_paths
         else:
             return self.apsp_threaded(type, get_paths)
+            
+            
+            
+        '''
+        
+        
+        
+        t2 = time.time()
+        
+        self.apsp_threaded(type, get_paths)
+        
+        t2 = time.time() - t2
+        
+        
+        
+        
+        self.memoizeLinkCosts(type)
+        
+        t1 = time.time()
+        
+        output_costs = {r: dict() for r in self.origins}
+        
+        output_paths = None
+
+        if get_paths:
+            output_paths = {r: dict() for r in self.origins}
+
+
+        for r in self.origins:
+            node_costs, node_pred = self.dijkstras_sep(r, 'memoized')
+
+
+            for s in self.zones:
+                if r.getDemand(s) > 0:
+                    output_costs[r][s] = node_costs[s]
+
+                    if get_paths:
+                        path_rs = self.trace_sep(node_pred, r, s)
+                        output_paths[r][s] = path_rs
+
+                        path_rs.cost = node_costs[s]
+        
+        t1 = time.time() - t1
+        
+        
+        print("time check", t1, t2)
+        
+        return output_costs, output_paths
+        '''
+        
         
     def apsp_threaded(self, type, get_paths=True):
     
+        
         t1 = time.time()
-    
     
         self.memoizeLinkCosts(type)
         
@@ -281,6 +337,7 @@ class Network:
             
         for i in range(0, len(threads)):
             threads[i].start()
+
             
         for i in range(0, len(threads)):
             threads[i].join()
@@ -319,7 +376,146 @@ class Network:
             
             if get_paths:
                 output_paths[r] = output_paths_r
+                
+    def apsp_threaded_mp(self, type, get_paths=True):
     
+        with Manager() as manager:
+            t1 = time.time()
+
+            self.memoizeLinkCosts(type)
+
+            link_costs = manager.dict()
+            node_out = manager.dict()
+
+            for a in self.links:
+                link_costs[(a.start.id, a.end.id)] = a.getTravelTime(a.x, type)
+            
+            for i in self.nodes:
+                node_out[i.id] = []
+                for ij in i.outgoing:
+                    node_out[i.id].append(ij.end.id)
+
+            break_points = []
+
+            for i in range(0, self.params.num_threads+1):
+                break_points.append(round(i*len(self.origins) / self.params.num_threads))
+
+            threads = []
+
+            for i in range(0, self.params.num_threads):
+                output_costs = dict()
+                output_paths = dict()
+                
+                print("check", i)
+                thread = Process(target=self.apsp_threaded_mp_help, args=(len(self.nodes), link_costs, node_out, get_paths, break_points[i], break_points[i+1]))
+                threads.append(thread)
+
+            for i in range(0, len(threads)):
+                threads[i].start()
+
+
+            for i in range(0, len(threads)):
+                threads[i].join()
+
+
+
+            t1 = time.time() - t1
+
+            self.dijkstras_time += t1    
+
+
+            return output_costs, output_paths
+                    
+    def apsp_threaded_mp_help(self, num_nodes, link_costs, node_out, SP_tol, get_paths, start_idx, end_idx):
+    
+
+        for idx in range(start_idx, end_idx):
+            r = self.origins[idx]
+            node_costs, node_pred = self.dijkstras_mp(r, num_nodes, link_costs, node_out, SP_tol)
+            
+            output_costs_r = dict()
+            output_paths_r = dict()
+            
+            for s in self.zones:
+                if r.getDemand(s) > 0:
+                    output_costs_r[s] = node_costs[s]
+                
+                    if get_paths:
+                        path_rs = self.trace_mp(node_pred, r, s)
+                        output_paths_r[s] = path_rs
+
+                        #path_rs.cost = node_costs[s]
+            
+            
+            output_costs[r] = output_costs_r
+            
+            if get_paths:
+                output_paths[r] = output_paths_r
+        
+                
+    def dijkstras_mp(self, origin, num_nodes, link_costs, node_out, SP_tol):
+        
+        
+        
+        node_costs = {n: Params.INFTY for n in range(0, num_nodes)}
+        node_pred = {n: None for n in self.nodes}
+        
+
+        node_costs[origin] = 0.0
+
+        Q = HeapMP.HeapMP(node_costs = node_costs)
+        Q.insert(origin)
+
+        #if type == 'RC':
+        #    print('origin',origin)
+
+        while Q.size() > 0:
+
+            u = Q.removeMin()
+
+            #if type == 'RC':
+            #    print('u',u)
+
+            for v in node_out[u]:
+
+                u_cost = node_costs[u]
+                v_cost = node_costs[v]
+                tt = link_costs[(u,v)]
+
+                #if u.cost + tt < v.cost:
+                if u_cost + tt < v_cost and v_cost - u_cost - tt >= SP_tol:
+                    node_costs[v] = u_cost + tt
+                    node_pred[v] = u
+
+                    #if type == 'RC':
+                    #    print('v',v,v.pred,v.cost)
+
+                    if v.isThruNode():
+                        Q.insert(v)
+                        
+        
+                        
+        return node_costs, node_pred
+                        
+    def trace_mp(self, node_pred, r, s):
+        curr = s
+
+        output = []
+        output.r = r
+        output.s = s
+        
+        
+        while curr != r and curr is not None:
+            i = node_pred[curr]
+
+            if i is not None:
+                output.append(i)
+                curr = node_pred[curr]
+              
+        #print('trace',r,s,output)
+              
+        return output
+        
     def dijkstras_sep(self, origin, type):
         
         
@@ -387,7 +583,7 @@ class Network:
                     
     def dijkstras(self, origin, type):
         
-        t1 = time.time()
+        #t1 = time.time()
         
         for n in self.nodes:
             n.cost = Params.INFTY
@@ -424,9 +620,9 @@ class Network:
                     if v.isThruNode():
                         Q.insert(v)
         
-        t1 = time.time() - t1
+        #t1 = time.time() - t1
         
-        self.dijkstras_time += t1
+        #self.dijkstras_time += t1
 
     def trace(self, r, s):
         curr = s
@@ -576,22 +772,23 @@ class Network:
         
     def setY(self, y):
     
-        newlinks = []
-        removedlinks = []
-        
-        for ij in self.links2:
-            if y[ij] != ij.y:
-                if y[ij] == 0:
-                    removedlinks.append(ij)
-                else:
-                    newlinks.append(ij)
-            ij.y = y[ij]
-            
-        # delete PAS using removedlinks        
-        for r in self.origins:
-            if r.bush != None:
-                r.bush.addLinks(newlinks)
-                r.bush.removeLinks(removedlinks)
+        if y is not None:
+            newlinks = []
+            removedlinks = []
+
+            for ij in self.links2:
+                if y[ij] != ij.y:
+                    if y[ij] == 0:
+                        removedlinks.append(ij)
+                    else:
+                        newlinks.append(ij)
+                ij.y = y[ij]
+
+            # delete PAS using removedlinks        
+            for r in self.origins:
+                if r.bush != None:
+                    r.bush.addLinks(newlinks)
+                    r.bush.removeLinks(removedlinks)
                 
 
 
@@ -674,45 +871,7 @@ class Network:
             self.params.good_bush_gap = 0
             self.params.good_pas_cost_epsilon = 0
             
-            minPathTrees = dict()
-            minPathCosts = dict()
-            
-            for r in self.origins:
-                minPathCosts[r], minPathTrees[r] = self.getSPTree(r)
-            
-            
-            # for every origin
-            for r in self.origins:
-            
-                minPathTree = minPathTrees[r]
-                minPathCost = minPathCosts[r]
-                
-                #minPathCost, minPathTree = self.getSPTree(r)
-            
-                # remove all cyclic flows and topological sort
-                if self.params.PRINT_TAPAS_INFO:
-                    print("removing cycles", r)
-                
-                r.bush.removeCycles()
-                # find tree of least cost routes
-                
-                
-                            
-                if self.params.PRINT_TAPAS_INFO:
-                    print("checking for PAS", r)
-                             
-                r.bush.checkPAS(minPathTree, minPathCost)
-                
-                if self.params.PRINT_PAS_INFO:
-                    print("num PAS", r, r.bush.relevantPAS.size())
-                # for every link used by the origin which is not part of the tree
-                    # if there is an existing effective PAS
-                        # make sure the origin is listed as relevant
-                    # else
-                        # construct a new PAS    
-                                    
-                # choose a random subset of active PASs
-                # shift flow within each chosen PAS
+            self.checkBushes()
                 
             for r in self.origins:        
                 r.bush.branchShifts()
@@ -872,3 +1031,45 @@ class Network:
         
         for p in removed:
             self.removeAPAS(p)
+
+
+    def checkBushes(self):
+        minPathTrees = dict()
+        minPathCosts = dict()
+
+        for r in self.origins:
+            minPathCosts[r], minPathTrees[r] = self.getSPTree(r)
+
+
+        # for every origin
+        for r in self.origins:
+
+            minPathTree = minPathTrees[r]
+            minPathCost = minPathCosts[r]
+
+            #minPathCost, minPathTree = self.getSPTree(r)
+
+            # remove all cyclic flows and topological sort
+            if self.params.PRINT_TAPAS_INFO:
+                print("removing cycles", r)
+
+            r.bush.removeCycles()
+            # find tree of least cost routes
+
+
+
+            if self.params.PRINT_TAPAS_INFO:
+                print("checking for PAS", r)
+
+            r.bush.checkPAS(minPathTree, minPathCost)
+
+            if self.params.PRINT_PAS_INFO:
+                print("num PAS", r, r.bush.relevantPAS.size())
+            # for every link used by the origin which is not part of the tree
+                # if there is an existing effective PAS
+                    # make sure the origin is listed as relevant
+                # else
+                    # construct a new PAS    
+
+            # choose a random subset of active PASs
+            # shift flow within each chosen PAS

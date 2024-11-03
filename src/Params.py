@@ -28,7 +28,7 @@ class Params:
         self.min_gap = 1E-3
         self.warmstart = False   
         
-        self.num_threads = 8
+        self.num_threads = 1
         
         #---TAPAS params
         self.bush_gap = 0.01
