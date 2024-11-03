@@ -610,9 +610,11 @@ class Network:
             self.params.good_bush_gap = 0
             self.params.good_pas_cost_epsilon = 0
             
+            minPathTrees = {r: self.getSPTree(r) for r in self.origins}
             # for every origin
             for r in self.origins:
             
+                #minPathTree = minPathTrees[r]
                 minPathTree = self.getSPTree(r)
             
                 # remove all cyclic flows and topological sort
@@ -637,7 +639,8 @@ class Network:
                                     
                 # choose a random subset of active PASs
                 # shift flow within each chosen PAS
-                    
+                
+            #for r in self.origins:        
                 r.bush.branchShifts()
             
                 printed = False                              

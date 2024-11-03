@@ -517,16 +517,18 @@ class Bush:
         
         return output
     
-    def tracePathSet(self, i, j):
+    def tracePathSet(self, i, j, minPathTree):
         output = []
         
         curr = j
         
         while curr != i:
 
-            output.append(curr.pred)
+            #output.append(curr.pred)
+            output.append(minPathTree[curr])
             #print(curr.pred)
-            curr = curr.pred.start
+            #curr = curr.pred.start
+            curr = minPathTree[curr].start
         
         return output
     
@@ -711,7 +713,7 @@ class Bush:
                                 if self.network.params.PRINT_BRANCH_INFO:
                                     print("\t\tbranch shift!")
 
-                                branch = self.createBranch(l)
+                                branch = self.createBranch(l, minPathTree)
                                 if branch is not None:
                                     self.branches.append(branch)
                                 else:
@@ -738,8 +740,8 @@ class Bush:
 
     
 
-    def createBranch(self, endlink):
-        minpath = self.tracePathSet(self.origin, endlink.end)
+    def createBranch(self, endlink, minPathTree):
+        minpath = self.tracePathSet(self.origin, endlink.end, minPathTree)
         
         output = Branch.Branch(self, endlink, minpath)
         
@@ -909,7 +911,8 @@ class Bush:
             curr = j
             
             while curr != i:
-                curr = curr.pred.start
+                curr = minPathTree[curr].start
+                #curr = curr.pred.start
                 output.add(curr)
                 #print(curr)
                 
