@@ -6,7 +6,7 @@ from src import BPC
 from src import BC
 from src import OA_CNDP
 from src import OA_CNDP_CG
-#from src import HY_CNDP
+from src import HY_CNDP
 from src import DuGP_CNDP
 #import polytope as pc
 
@@ -33,11 +33,11 @@ print(pc.extreme(p))
 
 
 
-#net = 'Braess'
-#ins = 'Braess_CNDP_1'
+net = 'Braess'
+ins = 'Braess_CNDP_1'
 
-net = 'SiouxFalls'
-ins = 'SF_CNDP_1'
+#net = 'SiouxFalls'
+#ins = 'SF_CNDP_1'
 
 #net = 'EasternMassachusetts'
 #ins = 'EM_CNDP_10_1'
@@ -50,8 +50,8 @@ print(net,ins)
 
 #test = OA_CNDP.OA_CNDP(network)
 #test = OA_CNDP_CG.OA_CNDP_CG(network)
-#test = DuGP_CNDP.DuGP_CNDP(network)
-test = OA_CNDP_CS.OA_CNDP_CS(network)
+test = HY_CNDP.HY_CNDP(network)
+#test = OA_CNDP_CS.OA_CNDP_CS(network)
 test.solve()
 
 
