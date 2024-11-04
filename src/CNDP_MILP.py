@@ -182,7 +182,7 @@ class CNDP_MILP:
         self.rmp.zeta = {a: {i : self.rmp.binary_var() for i in range(0, self.num_x_pieces)} for a in self.network.links}
         self.rmp.kappa = {a: {i: self.rmp.binary_var() for i in range(0, self.num_y_pieces)} for a in self.varlinks}
         
-        totaldemand = self.network.getTotalTrips()
+   
         
         self.rmp.tt = {a: self.rmp.continuous_var(lb=0) for a in self.network.links}
         
@@ -207,7 +207,7 @@ class CNDP_MILP:
                     
                     
                     # CS
-                    M = sum(a.getTravelTimeC(totaldemand, 0, "UE") for a in p.links)
+                    M = sum(a.getTravelTimeC(self.network.TD, 0, "UE") for a in p.links)
                     
                     self.rmp.add_constraint(epsilon * (1-self.rmp.sigma[p]) <= self.rmp.c[p] - self.rmp.mu[(r,s)])
                     
@@ -242,8 +242,8 @@ class CNDP_MILP:
             
             # last piece is at network total demand
             
-            if totaldemand <= a.C*2:
-                skip = totaldemand / (self.num_x_pieces)
+            if self.network.TD <= a.C*2:
+                skip = self.network.TD / (self.num_x_pieces)
                 
                 for i in range(0, self.num_x_pieces+1):
                     self.xbounds[a].append(i*skip)
@@ -253,12 +253,12 @@ class CNDP_MILP:
                 for i in range(0, self.num_x_pieces):
                     self.xbounds[a].append(i*skip)
 
-                self.xbounds[a].append(totaldemand)
+                self.xbounds[a].append(self.network.TD)
             
             
             for i in range(0, self.num_x_pieces):
                 
-                self.rmp.add_constraint(self.rmp.x[a] - self.xbounds[a][i+1] <=  totaldemand * (1 - self.rmp.zeta[a][i]) + epsilon)
+                self.rmp.add_constraint(self.rmp.x[a] - self.xbounds[a][i+1] <=  self.network.TD * (1 - self.rmp.zeta[a][i]) + epsilon)
                 self.rmp.add_constraint(self.xbounds[a][i] * self.rmp.zeta[a][i] - epsilon <= self.rmp.x[a])
             
             self.rmp.add_constraint(sum(self.rmp.zeta[a][i] for i in range(0, self.num_x_pieces)) == 1)
@@ -291,6 +291,7 @@ class CNDP_MILP:
                 
                 
             if a in self.varlinks:
+                
                 for i in range(0, self.num_x_pieces):
                     for j in range(0, self.num_y_pieces):
                         min_tt = a.getTravelTimeC(self.xbounds[a][i], self.ybounds[a][j], "UE")
@@ -302,12 +303,15 @@ class CNDP_MILP:
                         # Z = ax + by + c
                         
                         linear_approx = pa * self.rmp.x[a] + pb * self.rmp.y[a] + pc
-                        L = - min_tt
-                        U = pa*totaldemand + pc
-                        L = -10000
-                        U = 10000
-                        self.rmp.add_constraint(self.rmp.tt[a] - linear_approx >= L*(2-self.rmp.zeta[a][i] - self.rmp.kappa[a][j]))
-                        self.rmp.add_constraint(self.rmp.tt[a] - linear_approx <= U*(2-self.rmp.zeta[a][i] - self.rmp.kappa[a][j]))
+                        U = 2*(max(pa*self.network.TD+pc, pb*a.max_add_cap, pa*self.network.TD+pb*a.max_add_cap) + max(pc, 0))
+                        L = -U
+                        
+                        #print(a, pa, pb, pc)
+                        #L = -1000000
+                        #U = 1000000
+                        self.rmp.add_constraint(self.rmp.tt[a] - linear_approx + epsilon >= L*(2-self.rmp.zeta[a][i] - self.rmp.kappa[a][j]))
+                        self.rmp.add_constraint(self.rmp.tt[a] - linear_approx - epsilon <= U*(2-self.rmp.zeta[a][i] - self.rmp.kappa[a][j]))
+                
             else:
                 for i in range(0, self.num_x_pieces):
                     min_tt = a.getTravelTimeC(self.xbounds[a][i], 0, "UE")
@@ -317,9 +321,10 @@ class CNDP_MILP:
                     slope_x = (max_tt - min_tt) / (self.xbounds[a][i+1] - self.xbounds[a][i])
                     
                     linear_approx = cons + (self.rmp.x[a] - self.xbounds[a][i]) * slope_x
-                    L = - min_tt
-                    U = cons + slope_x * (1.1*totaldemand)
-                    U = 10000
+                    U = max(slope_x * self.network.TD, 0) + max(cons, 0)
+                    L=-U
+                    #L= - 10000
+                    #U = 10000
                     #print(a, L, U, totaldemand, cons + slope_x * (1.1*totaldemand))
                     self.rmp.add_constraint(self.rmp.tt[a] - linear_approx+ epsilon >= L*(1-self.rmp.zeta[a][i]))
                     self.rmp.add_constraint(self.rmp.tt[a] - linear_approx - epsilon <= U*(1-self.rmp.zeta[a][i]))
@@ -353,12 +358,16 @@ class CNDP_MILP:
         
         '''
         for a in self.network.links:
-            print("\t", a, x[a], self.rmp.tt[a].solution_value)
+            print("\t", a, x[a], y[a], self.rmp.tt[a].solution_value)
             for i in range(0, self.num_x_pieces):
                 
                 print("\t\t", self.xbounds[a][i], self.xbounds[a][i+1], self.rmp.zeta[a][i].solution_value)
-        
-        
+            print("\t--")
+            for i in range(0, self.num_y_pieces):
+                
+                print("\t\t", self.ybounds[a][i], self.ybounds[a][i+1], self.rmp.kappa[a][i].solution_value)
+        '''
+        '''
         for p in self.getPaths():
             print(p.links, self.rmp.sigma[p].solution_value, self.rmp.h[p].solution_value, self.rmp.c[p].solution_value, self.rmp.mu[(p.r, p.s)].solution_value)
         '''
