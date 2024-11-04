@@ -170,6 +170,8 @@ class OA_CNDP_CG:
                 y_ext = best_y[a]
             print(a, best_x[a], y_ext)
         '''
+        
+        self.rmp.end()
             
         return ub, elapsed, tap_time, iteration
 

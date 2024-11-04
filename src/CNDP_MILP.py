@@ -101,6 +101,8 @@ class CNDP_MILP:
         
         print(t1)
         
+        self.rmp.end()
+        
         
         
         return obj, t1

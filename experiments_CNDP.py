@@ -103,7 +103,7 @@ for i in range (1, 5):
     f_milp.write(str(scale)+" \t1")
     f_oa.write(str(scale)+" \t1")
     
-    for j in range (0, 4):
+    for j in range (2, 4):
         network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
         test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
         obj, tot_time, tap_time, iterations = test.solve()
@@ -118,7 +118,7 @@ for i in range (1, 5):
     
     
     
-    for j in range(1, 4):
+    for j in range(2, 4):
         pieces = j*5
         
         print("solving MILP with", pieces, "pieces")
