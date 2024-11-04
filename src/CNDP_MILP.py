@@ -20,7 +20,7 @@ class CNDP_MILP:
         self.sameycuts = []
         self.sameyvars = []
         
-        self.g = {a:100*a.cost for a in self.network.links}
+        self.g = {a:a.cost for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -28,10 +28,14 @@ class CNDP_MILP:
             
         self.varlinks = []
         
+        
+        
         for a in self.network.links:
             if a.cost > 0:
                 self.varlinks.append(a)
-                
+            
+        
+        print("yvars", len(self.varlinks))
         
         self.paths = {r:{s:[] for s in self.network.zones if r.getDemand(s) > 0} for r in self.network.origins}
         self.link_cons = dict()
@@ -72,18 +76,22 @@ class CNDP_MILP:
         
         
        
+        
+        
+        print(RMP_status, ofv)
+        
         x_f, obj = self.TAP(y)
         
-        print(RMP_status, ofv, obj)
         
-        ''' 
         for a in self.network.links:
             y_ext = 0
             
             if a in self.varlinks:
                 y_ext = y[a]
-            print(a, x[a], x_f[a], y_ext)
-        '''
+            print(a, x[a], x_f[a])
+            print("\t", y_ext, self.g[a]*y_ext)
+            print("\t", self.rmp.tt[a].solution_value, a.getTravelTime(a.x, "UE"))
+        
         t1 = time.time()-t1
         
         
@@ -128,7 +136,8 @@ class CNDP_MILP:
                     self.printAllPaths(r, s)
                     
                     self.paths[r][s].sort(key=lambda path: path.cost)
-                    self.paths[r][s] = self.paths[r][s][0:k]
+                    ln = len(self.paths[r][s])
+                    self.paths[r][s] = self.paths[r][s][0:min(k, ln)]
                    
         
         t1 = time.time() - t1
@@ -156,6 +165,10 @@ class CNDP_MILP:
         self.rmp.parameters.timelimit = self.params.BB_timelimit
         
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
+       
+        #for a in self.varlinks:
+        #    self.rmp.add_constraint(self.rmp.y[a] == 0)
+            
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
         self.rmp.h = dict()
         self.rmp.c = dict()
@@ -176,6 +189,7 @@ class CNDP_MILP:
         for r in self.network.origins:
             for s in self.paths[r].keys():
                 for p in self.paths[r][s]:
+                    
                     
                     self.rmp.sigma[p] = self.rmp.binary_var() # CS binary variable
                     self.rmp.c[p] = self.rmp.continuous_var(lb=0)
@@ -222,7 +236,7 @@ class CNDP_MILP:
             
             # last piece is at network total demand
             
-            if totaldemand < a.C*2:
+            if totaldemand <= a.C*2:
                 skip = totaldemand / (self.num_x_pieces)
                 
                 for i in range(0, self.num_x_pieces+1):
@@ -239,12 +253,12 @@ class CNDP_MILP:
             for i in range(0, self.num_x_pieces):
                 
                 self.rmp.add_constraint(self.rmp.x[a] - self.xbounds[a][i+1] <=  totaldemand * (1 - self.rmp.zeta[a][i]) + epsilon)
-                self.rmp.add_constraint(self.xbounds[a][i] * self.rmp.zeta[a][i] <= self.rmp.x[a])
+                self.rmp.add_constraint(self.xbounds[a][i] * self.rmp.zeta[a][i] - epsilon <= self.rmp.x[a])
             
             self.rmp.add_constraint(sum(self.rmp.zeta[a][i] for i in range(0, self.num_x_pieces)) == 1)
             
- 
-               
+            
+              
         for a in self.varlinks:
             self.ybounds[a] = list()
             
@@ -255,7 +269,7 @@ class CNDP_MILP:
                
             for i in range(0, self.num_y_pieces): 
                 self.rmp.add_constraint(self.rmp.y[a] - self.ybounds[a][i+1] <= a.max_add_cap * (1 - self.rmp.kappa[a][i]) + epsilon)
-                self.rmp.add_constraint(self.ybounds[a][i] * self.rmp.kappa[a][i] <= self.rmp.y[a])
+                self.rmp.add_constraint(self.ybounds[a][i] * self.rmp.kappa[a][i] - epsilon <= self.rmp.y[a])
         
         
             self.rmp.add_constraint(sum(self.rmp.kappa[a][i] for i in range(0, self.num_y_pieces)) == 1)
@@ -284,6 +298,8 @@ class CNDP_MILP:
                         linear_approx = pa * self.rmp.x[a] + pb * self.rmp.y[a] + pc
                         L = - min_tt
                         U = pa*totaldemand + pc
+                        L = -10000
+                        U = 10000
                         self.rmp.add_constraint(self.rmp.tt[a] - linear_approx >= L*(2-self.rmp.zeta[a][i] - self.rmp.kappa[a][j]))
                         self.rmp.add_constraint(self.rmp.tt[a] - linear_approx <= U*(2-self.rmp.zeta[a][i] - self.rmp.kappa[a][j]))
             else:
@@ -296,9 +312,11 @@ class CNDP_MILP:
                     
                     linear_approx = cons + (self.rmp.x[a] - self.xbounds[a][i]) * slope_x
                     L = - min_tt
-                    U = cons + slope_x * (totaldemand - self.xbounds[a][i])
-                    self.rmp.add_constraint(self.rmp.tt[a] - linear_approx >= L*(1-self.rmp.zeta[a][i]))
-                    self.rmp.add_constraint(self.rmp.tt[a] - linear_approx <= U*(1-self.rmp.zeta[a][i]))
+                    U = cons + slope_x * (1.1*totaldemand)
+                    U = 10000
+                    #print(a, L, U, totaldemand, cons + slope_x * (1.1*totaldemand))
+                    self.rmp.add_constraint(self.rmp.tt[a] - linear_approx+ epsilon >= L*(1-self.rmp.zeta[a][i]))
+                    self.rmp.add_constraint(self.rmp.tt[a] - linear_approx - epsilon <= U*(1-self.rmp.zeta[a][i]))
                   
                     
         
@@ -333,13 +351,13 @@ class CNDP_MILP:
             for i in range(0, self.num_x_pieces):
                 
                 print("\t\t", self.xbounds[a][i], self.xbounds[a][i+1], self.rmp.zeta[a][i].solution_value)
-        '''
-        '''
+        
+        
         for p in self.getPaths():
-            print(p.links, self.rmp.sigma[p].solution_value, self.rmp.c[p].solution_value, self.rmp.mu[(p.r, p.s)].solution_value)
-        
-        
+            print(p.links, self.rmp.sigma[p].solution_value, self.rmp.h[p].solution_value, self.rmp.c[p].solution_value, self.rmp.mu[(p.r, p.s)].solution_value)
         '''
+        
+        
         return RMP_status, OFV, x, y
         
    

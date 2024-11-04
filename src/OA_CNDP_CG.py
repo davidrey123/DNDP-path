@@ -19,7 +19,7 @@ class OA_CNDP_CG:
         self.sameycuts = []
         self.sameyvars = []
         
-        self.g = {a:100*a.cost for a in self.network.links}
+        self.g = {a:a.cost for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -58,6 +58,7 @@ class OA_CNDP_CG:
         last_yhat = {a:-1 for a in self.varlinks}
         last_x_l = {a:-1 for a in self.network.links}
         best_y = {a:-1 for a in self.network.links}
+        best_x = {a: -1 for a in self.network.links}
         
         yhat = None
         xhat = None
@@ -103,6 +104,7 @@ class OA_CNDP_CG:
                     if ub > obj_f:
                         ub = obj_f
                         best_y = yhat
+                        best_x = xhat
 
                     #self.addVFCut(x_l, xhat, yhat)
                     self.addVFCut2(x_l, xhat, yhat)
@@ -142,6 +144,7 @@ class OA_CNDP_CG:
             #for a in self.varlinks:
             #    print("\t", a, yhat[a], last_yhat[a], best_y[a], a.C/2)
             
+            
  
             if elapsed > timelimit:
                 break
@@ -150,7 +153,15 @@ class OA_CNDP_CG:
             last_yhat = yhat
             last_x_l = x_l
             last_lb = lb
-    
+            
+            
+        for a in self.network.links:
+            y_ext = 0
+            
+            if a in self.varlinks:
+                y_ext = best_y[a]
+            print(a, best_x[a], y_ext)
+
     def calcOFV(self):
         output = self.network.getTSTT("UE")
         

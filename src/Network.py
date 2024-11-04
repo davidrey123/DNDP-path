@@ -162,6 +162,8 @@ class Network:
                 d = float(next[0:len(next) - 1]) * scal_flow
                 d = d * inflate_trips
                 
+                
+                
                 r.addDemand(s, d)
                 self.TD += d
 
