@@ -8,7 +8,7 @@ from src import Heap
 
 class CNDP_MILP:
     
-    def __init__(self, network, num_x_pieces, num_y_pieces, k_paths):
+    def __init__(self, network, num_x_pieces, num_y_pieces, k_paths, inflate_costs):
         self.network = network
         self.CG_tol = 1e-4
         self.inf = 1e+9
@@ -20,7 +20,7 @@ class CNDP_MILP:
         self.sameycuts = []
         self.sameyvars = []
         
-        self.g = {a:a.cost for a in self.network.links}
+        self.g = {a:a.cost * inflate_costs for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -83,6 +83,9 @@ class CNDP_MILP:
         x_f, obj = self.TAP(y)
         
         
+        t1 = time.time()-t1
+        
+        '''
         for a in self.network.links:
             y_ext = 0
             
@@ -92,12 +95,14 @@ class CNDP_MILP:
             print("\t", y_ext, self.g[a]*y_ext)
             print("\t", self.rmp.tt[a].solution_value, a.getTravelTime(a.x, "UE"))
         
-        t1 = time.time()-t1
-        
-        
         print(obj, t1)
+        '''
         
-   
+        
+        
+        
+        
+        return obj, t1
     
     def calcOFV(self):
         output = self.network.getTSTT("UE")

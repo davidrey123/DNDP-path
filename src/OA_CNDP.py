@@ -6,11 +6,11 @@ from docplex.mp.model import Model
 
 class OA_CNDP:
     
-    def __init__(self, network):
+    def __init__(self, network, inflate_costs):
         self.network = network
         
         
-        self.g = {a:a.cost for a in self.network.links}
+        self.g = {a:a.cost * inflate_costs for a in self.network.links }
         
         for a in self.network.links2:
             a.y = 0

@@ -6,11 +6,13 @@ from docplex.mp.model import Model
 
 class OA_CNDP_CG:
     
-    def __init__(self, network):
+    def __init__(self, network, inflate_costs, useCG=True, useLinkVF=True):
         self.network = network
         self.CG_tol = 1e-4
         self.inf = 1e+9
         
+        self.useCG = useCG
+        self.useLinkVF = useLinkVF
         self.solveSO_only = False
         
         self.last_xhat = None
@@ -19,7 +21,7 @@ class OA_CNDP_CG:
         self.sameycuts = []
         self.sameyvars = []
         
-        self.g = {a:a.cost for a in self.network.links}
+        self.g = {a:a.cost * inflate_costs for a in self.network.links}
         
         for a in self.network.links2:
             a.y = 0
@@ -74,9 +76,12 @@ class OA_CNDP_CG:
             
             # solve RMP -> y, LB
 
-            CG_status, obj_l, x_l, yhat = self.CG()
+            if self.useCG:
+                SP_status, obj_l, x_l, yhat = self.CG()
+            else:
+                SP_status, obj_l, x_l, yhat = self.solveRMP()
             
-            if CG_status == "infeasible":
+            if SP_status == "infeasible":
                 break
             
             
@@ -106,16 +111,19 @@ class OA_CNDP_CG:
                         best_y = yhat
                         best_x = xhat
 
-                    #self.addVFCut(x_l, xhat, yhat)
-                    self.addVFCut2(x_l, xhat, yhat)
+                    if self.useLinkVF:
+                    
+                        self.addVFCut2(x_l, xhat, yhat)
+                    else:
+                        self.addVFCut(x_l, xhat, yhat)
                 else:
                     if self.params.PRINT_BB_INFO:
                         print("\tSkipping TAP")
                     #self.addVFCutSameY(x_l, xhat, yhat)
                 
 
-                
-                self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
+                if self.useLinkVF:
+                    self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
             
                 
                 
@@ -154,13 +162,16 @@ class OA_CNDP_CG:
             last_x_l = x_l
             last_lb = lb
             
-            
+        '''    
         for a in self.network.links:
             y_ext = 0
             
             if a in self.varlinks:
                 y_ext = best_y[a]
             print(a, best_x[a], y_ext)
+        '''
+            
+        return ub, elapsed, tap_time, iteration
 
     def calcOFV(self):
         output = self.network.getTSTT("UE")
@@ -338,17 +349,18 @@ class OA_CNDP_CG:
     
         # init paths
         
-        for r in self.network.origins:
-            if r.totaldemand > 0:
-                self.network.dijkstras(r, "UE")
+        if self.useCG:
+            for r in self.network.origins:
+                if r.totaldemand > 0:
+                    self.network.dijkstras(r, "UE")
 
-                self.paths[r] = dict()
-                
-                for s in self.network.zones:
-                    if r.getDemand(s) > 0:
-                        p = self.network.trace(r, s)
-                        self.paths[r][s] = list()
-                        self.paths[r][s].append(p)
+                    self.paths[r] = dict()
+
+                    for s in self.network.zones:
+                        if r.getDemand(s) > 0:
+                            p = self.network.trace(r, s)
+                            self.paths[r][s] = list()
+                            self.paths[r][s].append(p)
                     
                 
         self.rmp = Model()
@@ -362,19 +374,40 @@ class OA_CNDP_CG:
         
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
-        self.rmp.h = {p:self.rmp.continuous_var(lb=0) for p in self.getPaths()}
+        
+        if self.useCG:
+            self.rmp.h = {p:self.rmp.continuous_var(lb=0) for p in self.getPaths()}
+            
+            for a in self.network.links:
+                self.link_cons[a] = self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) >= 0)
+
+            for r in self.network.origins:
+                for s in self.network.zones:
+                    if r.getDemand(s) > 0:
+                        self.dem_cons[(r,s)] = self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s))
+        else:
+            self.rmp.xc = {(a,r):self.rmp.continuous_var(lb=0, ub=r.totaldemand) for a in self.network.links for r in self.network.origins}
+            
+            for a in self.network.links:
+                self.rmp.add_constraint(sum(self.rmp.xc[(a,r)] for r in self.network.origins) == self.rmp.x[a])
+
+            for i in self.network.nodes:                    
+                for r in self.network.origins:            
+
+                    if i.id == r.id:
+                        dem = - sum(r.getDemand(s) for s in self.network.zones)                
+                    elif isinstance(i, type(r)) == True:
+                        dem = r.getDemand(i)
+                    else:
+                        dem = 0
+
+                    self.rmp.add_constraint(sum(self.rmp.xc[(a,r)] for a in i.incoming) - sum(self.rmp.xc[(a,r)] for a in i.outgoing) == dem)
         
         for a in self.network.links:
             self.rmp.add_constraint(self.rmp.mu[a] >= self.rmp.x[a] * a.t_ff)
         
     
-        for a in self.network.links:
-            self.link_cons[a] = self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) >= 0)
-            
-        for r in self.network.origins:
-            for s in self.network.zones:
-                if r.getDemand(s) > 0:
-                    self.dem_cons[(r,s)] = self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s))
+        
         
         self.rmp.minimize(sum(self.rmp.mu[a] for a in self.network.links) + sum(self.g[a] * self.rmp.y[a] for a in self.varlinks))
         
@@ -475,17 +508,24 @@ class OA_CNDP_CG:
         
         #print(RMP_status)
         
-        link_duals = {a: self.link_cons[a].dual_value for a in self.network.links}
-        
-        dem_duals = dict()
-        for r in self.network.origins:
-            for s in self.network.zones:
-                if r.getDemand(s) > 0:
-                    dem_duals[(r,s)] = self.dem_cons[(r,s)].dual_value
-        
         OFV = self.rmp.objective_value
         
-        return RMP_status, OFV, link_duals, dem_duals
+        if self.useCG:
+            link_duals = {a: self.link_cons[a].dual_value for a in self.network.links}
+
+            dem_duals = dict()
+            for r in self.network.origins:
+                for s in self.network.zones:
+                    if r.getDemand(s) > 0:
+                        dem_duals[(r,s)] = self.dem_cons[(r,s)].dual_value
+        
+        
+        
+            return RMP_status, OFV, link_duals, dem_duals
+        else:
+            yhat = {a:self.rmp.y[a].solution_value for a in self.varlinks}
+            x_l = {a:self.rmp.x[a].solution_value for a in self.network.links}
+            return RMP_status, OFV, x_l, yhat
         
     def isYDifferent(self, y, lasty):
         
