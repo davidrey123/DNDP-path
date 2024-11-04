@@ -162,7 +162,7 @@ class CNDP_MILP:
         
         
         self.rmp.parameters.read.scale = -1
-        self.rmp.parameters.timelimit = self.params.BB_timelimit
+        #self.rmp.parameters.timelimit = self.params.BB_timelimit
         
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
        
