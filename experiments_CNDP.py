@@ -104,7 +104,7 @@ for i in range (1, 5):
     f_oa.write(str(scale)+" \t1")
     
     for j in range (0, 4):
-        network = Network.Network(net,ins,b_prop,1e-0,scale * scal_flow[net],inflate_trips[net])
+        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
         test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
         obj, tot_time, tap_time, iterations = test.solve()
 
@@ -120,7 +120,11 @@ for i in range (1, 5):
     
     for j in range(1, 4):
         pieces = j*5
-        network = Network.Network(net,ins,b_prop,1e-0,scale * scal_flow[net],inflate_trips[net])
+        
+        print("solving MILP with", pieces, "pieces")
+        print("demand scale is ", scale)
+        
+        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
         test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
         obj, tot_time = test.solve()
         
@@ -131,10 +135,13 @@ for i in range (1, 5):
     
     f_milp.write("\n")
     f_milp_latex.write("\\\\ \n")
-    
+   
     
 for i in range (1, 5):
     scale = i*5
+    
+    print("solving MILP with", pieces, "pieces")
+    print("cost scale is ", scale)
     
     f_milp_latex.write("1 & "+str(scale))
     f_oa_latex.write("1 & "+str(scale))

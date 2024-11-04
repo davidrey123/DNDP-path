@@ -32,6 +32,7 @@ class CNDP_MILP:
         
         for a in self.network.links:
             if a.cost > 0:
+                #print(a, self.g[a])
                 self.varlinks.append(a)
             
         
@@ -98,7 +99,7 @@ class CNDP_MILP:
         print(obj, t1)
         '''
         
-        
+        print(t1)
         
         
         

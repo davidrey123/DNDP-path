@@ -56,8 +56,9 @@ inflate_cost = 1
 
 
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
-test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
-obj, tot_time, tap_time, iterations = test.solve()
-print(obj, tot_time, tap_time, iterations)
+#test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
+test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, 20)
+test.solve()
+
 
 
