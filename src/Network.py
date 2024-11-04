@@ -9,8 +9,102 @@ from src import Heap
 from src import HeapMP
 import time
 import threading
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Array, Value
 
+
+
+
+                
+def dijkstras_mp(origin, num_nodes, link_costs, node_out, SP_tol):
+
+
+
+    node_costs = {n: Params.INFTY for n in range(1, num_nodes+1)}
+    node_pred = {n: None for n in range(1, num_nodes+1)}
+
+
+    node_costs[origin] = 0.0
+
+    Q = HeapMP.HeapMP(node_costs = node_costs)
+    Q.insert(origin)
+
+    #if type == 'RC':
+    #    print('origin',origin)
+
+    while Q.size() > 0:
+
+        u = Q.removeMin()
+
+        #if type == 'RC':
+        #    print('u',u)
+
+        
+        for i in range(0, len(node_out[u])):
+            v = node_out[u][i]
+            u_cost = node_costs[u]
+            v_cost = node_costs[v]
+            tt = link_costs[(u,v)]
+
+            #if u.cost + tt < v.cost:
+            if u_cost + tt < v_cost and v_cost - u_cost - tt >= SP_tol:
+                node_costs[v] = u_cost + tt
+                node_pred[v] = u
+
+                #if type == 'RC':
+                #    print('v',v,v.pred,v.cost)
+
+                #if v.isThruNode():
+                Q.insert(v)
+
+
+
+    return node_costs, node_pred
+                        
+def trace_mp(node_pred, r, s):
+    curr = s
+
+    output = []
+
+
+    while curr != r and curr is not None:
+        i = node_pred[curr]
+
+        if i is not None:
+            output.append(i)
+            curr = node_pred[curr]
+
+    #print('trace',r,s,output)
+
+    return output
+    
+    
+def apsp_threaded_mp_help(trips, num_nodes, link_costs, node_out, SP_tol, get_paths, start_idx, end_idx, output_costs, output_paths):
+    
+    
+    for r in range(start_idx, end_idx):
+        node_costs, node_pred = dijkstras_mp(r, num_nodes, link_costs, node_out, SP_tol)
+
+        output_costs_r = dict()
+        output_paths_r = dict()
+
+        for s in range(1, num_nodes+1):
+            if trips[(r,s)] > 0:
+                output_costs_r[s] = node_costs[s]
+
+                if get_paths:
+                    path_rs = trace_mp(node_pred, r, s)
+                    output_paths_r[s] = path_rs
+
+                    #path_rs.cost = node_costs[s]
+
+
+        output_costs[r] = output_costs_r
+
+        if get_paths:
+            output_paths[r] = output_paths_r
+            
+            
+        
 
 class Network:
 
@@ -35,6 +129,11 @@ class Network:
         self.inf = 1e+9
         self.tol = 1e-2
         
+        self.node_out = None
+        self.trips = None
+        
+        self.manager = Manager()
+        
         if len(ins) == 0:
             ins = "net"
             
@@ -43,6 +142,9 @@ class Network:
         
         
         self.links1 = []
+        
+        self.linkid_map = dict()
+        self.nodeid_map = dict()
         
         for a in self.links:
             if a not in self.links2:
@@ -127,6 +229,12 @@ class Network:
                 self.links2.append(link)
             
         file.close()
+        
+        self.nodeid_map = {n.id:n for n in self.nodes}
+        self.linkid_map = {(ij.start.id, ij.end.id):ij for ij in self.links}
+        
+        
+        
 
 
     def readTrips(self,tripsFile,scal_time,scal_flow,inflate_trips):
@@ -221,10 +329,13 @@ class Network:
         for a in self.links:
             a.saved_tt = a.getTravelTime(a.x, type)
             
+            
+    
+            
     def apsp(self, type, get_paths=True):
     
         
-        if self.params.num_threads == 1:
+        if self.params.num_threads == 0:
             t1 = time.time()
             self.memoizeLinkCosts(type)
 
@@ -257,56 +368,10 @@ class Network:
 
             return output_costs, output_paths
         else:
+            #thread_test()
             return self.apsp_threaded(type, get_paths)
             
-            
-            
-        '''
         
-        
-        
-        t2 = time.time()
-        
-        self.apsp_threaded(type, get_paths)
-        
-        t2 = time.time() - t2
-        
-        
-        
-        
-        self.memoizeLinkCosts(type)
-        
-        t1 = time.time()
-        
-        output_costs = {r: dict() for r in self.origins}
-        
-        output_paths = None
-
-        if get_paths:
-            output_paths = {r: dict() for r in self.origins}
-
-
-        for r in self.origins:
-            node_costs, node_pred = self.dijkstras_sep(r, 'memoized')
-
-
-            for s in self.zones:
-                if r.getDemand(s) > 0:
-                    output_costs[r][s] = node_costs[s]
-
-                    if get_paths:
-                        path_rs = self.trace_sep(node_pred, r, s)
-                        output_paths[r][s] = path_rs
-
-                        path_rs.cost = node_costs[s]
-        
-        t1 = time.time() - t1
-        
-        
-        print("time check", t1, t2)
-        
-        return output_costs, output_paths
-        '''
         
         
     def apsp_threaded(self, type, get_paths=True):
@@ -376,145 +441,96 @@ class Network:
             
             if get_paths:
                 output_paths[r] = output_paths_r
-                
+            
+    
+    
+
     def apsp_threaded_mp(self, type, get_paths=True):
     
-        with Manager() as manager:
-            t1 = time.time()
-
-            self.memoizeLinkCosts(type)
-
-            link_costs = manager.dict()
-            node_out = manager.dict()
-
-            for a in self.links:
-                link_costs[(a.start.id, a.end.id)] = a.getTravelTime(a.x, type)
-            
-            for i in self.nodes:
-                node_out[i.id] = []
-                for ij in i.outgoing:
-                    node_out[i.id].append(ij.end.id)
-
-            break_points = []
-
-            for i in range(0, self.params.num_threads+1):
-                break_points.append(round(i*len(self.origins) / self.params.num_threads))
-
-            threads = []
-
-            for i in range(0, self.params.num_threads):
-                output_costs = dict()
-                output_paths = dict()
+        self.trips = self.manager.dict()
+        
+        if self.trips is None:
+            for r in self.origins:
+                for s in self.nodes:
+                    self.trips[(r.id, s.id)] = r.getDemand(s)
                 
-                print("check", i)
-                thread = Process(target=self.apsp_threaded_mp_help, args=(len(self.nodes), link_costs, node_out, get_paths, break_points[i], break_points[i+1]))
-                threads.append(thread)
 
-            for i in range(0, len(threads)):
-                threads[i].start()
-
-
-            for i in range(0, len(threads)):
-                threads[i].join()
-
-
-
-            t1 = time.time() - t1
-
-            self.dijkstras_time += t1    
-
-
-            return output_costs, output_paths
+                
                     
-    def apsp_threaded_mp_help(self, num_nodes, link_costs, node_out, SP_tol, get_paths, start_idx, end_idx):
+        if len(self.nodeid_map) == 0:
+            self.nodeid_map = {n.id:n for n in self.nodes}
+            self.linkid_map = {(ij.start.id, ij.end.id):ij for ij in self.links}
+        
+        
+        t1 = time.time()
+
+        self.memoizeLinkCosts(type)
+
+        link_costs = self.manager.dict()
+
+
+        for a in self.links:
+            link_costs[(a.start.id, a.end.id)] = a.getTravelTime(a.x, type)
+
+        self.node_out = self.manager.dict()
+        for i in self.nodes:
+            self.node_out[i.id] = self.manager.list()
+            for ij in i.outgoing:
+                self.node_out[i.id].append(ij.end.id)
+
+        
+
+        for r in self.origins:
+            for s in self.nodes:
+                self.trips[(r.id, s.id)] = r.getDemand(s)
+
+        break_points = []
+
+        for i in range(0, self.params.num_threads+1):
+            break_points.append(1+round(i*len(self.origins) / self.params.num_threads))
+
+        threads = []
+
+        temp_costs = dict()
+        temp_paths = dict()
+
+        for i in range(0, self.params.num_threads):
+            temp_costs[i] = self.manager.dict()
+            temp_paths[i] = self.manager.dict()
+
+            thread = Process(target=apsp_threaded_mp_help, args=(self.trips, len(self.nodes), link_costs, self.node_out, get_paths, self.params.SP_tol, break_points[i], break_points[i+1], temp_costs[i], temp_paths[i]))
+            threads.append(thread)
+
+        for i in range(0, len(threads)):
+            threads[i].start()
+
+
+        for i in range(0, len(threads)):
+            threads[i].join()
+
+
+
+        t1 = time.time() - t1
+
+        self.dijkstras_time += t1    
+
+        output_costs = {r: dict() for r in self.origins}
+        output_paths = dict()
+
+        #print(self.nodeid_map)
+
+
+        for i in range(0, len(threads)):
+            for r in temp_costs[i].keys():
+                for s in temp_costs[i][r].keys():
+
+                    output_costs[self.nodeid_map[r]][self.nodeid_map[s]] = temp_costs[i][r][s]
+
+        output_paths = None
+
+        return output_costs, output_paths
+                    
     
-
-        for idx in range(start_idx, end_idx):
-            r = self.origins[idx]
-            node_costs, node_pred = self.dijkstras_mp(r, num_nodes, link_costs, node_out, SP_tol)
-            
-            output_costs_r = dict()
-            output_paths_r = dict()
-            
-            for s in self.zones:
-                if r.getDemand(s) > 0:
-                    output_costs_r[s] = node_costs[s]
-                
-                    if get_paths:
-                        path_rs = self.trace_mp(node_pred, r, s)
-                        output_paths_r[s] = path_rs
-
-                        #path_rs.cost = node_costs[s]
-            
-            
-            output_costs[r] = output_costs_r
-            
-            if get_paths:
-                output_paths[r] = output_paths_r
-        
-                
-    def dijkstras_mp(self, origin, num_nodes, link_costs, node_out, SP_tol):
-        
-        
-        
-        node_costs = {n: Params.INFTY for n in range(0, num_nodes)}
-        node_pred = {n: None for n in self.nodes}
-        
-
-        node_costs[origin] = 0.0
-
-        Q = HeapMP.HeapMP(node_costs = node_costs)
-        Q.insert(origin)
-
-        #if type == 'RC':
-        #    print('origin',origin)
-
-        while Q.size() > 0:
-
-            u = Q.removeMin()
-
-            #if type == 'RC':
-            #    print('u',u)
-
-            for v in node_out[u]:
-
-                u_cost = node_costs[u]
-                v_cost = node_costs[v]
-                tt = link_costs[(u,v)]
-
-                #if u.cost + tt < v.cost:
-                if u_cost + tt < v_cost and v_cost - u_cost - tt >= SP_tol:
-                    node_costs[v] = u_cost + tt
-                    node_pred[v] = u
-
-                    #if type == 'RC':
-                    #    print('v',v,v.pred,v.cost)
-
-                    if v.isThruNode():
-                        Q.insert(v)
-                        
-        
-                        
-        return node_costs, node_pred
-                        
-    def trace_mp(self, node_pred, r, s):
-        curr = s
-
-        output = []
-        output.r = r
-        output.s = s
-        
-        
-        while curr != r and curr is not None:
-            i = node_pred[curr]
-
-            if i is not None:
-                output.append(i)
-                curr = node_pred[curr]
-              
-        #print('trace',r,s,output)
-              
-        return output
         
     def dijkstras_sep(self, origin, type):
         

@@ -1,6 +1,6 @@
 from src import Params
 
-class Heap:
+class HeapMP:
 
     # Number of elements in the 
     # Max heap currently. 
@@ -121,8 +121,8 @@ class Heap:
         
         i = self.heap_index[node]
         
-        if self.arr[i].id != node.id:
-            raise Exception("bad order for "+str(node.id))
+        if self.arr[i] != node:
+            raise Exception("bad order for "+str(node))
         
 
         while i != 0 and self.compare(self.arr[self.parent(i)], self.arr[i]) > 0: 
@@ -148,7 +148,7 @@ class Heap:
 
     def printHeap(self):
         for i in range(0, self.heapSize):
-            print("\t", self.arr[i].id, self.heap_index[self.arr[i]])
+            print("\t", self.arr[i], self.heap_index[self.arr[i]])
 
 
     # Inserts a new key 'x' in the Max Heap. 
