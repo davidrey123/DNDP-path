@@ -150,9 +150,6 @@ class OA_CNDP_CG:
             last_yhat = yhat
             last_x_l = x_l
             last_lb = lb
-            
-        print("dijkstras time", self.network.dijkstras_time)
-        print("pricing time", self.rt_pricing)
     
     def calcOFV(self):
         output = self.network.getTSTT("UE")
@@ -381,32 +378,6 @@ class OA_CNDP_CG:
         for a in self.network.links:
             a.dual = link_duals[a]
         
-        rs_costs, rs_paths = self.network.apsp('RC')
-        
-        for r in self.network.origins:
-            for s in self.network.zones:
-                if r.getDemand(s) > 0:
-                    rc = - dem_duals[(r,s)] + rs_costs[r][s]
-                    
-                    if rc < - self.CG_tol:
-                        p = rs_paths[r][s]
-                        self.paths[r][s].append(p) #---is it needed to store paths if directly adding to RMP?
-                        
-                        #---add new path var to RMP                                                
-                        self.rmp.h[p] = self.rmp.continuous_var(lb=0)
-                        
-                        #---update RMP constraints
-                        self.dem_cons[(r, s)].lhs.add_term(self.rmp.h[p], 1)
-                        
-                        for a in p.links:
-                            self.link_cons[a].lhs.add_term(self.rmp.h[p], -1)
-                        
-                        new += 1
-                    
-                        if rc < minrc:
-                            minrc = rc
-        
-        '''
         for r in self.network.origins:
             self.network.dijkstras(r,'RC')
             
@@ -433,7 +404,7 @@ class OA_CNDP_CG:
                     
                         if rc < minrc:
                             minrc = rc
-        '''        
+                
         self.rt_pricing += (time.time() - t0_pricing)        
         return minrc
         

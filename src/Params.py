@@ -26,9 +26,7 @@ class Params:
         self.msa_max_iter = 500        
         self.tapas_max_iter = 100 
         self.min_gap = 1E-3
-        self.warmstart = False   
-        
-        self.num_threads = 1
+        self.warmstart = False        
         
         #---TAPAS params
         self.bush_gap = 0.01
@@ -78,7 +76,7 @@ class Params:
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
 
-        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_BB_INFO = False #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
         self.PRINT_LOG = False #---outputs instance log file - used in BPC only for now
