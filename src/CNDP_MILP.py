@@ -170,7 +170,7 @@ class CNDP_MILP:
         
         
         self.rmp.parameters.read.scale = -1
-        self.rmp.parameters.workmem = 1024*8
+        self.rmp.parameters.workmem = 1024*4
         self.rmp.parameters.threads = 4
         #self.rmp.parameters.Workers = 4
         self.rmp.parameters.mip.tolerances.mipgap = 0.01

@@ -9,6 +9,7 @@ from src import OA_CNDP_CG
 #from src import HY_CNDP
 from src import DuGP_CNDP
 from src import CNDP_MILP
+import math
 #import polytope as pc
 
 #import numpy as np
@@ -31,8 +32,12 @@ ins = 'net'
 
 b_prop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3, 'Braess':1, 'HarkerFriesz':1}
-inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2, 'Braess':1, 'HarkerFriesz':0.5}
+inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2, 'Braess':1, 'HarkerFriesz':1}
 print(net,ins)
+
+network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
+#test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
+test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, 1)
 
 inflate_cost = 1
 
@@ -97,12 +102,28 @@ f_oa.write(header1_oa+"\n"+header2_oa+"\n")
 for i in range (1, 5):
     scale = i
     
-    f_milp_latex.write(str(scale)+" & 1 ")
-    f_oa_latex.write(str(scale)+" & 1 ")
+    f_milp_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
+    f_oa_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
     
-    f_milp.write(str(scale)+" \t1")
-    f_oa.write(str(scale)+" \t1")
+    f_milp.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
+    f_oa.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
     
+    for j in range(1, 4):
+        pieces = 3+j*2
+        
+        print("solving MILP with", pieces, "pieces")
+        print("demand scale is ", scale * inflate_trips[net], "cost scale is ", inflate_cost, "scale flow is ", scal_flow[net])
+        
+        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
+        test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
+        obj, tot_time = test.solve()
+        
+        f_milp.write("\t"+str(obj)+"\t"+str(tot_time))
+        f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2)))
+
+        #print(obj, tot_time)
+        
+        
     for j in range (2, 4):
         network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
         test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
@@ -116,40 +137,23 @@ for i in range (1, 5):
     f_oa_latex.write("\\\\ \n")
 
     
-    
-    
-    for j in range(2, 4):
-        pieces = j*5
-        
-        print("solving MILP with", pieces, "pieces")
-        print("demand scale is ", scale)
-        
-        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
-        test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
-        obj, tot_time = test.solve()
-        
-        f_milp.write("\t"+str(obj)+"\t"+str(tot_time))
-        f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2)))
-
-        #print(obj, tot_time)
-    
     f_milp.write("\n")
     f_milp_latex.write("\\\\ \n")
    
     
-for i in range (1, 5):
-    scale = i
+for i in range (0, 5):
+    scale = math.pow(2, i-1)
     
     print("solving MILP with", pieces, "pieces")
     print("cost scale is ", scale)
     
-    f_milp_latex.write("1 & "+str(scale))
-    f_oa_latex.write("1 & "+str(scale))
+    f_milp_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))
+    f_oa_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))
     
-    f_milp.write("1 \t"+str(scale))
-    f_oa.write("1 \t"+str(scale))
+    f_milp.write(str(inflate_trips[net])+" \t"+str(scale*inflate_cost))
+    f_oa.write(str(inflate_trips[net])+" \t"+str(scale*inflate_cost))
     
-    for j in range (0, 4):
+    for j in range (2, 4):
         network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
         test = OA_CNDP_CG.OA_CNDP_CG(network, scale*inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
         obj, tot_time, tap_time, iterations = test.solve()
