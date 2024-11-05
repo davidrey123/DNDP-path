@@ -34,7 +34,7 @@ scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1
 inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2, 'Braess':1, 'HarkerFriesz':1}
 print(net,ins)
 
-inflate_cost = 1
+inflate_cost = 20
 
 
 
@@ -138,7 +138,7 @@ for i in range (1, 5):
    
     
 for i in range (1, 5):
-    scale = i*5
+    scale = i/4
     
     print("solving MILP with", pieces, "pieces")
     print("cost scale is ", scale)
