@@ -733,7 +733,7 @@ class Bush:
                     else:
                         if self.network.params.PRINT_PAS_INFO:
                         #if self.origin.id == 21:
-                            print("has relevant PAS already")
+                            print("\thas relevant PAS already")
 
 
     
@@ -759,6 +759,7 @@ class Bush:
                     if p.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu * self.origin.getProductions(), self.network.params): 
                         #if self.origin.id == 21:
                             #print(p, "maxshift", str(p.relevant), p.maxForwardBushFlowShift(self), "check with", self.network.params.pas_flow_mu * self.origin.getProductions(), p.isCostEffective(self.network.type, self.network.params.pas_cost_mu))
+                        p.relevant.add(self.origin)
                         return True
             
             if a in self.relevantPAS.backward:
@@ -768,7 +769,7 @@ class Bush:
                     if p.isEffective(self.network.type, self, self.network.params.pas_cost_mu, self.network.params.pas_flow_mu * self.origin.getProductions(), self.network.params):    
                         #if self.origin.id == 21:
                         #    print(p, "maxshift", str(p.relevant), p.maxBackwardBushFlowShift(self), "check with", self.network.params.pas_flow_mu * self.origin.getProductions(), p.isCostEffective(self.network.type, self.network.params.pas_cost_mu))
-                            
+                        p.relevant.add(self.origin)    
                         return True
                     
             return False

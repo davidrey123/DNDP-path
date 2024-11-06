@@ -15,6 +15,8 @@ class OA_CNDP_CG:
         self.useLinkVF = useLinkVF
         self.solveSO_only = False
         
+        print("CG", useCG, "link VF", useLinkVF)
+        
         self.last_xhat = None
         self.last_obj_f = 1000000000
         
@@ -129,7 +131,7 @@ class OA_CNDP_CG:
                 
             #self.checkVFCut(x_l, yhat, x_l, xhat, yhat)
             # add TSTT cut
-                self.addTSTTCut(xhat, yhat)
+                self.addTSTTCut(x_l, yhat)
             else:
                 self.addTSTTCut(x_l, yhat)
             
@@ -147,10 +149,12 @@ class OA_CNDP_CG:
             print(iteration, lb, ub, gap, elapsed, tap_time)
             
             if self.params.PRINT_BB_INFO:
-                print("\t", B_l, B_f, B_l-B_f)
+                print("Beckmann", B_l, B_f, B_l-B_f)
+                print("obj", self.calcOFV(x_l, yhat), obj_l, self.calcOFV(xhat, yhat))
             
-            #for a in self.varlinks:
-            #    print("\t", a, yhat[a], last_yhat[a], best_y[a], a.C/2)
+            #for a in self.network.links:
+                #print("\t", a, xhat[a], x_l[a], yhat[a])
+                #print("\t\t", x_l[a] * a.getTravelTimeC(x_l[a], yhat[a], "UE"), self.rmp.mu[a].solution_value)
             
             
  
@@ -175,13 +179,23 @@ class OA_CNDP_CG:
             
         return ub, elapsed, tap_time, iteration
 
-    def calcOFV(self):
-        output = self.network.getTSTT("UE")
+    def calcOFV(self, x, y):
+        output = 0
         
+        for a in self.network.links:
+            y_ext = 0
+            
+            if a in self.varlinks:
+                y_ext = y[a]
+            
+            output += x[a] * a.getTravelTimeC(x[a], y_ext, "UE")
+            
         for a in self.varlinks:
-            output += self.g[a] * a.add_cap
+            output += self.g[a] * y[a]
         
         return output
+        
+    
 
     def calcBeckmann(self, xhat, yhat):
         total = 0
@@ -543,7 +557,7 @@ class OA_CNDP_CG:
             
         self.network.tapas("UE", None)
         xhat = {a:a.x for a in self.network.links}
-        obj_f = self.calcOFV()
+        obj_f = self.calcOFV(xhat, y)
 
         return xhat, obj_f
         

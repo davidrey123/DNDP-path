@@ -48,17 +48,19 @@ ins = 'net'
 
 b_prop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3, 'Braess':1, 'HarkerFriesz':1}
-inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2, 'Braess':1, 'HarkerFriesz':2}
+inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2, 'Braess':1, 'HarkerFriesz':1}
 print(net,ins)
 
-inflate_cost = 20000
+inflate_cost = 1
 
 
 print(inflate_trips[net], inflate_cost, scal_flow[net])
 
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
-#test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
-test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
+
+#network.tapas( "UE", {a:0 for a in network.links})
+test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
+#test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
 test.solve()
 
 

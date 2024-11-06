@@ -16,8 +16,8 @@ import math
 from src import OA_CNDP_CS
 
 
-runMILP = True
-runOA = False
+runMILP = False
+runOA = True
 
 net = 'Braess'
 ins = 'Braess_CNDP_1'
@@ -119,11 +119,11 @@ if runOA:
 for i in range (1, 5):
     scale = i
     
-    if run_MILP:
+    if runMILP:
         f_milp_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
         f_milp.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
         
-    if run_OA:
+    if runOA:
         f_oa_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
 
 

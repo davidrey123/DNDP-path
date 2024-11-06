@@ -589,24 +589,26 @@ class Network:
                     print("Adjusting parameters due to small gap "+str(self.params.pas_cost_mu)+" "+str(self.params.line_search_gap))
             '''             
             
+            
             if (last_iter_gap - gap) < min_gap:
+                
                 
                 self.params.line_search_gap = max(self.params.line_search_gap/10, self.params.min_line_search_gap)
                 
-                if self.params.good_pas_cost_mu <= 10 and self.params.pas_cost_mu > 5e-5:
-                    self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)   
+                #if self.params.good_pas_cost_mu <= 10 and self.params.pas_cost_mu > 5e-5:
+                self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)   
                     
-                elif self.params.good_pas_flow_mu <= 10 and self.params.pas_flow_mu > 5e-5:
-                    self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6) 
+                #elif self.params.good_pas_flow_mu <= 10 and self.params.pas_flow_mu > 5e-5:
+                self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6) 
                    
-                elif self.params.good_pas_cost_epsilon == 0 and self.params.pas_cost_epsilon > 5e-6:
-                    self.params.pas_cost_epsilon = max(self.params.pas_cost_epsilon/10, 1e-6) 
+                #elif self.params.good_pas_cost_epsilon <= 10 and self.params.pas_cost_epsilon > 5e-6:
+                self.params.pas_cost_epsilon = max(self.params.pas_cost_epsilon/10, 1e-6) 
                     
-                elif self.params.bush_gap > 5e-6:
-                    self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
-                    self.params.resetPAS()
+                #elif self.params.bush_gap > 5e-6:
+                self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
+                #self.params.resetPAS()
                 
-                if self.params.PRINT_TAP_ITER:
+                if self.params.PRINT_TAPAS_INFO:
                     print('TAPAS gap check', self.params.bush_gap, self.params.pas_cost_mu, self.params.pas_flow_mu, self.params.pas_cost_epsilon)
                     print("\t", self.params.good_bush_gap, self.params.good_pas_cost_mu, self.params.good_pas_flow_mu, self.params.good_pas_cost_epsilon)
                 

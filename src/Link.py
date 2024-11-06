@@ -77,7 +77,7 @@ class Link:
             return Params.INFTY
             
         if self.beta > 1e-4: # for handling the case of beta = 0
-            return self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta-1) / self.C
+            return self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta-1) / (self.C + add_cap)
         
         else:
             return 0.0
@@ -86,7 +86,7 @@ class Link:
         if x < 0 and x > -1e-4:
             x = 0.0
             
-        return -self.t_ff * self.alpha * self.beta * pow(x, self.beta) / pow(self.C + add_cap, self.beta+1)
+        return -self.t_ff * self.alpha * self.beta * pow(x / (self.C + add_cap), self.beta) / (self.C + add_cap)
       
     def getPrimitiveTravelTime(self, x):  
         return self.getPrimitiveTravelTimeC(x, self.add_cap)

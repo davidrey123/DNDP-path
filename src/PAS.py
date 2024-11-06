@@ -33,19 +33,22 @@ class PAS:
         
     
     def getTT(self, topshift, type):
-        output = 0
+        fwdtt = 0
+        bwdtt = 0
+        #print("\t\t\tsuppose fwd +", topshift, "bwd +", -topshift)
         #with open('getTT5.txt', 'a') as file, contextlib.redirect_stdout(file):
         for l in self.forwardlinks:
             #print(f"self.forwardlinks {self.forwardlinks}")
-            output += l.getTravelTime(l.x + topshift, type)
+            fwdtt += l.getTravelTime(l.x + topshift, type)
             #output += l.getTravelTime(l.x, type)
             #print(f"output is {output}----")
             
         for l in self.backwardlinks:
-            output -= l.getTravelTime(l.x - topshift, type)
+            bwdtt += l.getTravelTime(l.x - topshift, type)
             #print(output)
         
-        return output
+        #print("\t\t\tthen fwd cost is ", fwdtt, "bwd cost is ", bwdtt)
+        return fwdtt - bwdtt
         
     def isBackwards(self, type):
         forwardcost = self.getForwardCost(type)
@@ -217,6 +220,17 @@ class PAS:
 
         
         return max
+        
+    def maxNumForwardFlowShift(self):
+        maxBush = self.maxForwardFlowShift()
+        
+        return sum(maxBush[r.bush] for r in self.relevant)
+        
+    def maxNumBackwardFlowShift(self):
+        maxBush = self.maxBackwardFlowShift()
+        
+        
+        return sum(maxBush[r.bush] for r in self.relevant)
     
     def maxForwardFlowShift(self):
         
@@ -285,9 +299,12 @@ class PAS:
             
         #print("flow shift? " +str(costdiff)+" "+str(forwardcost)+" "+str(backwardcost)+" "+str(cost_mu)+" "+str(backwards))
         
+        cost_epsilon = params.pas_cost_epsilon
+        #cost_epsilon = 1e-6
+        
         # maybe the forward and backward costs will be reversed sometimes
         if backwards == 1:
-            if costdiff < params.pas_cost_epsilon * forwardcost:
+            if costdiff < cost_epsilon * forwardcost:
                 if params.PRINT_PAS_INFO:
                     print("\t\tcostdiff is low", costdiff)
                 return False
@@ -295,7 +312,7 @@ class PAS:
                 #params.good_pas_cost_epsilon += 1
         
         elif backwards == -1: 
-            if -costdiff < params.pas_cost_epsilon * backwardcost:
+            if -costdiff < cost_epsilon * backwardcost:
                 #print("\t", "costdiff is low", costdiff)
                 if params.PRINT_PAS_INFO:
                     print("\t\tcostdiff is low", costdiff)
@@ -325,6 +342,9 @@ class PAS:
         if overallMaxShift < params.pas_flow_mu:
             if params.PRINT_PAS_INFO:
                 print("\t\tmax shift is low", overallMaxShift)
+                print("\t\tmax shift fwd", self.maxNumForwardFlowShift(), "bwd", self.maxNumBackwardFlowShift())
+                print("\t\tcostdiff fwd", self.getForwardCost(type), "bwd", self.getBackwardCost(type))
+                print("\t\trelevant bush", self.relevant)
             return False
         
 
@@ -342,10 +362,13 @@ class PAS:
         #for r in self.relevant:
         #    print(str(r)+" "+str(maxFlowShift[r.bush]))
         
+        stop = params.line_search_gap
         bot = 0
         top = overallMaxShift
+        
+        #stop = 1e-6
         #with open('flowShift3.txt', 'a') as file, contextlib.redirect_stdout(file):
-        while top - bot > overallMaxShift * params.line_search_gap:
+        while top - bot > overallMaxShift * stop:
             #print(line_search_gap)
             mid = (top + bot)/2
             
@@ -357,7 +380,7 @@ class PAS:
             
             check = self.getTT(mid * backwards, type)
             #print(mid * backwards)
-            #print("\t"+str(bot)+" "+str(top)+" "+str(mid)+" "+str(check))
+            #print("\t\tcheck this "+str(bot)+" "+str(top)+" "+str(mid)+" "+str(check))
             
             if check*backwards < 0:
                 bot = mid
@@ -365,14 +388,14 @@ class PAS:
             else:
                 top = mid
 
-
+        shift = bot
 
     #with open('result132.txt', 'a') as file, contextlib.redirect_stdout(file):
         for l in self.forwardlinks:
 
             for r in self.relevant:
                 # proportion allocated to bush is bush max shift / total max shift
-                r.bush.addFlow(l, maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
+                r.bush.addFlow(l, maxFlowShift[r.bush] / overallMaxShift * shift * backwards)
                 #print(f"maxFlowShift[r.bush] {maxFlowShift[r.bush]}")
                 #print(f"overallMaxShift is {overallMaxShift}")
                 #print(f"The bot is {bot}")
@@ -385,13 +408,16 @@ class PAS:
                 # proportion allocated to bush is bush max shift / total max shift
                 #print(-maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
                 #print(f'-maxFlowShift[r.bush] {-maxFlowShift[r.bush]}, overallMaxShift {overallMaxShift},bot{bot},backwards{backwards}')
-                r.bush.addFlow(l, -maxFlowShift[r.bush] / overallMaxShift * bot * backwards)
+                r.bush.addFlow(l, -maxFlowShift[r.bush] / overallMaxShift * shift * backwards)
         
 
         params.good_pas_cost_epsilon += 1
         
         if params.PRINT_PAS_INFO:
-            print("\tshift", bot, overallMaxShift, (-costdiff), (self.getForwardCost(type)-self.getBackwardCost(type)))
+            print("\tshift", shift, backwards, " up to ", overallMaxShift)
+            print("\t\tmax shift fwd", self.maxNumForwardFlowShift(), "bwd", self.maxNumBackwardFlowShift())
+            print("\t\tcostdiff fwd", self.getForwardCost(type), "bwd", self.getBackwardCost(type))
+            #), overallMaxShift, (-costdiff), (self.getForwardCost(type)-self.getBackwardCost(type)))
         #print(bot, overallMaxShift)
         
         #if self.id == 2799:
@@ -400,4 +426,4 @@ class PAS:
         return True
         
     def __str__(self):
-        return str(self.id)+" "+str(self.forwardlinks)+" - "+str(self.backwardlinks)
+        return str(self.id)+" "+str(self.forwardlinks)+", "+str(self.getForwardCost("UE"))+" - "+str(self.backwardlinks)+", "+str(self.getBackwardCost("UE"))
