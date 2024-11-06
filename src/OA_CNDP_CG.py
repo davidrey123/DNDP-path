@@ -476,13 +476,15 @@ class OA_CNDP_CG:
         while conv == False:
             RMP_status, OFV, link_duals, dem_duals = self.solveRMP()
             #print("solved?", RMP_status)
-            minrc = self.pricing(link_duals, dem_duals)
+            
             
             if RMP_status == 'infeasible':
                 CG_status = 'infeasible'
                 return CG_status, self.inf, dict(), dict()
             else:
                 CG_status = "solved"
+                
+            minrc = self.pricing(link_duals, dem_duals)
 
             if self.params.PRINT_BB_INFO:
                 npaths = len(self.getPaths())
@@ -522,7 +524,7 @@ class OA_CNDP_CG:
         
         
         
-        #print(RMP_status)
+        print("\t\t", RMP_status)
         
         OFV = self.rmp.objective_value
         

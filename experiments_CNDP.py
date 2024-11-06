@@ -209,8 +209,8 @@ for i in range (0, 5):
             obj, tot_time, tap_time, iterations = test.solve()
 
             #print(obj, tot_time, tap_time, iterations)
-            f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations)+"\t"+str(gap))
-            f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+time_id+" & "+str(round(tap_time, 2))+" & "+str(iterations))
+            f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations))
+            f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(tap_time, 2))+" & "+str(iterations))
 
         f_oa.write("\n")
         f_oa_latex.write("\\\\ \n")
@@ -234,7 +234,7 @@ for i in range (0, 5):
                 f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+time_id+" & ")
             else:
                 f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
-                f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(gap, 3)))
+                f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+time_id+" & "+str(round(gap, 3)))
             #print(obj, tot_time)
 
         f_milp.write("\n")
