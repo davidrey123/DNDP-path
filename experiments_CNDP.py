@@ -70,10 +70,10 @@ header2_oa_latex = '&&'
 for j in range(1, 4):
     pieces = j*5
     header1_milp += "\t"+str(pieces)+"\t"
-    header1_milp_latex += "& \multicolumn{2}{|c}{"+str(pieces)+"}"
-    header2_milp += "\tobj\trt (s)" # for 3 variations on num pieces for MILP
-    header2_milp_latex += "obj & rt (s)"
-    header0_milp_latex += "|cc"
+    header1_milp_latex += "& \multicolumn{3}{|c}{"+str(pieces)+"}"
+    header2_milp += "\tobj\trt (s)\tgap" # for 3 variations on num pieces for MILP
+    header2_milp_latex += "obj & rt (s) & gap"
+    header0_milp_latex += "|ccc"
     
     
 header1_oa += "\tB cut\t\t\t\tB cut, CG\t\t\t\tlink VF cut\t\t\t\tlink VF cut, CG"
@@ -87,8 +87,8 @@ for j in range(0, 4):
 header0_oa_latex += "}"
 header0_milp_latex += "}"
 
-header1_milp_latex += "\\\\"
-header2_milp_latex += "\\\\"
+header1_milp_latex += "\\\\\\hline"
+header2_milp_latex += "\\\\\\hline"
 header1_oa_latex += "\\\\"
 header2_oa_latex += "\\\\"
 
@@ -116,10 +116,14 @@ for i in range (1, 5):
         
         network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
         test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
-        obj, tot_time = test.solve()
+        obj, tot_time, gap = test.solve()
         
-        f_milp.write("\t"+str(obj)+"\t"+str(tot_time))
-        f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2)))
+        if obj == 1e100:
+            f_milp.write("\tinfeas\t\t")
+            f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+" & ")
+        else:
+            f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
+            f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(gap, 3)))
 
         #print(obj, tot_time)
         
@@ -139,6 +143,10 @@ for i in range (1, 5):
     
     f_milp.write("\n")
     f_milp_latex.write("\\\\ \n")
+
+f_oa_latex.write("\\hline")    
+f_milp_latex.write("\\hline")
+
    
     
 for i in range (0, 5):
@@ -159,7 +167,7 @@ for i in range (0, 5):
         obj, tot_time, tap_time, iterations = test.solve()
 
         #print(obj, tot_time, tap_time, iterations)
-        f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations))
+        f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations)+"\t"+str(gap))
         f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(tap_time, 2))+" & "+str(iterations))
     
     f_oa.write("\n")
@@ -172,18 +180,22 @@ for i in range (0, 5):
         pieces = j*5
         network = Network.Network(net,ins,b_prop,1e-0,scale * scal_flow[net],inflate_trips[net])
         test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
-        obj, tot_time = test.solve()
+        obj, tot_time, gap = test.solve()
         
-        f_milp.write("\t"+str(obj)+"\t"+str(tot_time))
-        f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2)))
-
+        if obj == 1e100:
+            f_milp.write("\tinfeas\t\t")
+            f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+" & ")
+        else:
+            f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
+            f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(gap, 3)))
         #print(obj, tot_time)
     
     f_milp.write("\n")
     f_milp_latex.write("\\\\ \n")
 
 
-
+f_oa_latex.write("\\hline")    
+f_milp_latex.write("\\hline")
 
 
 

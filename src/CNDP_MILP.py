@@ -72,8 +72,10 @@ class CNDP_MILP:
             
         RMP_status, ofv, x, y = self.solveRMP()
         
+        if RMP_status == 'infeasible':
+            return 1e100, t1, 1e100
         
-        
+        gap = self.rmp.solve_details.mip_relative_gap
         
         
        
@@ -99,13 +101,13 @@ class CNDP_MILP:
         print(obj, t1)
         '''
         
-        print(t1)
+        print(t1, gap)
         
         self.rmp.end()
         
         
         
-        return obj, t1
+        return obj, t1, gap
     
     def calcOFV(self):
         output = self.network.getTSTT("UE")
@@ -174,7 +176,7 @@ class CNDP_MILP:
         self.rmp.parameters.threads = 4
         #self.rmp.parameters.Workers = 4
         self.rmp.parameters.mip.tolerances.mipgap = 0.01
-        #self.rmp.parameters.timelimit = self.params.BB_timelimit
+        self.rmp.parameters.timelimit = 3600
         
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
        
