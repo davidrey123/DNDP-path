@@ -117,7 +117,9 @@ if runOA:
     
 
 for i in range (1, 5):
-    scale = i
+    scale = i/2
+    
+    print("\n\n\ndemand scale", scale, "\n\n\n")
     
     if runMILP:
         f_milp_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
@@ -191,8 +193,8 @@ if runMILP:
 for i in range (0, 5):
     scale = math.pow(2, i-1)
     
-    print("solving MILP with", pieces, "pieces")
-    print("cost scale is ", scale)
+    print("\n\n\nsolving MILP with", pieces, "pieces")
+    print("cost scale is ", scale, "\n\n\n")
     
     if runMILP:
         f_milp_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))

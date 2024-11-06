@@ -84,6 +84,7 @@ class OA_CNDP_CG:
                 SP_status, obj_l, x_l, yhat = self.solveRMP()
             
             if SP_status == "infeasible":
+                exit()
                 break
             
             
@@ -263,7 +264,7 @@ class OA_CNDP_CG:
         + sum( (self.rmp.y[a] - yhat[a]) * (a.intdtdy(x_l[a], yhat[a]) - a.intdtdy(xhat[a], yhat[a])) for a in self.varlinks) <= 0)
     
     def addVFCut2(self, xl, xf, yl):
-        lhs = sum(self.rmp.beta[a] for a in self.network.links)
+        lhs = sum(self.rmp.beta[a] for a in self.network.links) -1e-4
         
         lhs -= self.calcBeckmann(xf, yl)
         
@@ -480,6 +481,7 @@ class OA_CNDP_CG:
             
             if RMP_status == 'infeasible':
                 CG_status = 'infeasible'
+                
                 return CG_status, self.inf, dict(), dict()
             else:
                 CG_status = "solved"
