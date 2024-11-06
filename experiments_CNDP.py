@@ -16,7 +16,8 @@ import math
 from src import OA_CNDP_CS
 
 
-
+runMILP = True
+runOA = False
 
 net = 'Braess'
 ins = 'Braess_CNDP_1'
@@ -42,24 +43,28 @@ test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, 1)
 inflate_cost = 1
 
 
+if runMILP:
+    filename_milp = 'experiments_milp_'+net+'.txt'
+    f_milp = open(filename_milp, "w")
+    filename_latex_milp = 'experiments_milp_latex_'+net+'.txt'
+    f_milp_latex = open(filename_milp, "w")
+    
+if runOA:
+    filename_oa = 'experiments_oa_'+net+'.txt'
+    f_oa = open(filename_oa, "w")
 
-filename_milp = 'experiments_milp_'+net+'.txt'
-f_milp = open(filename_milp, "w")
-filename_oa = 'experiments_oa_'+net+'.txt'
-f_oa = open(filename_oa, "w")
-filename_latex_milp = 'experiments_milp_latex_'+net+'.txt'
-f_milp_latex = open(filename_milp, "w")
-filename_latex_oa = 'experiments_oa_latex_'+net+'.txt'
-f_oa_latex = open(filename_oa, "w")
+    filename_latex_oa = 'experiments_oa_latex_'+net+'.txt'
+    f_oa_latex = open(filename_oa, "w")
 
-header0_milp_latex = "\begin{tabular}{cc"
-header0_oa_latex = "\begin{tabular}{cc"
 
 header1_milp = "dem_scale\tcost_scale\t"
 header1_milp_latex = "dem_scale & cost_scale & "
 header2_milp = "\t\t"
 header2_milp_latex = '&&'
 
+
+header0_milp_latex = "\begin{tabular}{cc"
+header0_oa_latex = "\begin{tabular}{cc"
 header1_oa = "dem_scale\tcost_scale\t"
 header1_oa_latex = "dem_scale & cost_scale & "
 header2_oa = "\t\t"
@@ -75,77 +80,111 @@ for j in range(1, 4):
     header2_milp_latex += "obj & rt (s) & gap"
     header0_milp_latex += "|ccc"
     
+if runOA:
+    header1_oa += "\tB cut\t\t\t\tB cut, CG\t\t\t\tlink VF cut\t\t\t\tlink VF cut, CG"
+    header1_oa_latex += "& \multicolumn{4}{|c|}{B cut} & \multicolumn{4}{|c|}{B cut, CG} & \multicolumn{4}{|c|}{link VF cut) & \multicolumn{4}{|c}{link VF cut, CG}"
+
+    for j in range(0, 4):
+        header2_oa += "\t obj \t rt (s) \t TAP (s) \t iter." # for 4 variations: with and without CG; with and without link-based VF cuts 
+        header2_oa_latex += "& obj & rt (s) & TAP (s) & iter." 
+        header0_oa_latex += "|cccc"
+
+    header0_oa_latex += "}"
+    header1_oa_latex += "\\\\"
+    header2_oa_latex += "\\\\"
+
     
-header1_oa += "\tB cut\t\t\t\tB cut, CG\t\t\t\tlink VF cut\t\t\t\tlink VF cut, CG"
-header1_oa_latex += "& \multicolumn{4}{|c|}{B cut} & \multicolumn{4}{|c|}{B cut, CG} & \multicolumn{4}{|c|}{link VF cut) & \multicolumn{4}{|c}{link VF cut, CG}"
 
-for j in range(0, 4):
-    header2_oa += "\t obj \t rt (s) \t TAP (s) \t iter." # for 4 variations: with and without CG; with and without link-based VF cuts 
-    header2_oa_latex += "& obj & rt (s) & TAP (s) & iter." 
-    header0_oa_latex += "|cccc"
+if runMILP:
+    header1_milp_latex += "\\\\\\hline"
+    header2_milp_latex += "\\\\\\hline"
+    header0_milp_latex += "}"
+
+if runMILP:
+    f_milp_latex.write(header0_milp_latex+"\n"+header1_milp_latex+"\n"+header2_milp_latex+"\n")
+
+    f_milp.write(header1_milp+"\n"+header2_milp+"\n")
     
-header0_oa_latex += "}"
-header0_milp_latex += "}"
+    f_milp.flush()
+    f_milp_latex.flush()
 
-header1_milp_latex += "\\\\\\hline"
-header2_milp_latex += "\\\\\\hline"
-header1_oa_latex += "\\\\"
-header2_oa_latex += "\\\\"
+if runOA:
+    f_oa_latex.write(header0_oa_latex+"\n"+header1_oa_latex+"\n"+header2_oa_latex+"\n")
+    f_oa.write(header1_oa+"\n"+header2_oa+"\n")
 
-f_milp_latex.write(header0_milp_latex+"\n"+header1_milp_latex+"\n"+header2_milp_latex+"\n")
-f_oa_latex.write(header0_oa_latex+"\n"+header1_oa_latex+"\n"+header2_oa_latex+"\n")
-f_milp.write(header1_milp+"\n"+header2_milp+"\n")
-f_oa.write(header1_oa+"\n"+header2_oa+"\n")
-
-
+    f_oa.flush()
+    f_oa_latex.flush()
+    
 
 for i in range (1, 5):
     scale = i
     
-    f_milp_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
-    f_oa_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
-    
-    f_milp.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
-    f_oa.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
-    
-    for j in range(1, 4):
-        pieces = 3+j*2
+    if run_MILP:
+        f_milp_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
+        f_milp.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
         
-        print("solving MILP with", pieces, "pieces")
-        print("demand scale is ", scale * inflate_trips[net], "cost scale is ", inflate_cost, "scale flow is ", scal_flow[net])
-        
-        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
-        test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
-        obj, tot_time, gap = test.solve()
-        
-        if obj == 1e100:
-            f_milp.write("\tinfeas\t\t")
-            f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+" & ")
-        else:
-            f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
-            f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(gap, 3)))
+    if run_OA:
+        f_oa_latex.write(str(scale * inflate_trips[net])+" & "+str(inflate_cost)+" ")
 
-        #print(obj, tot_time)
-        
-        
-    for j in range (2, 4):
-        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
-        test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
-        obj, tot_time, tap_time, iterations = test.solve()
 
-        #print(obj, tot_time, tap_time, iterations)
-        f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations))
-        f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(tap_time, 2))+" & "+str(iterations))
+        f_oa.write(str(scale * inflate_trips[net])+" \t"+str(inflate_cost))
     
-    f_oa.write("\n")
-    f_oa_latex.write("\\\\ \n")
+    if runMILP:
+        for j in range(1, 4):
+            pieces = 3+j*2
+
+            print("solving MILP with", pieces, "pieces")
+            print("demand scale is ", scale * inflate_trips[net], "cost scale is ", inflate_cost, "scale flow is ", scal_flow[net])
+
+            network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
+            test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
+            obj, tot_time, gap = test.solve()
+
+            time_id = ""
+
+            if tot_time >= 3600:
+                time_id = "\tl"
+
+            if obj == 1e100:
+                f_milp.write("\tinfeas\t\t")
+                f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+time_id+" & ")
+            else:
+                f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
+                f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+time_id+" & "+str(round(gap, 3)))
+
+            #print(obj, tot_time)
+        
+    if runOA:
+        for j in range (2, 4):
+            network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],scale * inflate_trips[net])
+            test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
+            obj, tot_time, tap_time, iterations = test.solve()
+
+            #print(obj, tot_time, tap_time, iterations)
+            f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations))
+            f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(tap_time, 2))+" & "+str(iterations))
+
+        f_oa.write("\n")
+        f_oa_latex.write("\\\\ \n")
 
     
-    f_milp.write("\n")
-    f_milp_latex.write("\\\\ \n")
+    if runMILP:
+        f_milp.write("\n")
+        f_milp_latex.write("\\\\ \n")
+    
+    if runOA:
+        f_oa.flush()
+        f_oa_latex.flush()
+        
+    if runMILP:
+        f_milp.flush()
+        f_milp_latex.flush()
 
-f_oa_latex.write("\\hline")    
-f_milp_latex.write("\\hline")
+if runOA:   
+    f_oa_latex.write("\\hline") 
+       
+if runMILP:
+    f_milp_latex.write("\\hline")
 
    
     
@@ -155,56 +194,66 @@ for i in range (0, 5):
     print("solving MILP with", pieces, "pieces")
     print("cost scale is ", scale)
     
-    f_milp_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))
-    f_oa_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))
-    
-    f_milp.write(str(inflate_trips[net])+" \t"+str(scale*inflate_cost))
-    f_oa.write(str(inflate_trips[net])+" \t"+str(scale*inflate_cost))
-    
-    for j in range (2, 4):
-        network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
-        test = OA_CNDP_CG.OA_CNDP_CG(network, scale*inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
-        obj, tot_time, tap_time, iterations = test.solve()
-
-        #print(obj, tot_time, tap_time, iterations)
-        f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations)+"\t"+str(gap))
-        f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(tap_time, 2))+" & "+str(iterations))
-    
-    f_oa.write("\n")
-    f_oa_latex.write("\\\\ \n")
-
-    
-    
-    
-    for j in range(1, 4):
-        pieces = j*5
-        network = Network.Network(net,ins,b_prop,1e-0,scale * scal_flow[net],inflate_trips[net])
-        test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
-        obj, tot_time, gap = test.solve()
+    if runMILP:
+        f_milp_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))
+        f_milp.write(str(inflate_trips[net])+" \t"+str(scale*inflate_cost))
         
-        if obj == 1e100:
-            f_milp.write("\tinfeas\t\t")
-            f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+" & ")
-        else:
-            f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
-            f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(gap, 3)))
-        #print(obj, tot_time)
+    if runOA:
+        f_oa_latex.write(str(inflate_trips[net])+" & "+str(scale*inflate_cost))
+        f_oa.write(str(inflate_trips[net])+" \t"+str(scale*inflate_cost))
     
-    f_milp.write("\n")
-    f_milp_latex.write("\\\\ \n")
+    if runOA:
+        for j in range (2, 4):
+            network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
+            test = OA_CNDP_CG.OA_CNDP_CG(network, scale*inflate_cost, useCG= (j%2 == 1), useLinkVF=(j >= 2))
+            obj, tot_time, tap_time, iterations = test.solve()
+
+            #print(obj, tot_time, tap_time, iterations)
+            f_oa.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(tap_time)+"\t"+str(iterations)+"\t"+str(gap))
+            f_oa_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+time_id+" & "+str(round(tap_time, 2))+" & "+str(iterations))
+
+        f_oa.write("\n")
+        f_oa_latex.write("\\\\ \n")
+
+    
+    
+    if runMILP:
+        for j in range(1, 4):
+            pieces = j*5
+            network = Network.Network(net,ins,b_prop,1e-0,scale * scal_flow[net],inflate_trips[net])
+            test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
+            obj, tot_time, gap = test.solve()
+
+            time_id = ""
+
+            if tot_time >= 3600:
+                time_id = "\tl"
+
+            if obj == 1e100:
+                f_milp.write("\tinfeas\t\t")
+                f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+time_id+" & ")
+            else:
+                f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
+                f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+" & "+str(round(gap, 3)))
+            #print(obj, tot_time)
+
+        f_milp.write("\n")
+        f_milp_latex.write("\\\\ \n")
+
+    if runOA:
+        f_oa.flush()
+        f_oa_latex.flush()
+    if runMILP:
+        f_milp.flush()
+        f_milp_latex.flush()
 
 
-f_oa_latex.write("\\hline")    
-f_milp_latex.write("\\hline")
-
-
-
-
-
-
-
-
-f_milp.close()
-f_milp_latex.close()
-f_oa.close()
-f_oa_latex.close()
+if runOA:
+    f_oa_latex.write("\\hline")  
+    f_oa.close()
+    f_oa_latex.close()  
+    
+if runMILP:
+    f_milp_latex.write("\\hline")
+    f_milp.close()
+    f_milp_latex.close()
