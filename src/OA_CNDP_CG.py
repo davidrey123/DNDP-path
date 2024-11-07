@@ -71,7 +71,7 @@ class OA_CNDP_CG:
         xhat = None
         x_l = None
         
-        run_TAP = False
+        run_TAP = True
         add_cut = False
         
         B_f = 10000000
@@ -120,11 +120,12 @@ class OA_CNDP_CG:
                         best_y = yhat
                         best_x = xhat
 
-                    if self.useLinkVF:
-                    
-                        self.addVFCut2(x_l, xhat, yhat)
-                    else:
-                        self.addVFCut(x_l, xhat, yhat)
+                    if iteration > 1:
+                        if self.useLinkVF:
+
+                            self.addVFCut2(x_l, xhat, yhat)
+                        else:
+                            self.addVFCut(x_l, xhat, yhat)
                 else:
                     if self.params.PRINT_BB_INFO:
                         print("\tSkipping TAP")
