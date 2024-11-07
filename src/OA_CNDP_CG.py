@@ -71,7 +71,8 @@ class OA_CNDP_CG:
         xhat = None
         x_l = None
         
-        skip_TAP = False
+        run_TAP = False
+        add_cut = False
         
         B_f = 10000000
         obj_f = 100000000
@@ -99,7 +100,7 @@ class OA_CNDP_CG:
 
             if not self.solveSO_only: 
                 # add VF cut
-                if skip_TAP:
+                if run_TAP:
                     if self.params.PRINT_BB_INFO:
                         print("\tSolving TAP")
                     t1 = time.time()
@@ -130,9 +131,13 @@ class OA_CNDP_CG:
                     xhat = last_xhat
                     #self.addVFCutSameY(x_l, xhat, yhat)
                 
-
+                    # y may be similar enough to skip TAP but different enough to add new cut
+                    if self.useLinkVF and add_cut and iteration > 1:
+                    
+                        self.addVFCut2(x_l, xhat, yhat)
+                        
                 if self.useLinkVF:
-                    self.addBeckmannOACut(x_l, xhat, yhat, last_x_l)
+                    self.addBeckmannOACut(x_l, yhat)
             
                 
                 
@@ -158,9 +163,17 @@ class OA_CNDP_CG:
             
             
             if self.params.PRINT_BB_INFO:
-                print("Beckmann", B_l, B_f, B_l-B_f)
+                B_approx = sum(self.rmp.beta[a].solution_value for a in self.network.links)
+                print("Beckmann", B_l, B_f, B_l-B_f, B_approx, B_approx-B_f)
+                '''
+                for a in self.network.links:
+                    y_ext = 0
+                    
+                    if a in self.varlinks:
+                        y_ext = yhat[a]
+                    print("\t", a, a.getPrimitiveTravelTimeC(x_l[a], y_ext), self.rmp.beta[a].solution_value)
                 print("obj", self.calcOFV(x_l, yhat), obj_l, self.calcOFV(xhat, yhat))
-            
+                '''
             #for a in self.network.links:
                 #print("\t", a, xhat[a], x_l[a], yhat[a])
                 #print("\t\t", x_l[a] * a.getTravelTimeC(x_l[a], yhat[a], "UE"), self.rmp.mu[a].solution_value)
@@ -170,11 +183,11 @@ class OA_CNDP_CG:
             if elapsed > timelimit:
                 break
                 
-            skip_TAP = self.isYDifferent(yhat, last_yhat)
+            run_TAP, add_cut = self.isYDifferent(yhat, last_yhat)
             
             if gap < 0.2:
                 self.network.params.min_gap = 1E-3
-                skip_TAP = False
+                run_TAP = True
                 
             last_xhat = xhat
             last_yhat = yhat
@@ -308,7 +321,7 @@ class OA_CNDP_CG:
         #self.checkVFCut(xl, yl, xl, xf, yl)
         
         
-    def addBeckmannOACut(self, xl, xf, yl, lastx):
+    def addBeckmannOACut(self, xl, yl):
     
         #print("\tadding Beckmann OA cut")
         
@@ -582,11 +595,13 @@ class OA_CNDP_CG:
             return RMP_status, OFV, x_l, yhat
         
     def isYDifferent(self, y, lasty):
-        
+        output1 = False
         for a in self.varlinks:
-            if abs(y[a] - lasty[a]) > 1e-6:
-                return True
-        return False
+            if abs(y[a] - lasty[a]) > 1e-9:
+                return True, True
+            elif abs(y[a] - lasty[a]) > 1e-6:
+                output1 = True
+        return output1, False
         
     def TAP(self, y, lasty):
     
