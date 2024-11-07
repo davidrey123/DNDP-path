@@ -17,6 +17,8 @@ class OA_CNDP_CG:
         
         print("CG", useCG, "link VF", useLinkVF)
         
+        self.gap = 100
+        self.tstt = 10000000000
         self.last_xhat = None
         self.last_obj_f = 1000000000
         
@@ -32,7 +34,8 @@ class OA_CNDP_CG:
         self.varlinks = []
         
         for a in self.network.links:
-            if a.cost > 0:
+            if a.cost > 1e-6:
+                #print(a, a.cost)
                 self.varlinks.append(a)
                 
         print("yvars", len(self.varlinks))
@@ -68,6 +71,8 @@ class OA_CNDP_CG:
         xhat = None
         x_l = None
         
+        skip_TAP = False
+        
         B_f = 10000000
         obj_f = 100000000
         
@@ -94,7 +99,7 @@ class OA_CNDP_CG:
 
             if not self.solveSO_only: 
                 # add VF cut
-                if self.isYDifferent(yhat, last_yhat):
+                if skip_TAP:
                     if self.params.PRINT_BB_INFO:
                         print("\tSolving TAP")
                     t1 = time.time()
@@ -122,6 +127,7 @@ class OA_CNDP_CG:
                 else:
                     if self.params.PRINT_BB_INFO:
                         print("\tSkipping TAP")
+                    xhat = last_xhat
                     #self.addVFCutSameY(x_l, xhat, yhat)
                 
 
@@ -149,6 +155,8 @@ class OA_CNDP_CG:
             
             print(iteration, lb, ub, gap, elapsed, tap_time)
             
+            
+            
             if self.params.PRINT_BB_INFO:
                 print("Beckmann", B_l, B_f, B_l-B_f)
                 print("obj", self.calcOFV(x_l, yhat), obj_l, self.calcOFV(xhat, yhat))
@@ -161,6 +169,12 @@ class OA_CNDP_CG:
  
             if elapsed > timelimit:
                 break
+                
+            skip_TAP = self.isYDifferent(yhat, last_yhat)
+            
+            if gap < 0.2:
+                self.network.params.min_gap = 1E-3
+                skip_TAP = False
                 
             last_xhat = xhat
             last_yhat = yhat
@@ -177,9 +191,27 @@ class OA_CNDP_CG:
         '''
         
         self.rmp.end()
+        self.tstt = self.calcTSTT(best_x, best_y)
+        self.gap = gap
             
         return ub, elapsed, tap_time, iteration
 
+    def calcTSTT(self, x, y):
+        output = 0
+        for a in self.network.links:
+            y_ext = 0
+            
+            if a in self.varlinks:
+                y_ext = y[a]
+            
+            output += a.getTravelTimeC(x[a], y_ext, "UE")
+            
+            
+        return output
+    
+    def getAvgLinkCost(self):
+        return sum(self.g[a] for a in self.varlinks) / len(self.varlinks)
+        
     def calcOFV(self, x, y):
         output = 0
         
@@ -248,7 +280,8 @@ class OA_CNDP_CG:
         #self.rmp.add_constraint(sum(vba[a] for a in self.network.links) <= 0)
         '''    
         
-        print("adding VF cut Delta B")
+        if self.params.PRINT_BB_INFO:
+            print("adding VF cut Delta B")
            
         B1 = self.calcBeckmann(x_l, yhat)
         B2 = self.calcBeckmann(xhat, yhat)
@@ -296,7 +329,8 @@ class OA_CNDP_CG:
         
     def addVFCutSameY(self, xl, xf, yl):
     
-        print("adding VF cut same y")
+        if self.params.PRINT_BB_INFO:
+            print("adding VF cut same y")
        
             
         
@@ -334,8 +368,8 @@ class OA_CNDP_CG:
           
         #print("\tcheck1", sum(self.rmp.beta[a].solution_value for a in self.network.links), sum(a.getPrimitiveTravelTimeC(xf[a], yl_ext[a]) for a in self.network.links)  )
 
-        for a in self.varlinks:
-            print("\t\tydiff", a, ydiff[a].solution_value, yl[a]-yl_old[a], a.getDerivativeTravelTimeCy(xf[a], 0))
+        #for a in self.varlinks:
+        #    print("\t\tydiff", a, ydiff[a].solution_value, yl[a]-yl_old[a], a.getDerivativeTravelTimeCy(xf[a], 0))
         #self.checkVFCut(xl, yl, xl, xf, yl)
 
         
@@ -525,8 +559,8 @@ class OA_CNDP_CG:
         RMP_status = self.rmp.solve_details.status
         
         
-        
-        print("\t\t", RMP_status)
+        if self.params.PRINT_BB_INFO:
+            print("\t\t", RMP_status)
         
         OFV = self.rmp.objective_value
         

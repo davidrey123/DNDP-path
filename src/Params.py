@@ -29,10 +29,10 @@ class Params:
         self.warmstart = False        
         
         #---TAPAS params
-        self.bush_gap = 0.01
-        self.pas_cost_mu = 0        
-        self.pas_cost_epsilon = 0
-        self.pas_flow_mu = 0        
+        self.bush_gap = 1e-2
+        self.pas_cost_mu = 1e-2     
+        self.pas_cost_epsilon = 1e-2
+        self.pas_flow_mu = 1e-2       
         self.line_search_gap = 1E-3
         
         self.resetPAS()
@@ -76,7 +76,7 @@ class Params:
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
 
-        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_BB_INFO = False #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
         self.PRINT_LOG = False #---outputs instance log file - used in BPC only for now
