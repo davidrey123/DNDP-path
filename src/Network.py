@@ -105,8 +105,11 @@ class Network:
             alpha = float(line[5])
             beta = float(line[6])
             
-            cost = float(line[10])
-            
+            try:
+                cost = float(line[10])
+            except ValueError:
+                cost = 0
+                
             self.TC += cost
             
             link = Link.Link(id, start ,end, t_ff, C, alpha, beta, cost)

@@ -71,12 +71,12 @@ class Params:
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
         
-        self.PRINT_TAP_ITER = False
+        self.PRINT_TAP_ITER = True
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
 
-        self.PRINT_BB_INFO = False #---prints detailed BB info
+        self.PRINT_BB_INFO = True #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
         self.PRINT_LOG = False #---outputs instance log file - used in BPC only for now

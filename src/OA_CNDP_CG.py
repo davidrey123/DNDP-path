@@ -67,6 +67,10 @@ class OA_CNDP_CG:
         best_y = {a:-1 for a in self.network.links}
         best_x = {a: -1 for a in self.network.links}
         
+        
+        
+                
+                
         yhat = None
         xhat = None
         x_l = None
@@ -93,6 +97,11 @@ class OA_CNDP_CG:
                 exit()
                 break
             
+            
+            elapsed = time.time() - starttime
+            
+            if elapsed >= self.params.BB_timelimit:
+                break
             
             lb = obj_l
             B_l = self.calcBeckmann(x_l, yhat)
@@ -151,6 +160,10 @@ class OA_CNDP_CG:
             
             
             elapsed = time.time() - starttime
+            
+            if elapsed >= self.params.BB_timelimit:
+                break
+                
             if self.solveSO_only:
                 gap = (lb - last_lb)/lb
             else:
