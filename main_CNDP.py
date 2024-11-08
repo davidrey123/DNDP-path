@@ -69,7 +69,7 @@ test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
 #test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
 obj, tot_time, tap_time, iter, = test.solve()
 
-print(len(test.varlinks), " & ", network.TD, "&", test.getAvgLinkCost(), "& x &", obj, "&", test.gap, "&", test.tstt, "&", tot_time, "&", tap_time, "&", iter)
+print(len(test.varlinks), " & ", network.TD, "&", test.getAvgLinkCost(), "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time 2), "s &", iter)
 
 
 
