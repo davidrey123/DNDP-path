@@ -117,7 +117,7 @@ if runOA:
     
 
 for i in range (1, 5):
-    scale = i/2
+    scale = i/4
     
     print("\n\n\ndemand scale", scale, "\n\n\n")
     

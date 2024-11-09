@@ -99,7 +99,9 @@ class Network:
                 continue
             start = self.nodes[int(line[0]) - 1]
             end = self.nodes[int(line[1]) - 1]
-            C = float(line[2]) * scal_flow             
+            C = float(line[2]) * scal_flow   
+            
+
 
             t_ff = float(line[4]) * scal_time
             alpha = float(line[5])

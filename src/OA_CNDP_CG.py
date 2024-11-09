@@ -172,7 +172,7 @@ class OA_CNDP_CG:
                 else:
                     gap = 1
             
-            print(iteration, lb, ub, gap, elapsed, tap_time)
+            print(iteration, lb, ub, obj_f, gap, elapsed, tap_time)
             
             
             
@@ -208,13 +208,13 @@ class OA_CNDP_CG:
             last_x_l = x_l
             last_lb = lb
             
-        '''    
+        '''   
         for a in self.network.links:
             y_ext = 0
             
             if a in self.varlinks:
                 y_ext = best_y[a]
-            print(a, best_x[a], y_ext)
+            print("[", a.start, ",", a.end, ",", best_x[a], ",", y_ext, "], ")
         '''
         
         self.rmp.end()
@@ -613,7 +613,7 @@ class OA_CNDP_CG:
         for a in self.varlinks:
             if abs(y[a] - lasty[a]) > 1e-9:
                 return True, True
-            elif abs(y[a] - lasty[a]) > 1e-6:
+            elif abs(y[a] - lasty[a]) > 1e-9:
                 output1 = True
         return output1, False
         

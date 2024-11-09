@@ -34,4 +34,15 @@ class Path:
             output += a.getTravelTime(a.x, type)
         return output
         
+    def getTT(self, x, y):
+        output = 0
+        
+        for a in self.links:
+            y_e = 0
+            
+            if a in y:
+                y_e = y[a]
+            output += a.getTravelTimeC(a.x, y_e, "UE")
+        return output
+        
     
