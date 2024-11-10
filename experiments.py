@@ -27,8 +27,8 @@ headers = {'BPC':'& UB & Gap (\\%) & rootNodeLB & Time (s) & RMP (s) & Prc (s) &
 
 f.write("Exp params: BB_timelimit (s): %.1f, BB_tol: %.3f, TAP_tol %.3f, CPLEX_threads: %d\n" 
         % (Params.Params().BB_timelimit,Params.Params().BB_tol,Params.Params().min_gap,Params.Params().CPLEX_threads))
-f.write("Alg params: initOAheuristic: %s, OAcuts_tol: %.3f, solveSO: %s, Icuts: %s, VFcut: %s\n" 
-        % (Params.Params().initOAheuristic,Params.Params().OAcut_tol,Params.Params().solveSO,Params.Params().useInterdictionCuts,Params.Params().useValueFunctionCuts))
+f.write("Alg params: initOAheuristic: %s, OAcuts_tol: %.3f, solveSO: %s, Icuts: %s, VFcut1: %s, VFcut2: %s\n" 
+        % (Params.Params().initOAheuristic,Params.Params().OAcut_tol,Params.Params().solveSO,Params.Params().useInterdictionCuts,Params.Params().useValueFunctionCuts1,Params.Params().useValueFunctionCuts2))
 f.write("Budget/Total cost: %.2f\n" % (bprop))
 #f.write("Flow scaling: %s\n" % (scal_flow))
 f.write("Trips inflation: %s\n" % (inflate_trips))
