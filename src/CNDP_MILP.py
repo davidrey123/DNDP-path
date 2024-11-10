@@ -200,6 +200,7 @@ class CNDP_MILP:
         self.rmp.x = {a:self.rmp.continuous_var(lb=0, ub=self.network.TD) for a in self.network.links}
         self.rmp.h = dict()
         self.rmp.c = dict()
+        self.rmp.diff = dict()
         self.rmp.sigma = dict()
         self.rmp.zeta = {a: {i : self.rmp.binary_var() for i in range(0, self.num_x_pieces)} for a in self.network.links}
         self.rmp.kappa = {a: {i: self.rmp.binary_var() for i in range(0, self.num_y_pieces)} for a in self.varlinks}
@@ -260,20 +261,20 @@ class CNDP_MILP:
                     self.rmp.sigma[p] = self.rmp.binary_var() # CS binary variable
                     self.rmp.c[p] = self.rmp.continuous_var(lb=0)
                     self.rmp.h[p] = self.rmp.continuous_var(lb=0, ub=r.getDemand(s))
-                    
+                    self.rmp.diff[p] = self.rmp.continuous_var()
                     
                     self.rmp.add_constraint(self.rmp.c[p] == sum(self.rmp.tt[a] for a in p.links))
                     self.rmp.add_constraint(self.rmp.mu[(r,s)] <= self.rmp.c[p] + epsilon)
-                    
+                    self.rmp.add_constraint(self.rmp.diff[p] == self.rmp.c[p] - self.rmp.mu[(r,s)])
                     
                     # CS
-                    M = 1e3 * self.num_scale
+                    #M = 1e3 * self.num_scale
                     
-                    self.rmp.add_constraint(self.rmp.h[p] <=  epsilon + r.getDemand(s)* self.rmp.sigma[p])
+                    #self.rmp.add_constraint(self.rmp.h[p] <=  epsilon + r.getDemand(s)* self.rmp.sigma[p])
                     
-                    self.rmp.add_constraint(self.rmp.c[p] - self.rmp.mu[(r,s)] <= M*(1-self.rmp.sigma[p]) + epsilon)
-                    self.rmp.add_constraint(self.rmp.c[p] - self.rmp.mu[(r,s)]  >= -M*(1-self.rmp.sigma[p]) - epsilon)
-                    
+                    #self.rmp.add_constraint(self.rmp.c[p] - self.rmp.mu[(r,s)] <= M*(1-self.rmp.sigma[p]) + epsilon)
+                    #self.rmp.add_constraint(self.rmp.c[p] - self.rmp.mu[(r,s)]  >= -M*(1-self.rmp.sigma[p]) - epsilon)
+                    self.rmp.add_sos1([self.rmp.h[p], self.rmp.diff[p]])
 
                 # VI at least one path is used per OD
                 
@@ -281,15 +282,17 @@ class CNDP_MILP:
         
         
         for a in self.network.links:
-            self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) <= epsilon)
-            self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) >= -epsilon)
+            self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) == 0)
+            #self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) <= epsilon)
+            #self.rmp.add_constraint(self.rmp.x[a] - sum(self.rmp.h[p] for p in self.getPaths() if a in p.links) >= -epsilon)
         
             
         for r in self.network.origins:
             for s in self.network.zones:
                 if r.getDemand(s) > 0:
-                    self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s) - epsilon)
-                    self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) <= r.getDemand(s) + epsilon)
+                    self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) == r.getDemand(s))
+                    #self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) >= r.getDemand(s) - epsilon)
+                    #self.rmp.add_constraint(sum(self.rmp.h[p] for p in self.paths[r][s]) <= r.getDemand(s) + epsilon)
         
         
         
