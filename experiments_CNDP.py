@@ -60,7 +60,7 @@ if runOA:
 header1_milp = "dem_scale\tcost_scale\t"
 header1_milp_latex = "dem_scale & cost_scale & "
 header2_milp = "\t\t"
-header2_milp_latex = '&&'
+header2_milp_latex = '&'
 
 
 header0_milp_latex = "\begin{tabular}{cc"
@@ -68,7 +68,7 @@ header0_oa_latex = "\begin{tabular}{cc"
 header1_oa = "dem_scale\tcost_scale\t"
 header1_oa_latex = "dem_scale & cost_scale & "
 header2_oa = "\t\t"
-header2_oa_latex = '&&'
+header2_oa_latex = '&'
 
 
 
@@ -96,8 +96,8 @@ if runOA:
     
 
 if runMILP:
-    header1_milp_latex += "\\\\\\hline"
-    header2_milp_latex += "\\\\\\hline"
+    header1_milp_latex += "\\\\\\toprule"
+    header2_milp_latex += "\\\\\\toprule"
     header0_milp_latex += "}"
 
 if runMILP:
@@ -145,7 +145,7 @@ for i in range (1, 5):
             time_id = ""
 
             if tot_time >= 3600:
-                time_id = "\tl"
+                time_id = "\\tl"
 
             if obj == 1e100:
                 f_milp.write("\tinfeas\t\t")
@@ -229,7 +229,7 @@ for i in range (0, 5):
             time_id = ""
 
             if tot_time >= 3600:
-                time_id = "\tl"
+                time_id = "\\tl"
 
             if obj == 1e100:
                 f_milp.write("\tinfeas\t\t")
@@ -251,11 +251,11 @@ for i in range (0, 5):
 
 
 if runOA:
-    f_oa_latex.write("\\hline")  
+    f_oa_latex.write("\\bottomrule")  
     f_oa.close()
     f_oa_latex.close()  
     
 if runMILP:
-    f_milp_latex.write("\\hline")
+    f_milp_latex.write("\\bottomrule")
     f_milp.close()
     f_milp_latex.close()
