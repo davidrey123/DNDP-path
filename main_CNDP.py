@@ -9,6 +9,7 @@ from src import OA_CNDP_CG
 #from src import HY_CNDP
 from src import DuGP_CNDP
 from src import CNDP_MILP
+from decimal import Decimal
 #import polytope as pc
 
 #import numpy as np
@@ -41,10 +42,10 @@ net = 'SiouxFalls'
 ins = 'SF_CNDP_1'
 
 net = 'EasternMassachusetts'
-ins = 'EM_CNDP_30_1'
+ins = 'EM_CNDP_30_2'
 
-net = 'HarkerFriesz'
-ins = 'HF_CNDP_1'
+#net = 'HarkerFriesz'
+#ins = 'HF_CNDP_1'
 
 #net = 'BerlinMitteCenter'
 #ins = 'BMC_CNDP_30_1'
@@ -59,18 +60,22 @@ print(net,ins)
 
 inflate_cost = 1
 
+scale_dem = 1
 
-print(inflate_trips[net], inflate_cost, scal_flow[net])
+#scientific_format = "{:.2e}".format(512349000.000000)
+#print(scientific_format)
+
+print(scale_dem * inflate_trips[net], inflate_cost, scal_flow[net])
 
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 
 #network.tapas( "UE", {a:0 for a in network.links})
-#test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
+test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
 #test = HY_CNDP.HY_CNDP(network)
-test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
-#obj, tot_time, tap_time, iter, = test.solve()
-test.solve()
-#print(len(test.varlinks), " & ", network.TD, "&", test.getAvgLinkCost(), "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time 2), "s &", iter)
+#test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
+obj, tot_time, tap_time, iter, = test.solve()
+#test.solve()
+print(len(test.varlinks), " & ", round(network.TD,1), "&", test.getAvgLinkCost(), "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time, 2), "s &", iter)
 
 
 
