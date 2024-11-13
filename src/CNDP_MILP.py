@@ -190,7 +190,7 @@ class CNDP_MILP:
         self.rmp.parameters.threads = 4
         #self.rmp.parameters.Workers = 4
         self.rmp.parameters.mip.tolerances.mipgap = 0.01
-        self.rmp.parameters.timelimit = 60*60
+        self.rmp.parameters.timelimit = 60*60*4
         
         self.rmp.y = {a:self.rmp.continuous_var(lb=0, ub=a.max_add_cap) for a in self.varlinks}
        
@@ -446,14 +446,16 @@ class CNDP_MILP:
         self.rmp.solve(log_output=False)
         t_solve = time.time() - t_solve
         
-
+        print(self.rmp.solve_details.status)
         if self.rmp.solve_details.status == 'infeasible' or self.rmp.solve_details.status == 'integer infeasible':
             return 'infeasible',self.inf, dict(), dict()
         RMP_status = self.rmp.solve_details.status
         
-        
-        x = {a:self.rmp.x[a].solution_value for a in self.network.links}
-        y = {a:self.rmp.y[a].solution_value for a in self.varlinks}
+        try:
+            x = {a:self.rmp.x[a].solution_value for a in self.network.links}
+            y = {a:self.rmp.y[a].solution_value for a in self.varlinks}
+        except:
+            return 'infeasible',self.inf, dict(), dict()
         #print(RMP_status)
 
         OFV = self.rmp.objective_value

@@ -16,8 +16,8 @@ import math
 from src import OA_CNDP_CS
 
 
-runMILP = False
-runOA = True
+runMILP = True
+runOA = False
 
 net = 'Braess'
 ins = 'Braess_CNDP_1'
@@ -29,7 +29,7 @@ ins = 'SF_CNDP_1'
 #ins = 'EM_CNDP_10_1'
 
 net = 'HarkerFriesz'
-ins = 'net'
+ins = 'HF_CNDP_1'
 
 b_prop = 0.5
 scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1e-3,'Anaheim':1e-3,'Barcelona':1e-3, 'Braess':1, 'HarkerFriesz':1}
@@ -46,15 +46,15 @@ inflate_cost = 1
 if runMILP:
     filename_milp = 'experiments_milp_'+net+'.txt'
     f_milp = open(filename_milp, "w")
-    filename_latex_milp = 'experiments_milp_latex_'+net+'.txt'
-    f_milp_latex = open(filename_milp, "w")
+    filename_milp_latex = 'experiments_milp_latex_'+net+'.txt'
+    f_milp_latex = open(filename_milp_latex, "w")
     
 if runOA:
     filename_oa = 'experiments_oa_'+net+'.txt'
     f_oa = open(filename_oa, "w")
 
-    filename_latex_oa = 'experiments_oa_latex_'+net+'.txt'
-    f_oa_latex = open(filename_oa, "w")
+    filename_oa_latex = 'experiments_oa_latex_'+net+'.txt'
+    f_oa_latex = open(filename_oa_latex, "w")
 
 
 header1_milp = "dem_scale\tcost_scale\t"
@@ -144,7 +144,7 @@ for i in range (1, 5):
 
             time_id = ""
 
-            if tot_time >= 3600:
+            if tot_time >= 4*3600:
                 time_id = "\\tl"
 
             if obj == 1e100:
@@ -153,6 +153,10 @@ for i in range (1, 5):
             else:
                 f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
                 f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+time_id+" & "+str(round(gap, 3)))
+                
+            if runMILP:
+                f_milp.flush()
+                f_milp_latex.flush()
 
             #print(obj, tot_time)
         
@@ -168,6 +172,10 @@ for i in range (1, 5):
 
         f_oa.write("\n")
         f_oa_latex.write("\\\\ \n")
+        
+        if runOA:
+            f_oa.flush()
+            f_oa_latex.flush()
 
     
     if runMILP:
@@ -216,19 +224,23 @@ for i in range (0, 5):
 
         f_oa.write("\n")
         f_oa_latex.write("\\\\ \n")
+        
+        if runOA:
+            f_oa.flush()
+            f_oa_latex.flush()
 
     
     
     if runMILP:
         for j in range(1, 4):
-            pieces = j*5
+            pieces = 3+j*2
             network = Network.Network(net,ins,b_prop,1e-0,scale * scal_flow[net],inflate_trips[net])
             test = CNDP_MILP.CNDP_MILP(network, pieces, pieces, 20, inflate_cost)
             obj, tot_time, gap = test.solve()
 
             time_id = ""
 
-            if tot_time >= 3600:
+            if tot_time >= 4*3600:
                 time_id = "\\tl"
 
             if obj == 1e100:
@@ -238,6 +250,10 @@ for i in range (0, 5):
                 f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
                 f_milp_latex.write(" & "+str(round(obj, 1))+" & "+str(round(tot_time, 2))+time_id+" & "+str(round(gap, 3)))
             #print(obj, tot_time)
+            
+            if runMILP:
+                f_milp.flush()
+                f_milp_latex.flush()
 
         f_milp.write("\n")
         f_milp_latex.write("\\\\ \n")
@@ -245,6 +261,7 @@ for i in range (0, 5):
     if runOA:
         f_oa.flush()
         f_oa_latex.flush()
+        
     if runMILP:
         f_milp.flush()
         f_milp_latex.flush()
