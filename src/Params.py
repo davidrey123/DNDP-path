@@ -38,7 +38,7 @@ class Params:
         self.resetPAS()
         
         self.flow_epsilon = 0.000001
-        self.min_line_search_gap = 1E-6
+        self.min_line_search_gap = 1E-2
         self.tapas_equilibrate_iter = 3
         
         #---used within TAPAS don't change        
@@ -67,16 +67,17 @@ class Params:
         #---printing    
         self.DEBUG_CHECKS = True
 
-        self.PRINT_PAS_INFO = False
+        self.PRINT_PAS_INFO = True
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
         
-        self.PRINT_TAP_ITER = False
+        self.PRINT_TAP_ITER = True
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
-
-        self.PRINT_BB_INFO = True #---prints detailed BB info
+        self.PRINT_PARAM_ADJ = True
+        
+        self.PRINT_BB_INFO = False #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
         self.PRINT_LOG = False #---outputs instance log file - used in BPC only for now

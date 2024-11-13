@@ -366,6 +366,7 @@ class PAS:
         bot = 0
         top = overallMaxShift
         
+        print("start shift fwd ", forwardcost, "bwd", backwardcost)
         #stop = 1e-6
         #with open('flowShift3.txt', 'a') as file, contextlib.redirect_stdout(file):
         while top - bot > overallMaxShift * stop:
@@ -380,7 +381,7 @@ class PAS:
             
             check = self.getTT(mid * backwards, type)
             #print(mid * backwards)
-            #print("\t\tcheck this "+str(bot)+" "+str(top)+" "+str(mid)+" "+str(check))
+            print("\t\tcheck this "+str(bot)+" "+str(top)+" "+str(mid)+" "+str(check))
             
             if check*backwards < 0:
                 bot = mid

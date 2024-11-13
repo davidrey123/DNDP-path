@@ -39,10 +39,10 @@ net = 'Braess'
 ins = 'Braess_CNDP_1'
 
 net = 'SiouxFalls'
-ins = 'SF_CNDP_1'
+ins = 'SF_CNDP_10_1'
 
-net = 'EasternMassachusetts'
-ins = 'EM_CNDP_30_2'
+#net = 'EasternMassachusetts'
+#ins = 'EM_CNDP_10_1'
 
 #net = 'HarkerFriesz'
 #ins = 'HF_CNDP_1'
@@ -58,7 +58,7 @@ scal_flow = {'SiouxFalls':1e-3,'EasternMassachusetts':1e-3,'BerlinMitteCenter':1
 inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'Anaheim':4,'Barcelona':2, 'Braess':1, 'HarkerFriesz':0.25}
 print(net,ins)
 
-inflate_cost = 1
+inflate_cost = 5
 
 scale_dem = 1
 
@@ -75,7 +75,9 @@ test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
 #test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
 obj, tot_time, tap_time, iter, = test.solve()
 #test.solve()
-print(len(test.varlinks), " & ", round(network.TD,1), "&", test.getAvgLinkCost(), "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time, 2), "s &", iter)
+scientific_format = "{:.2e}".format(test.getAvgLinkCost())
+print(scientific_format)
+print(len(test.varlinks), " & ", round(network.TD,1), "&", scientific_format , "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time, 2), "s &", iter)
 
 
 

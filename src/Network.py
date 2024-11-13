@@ -613,7 +613,20 @@ class Network:
                 self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
                 #self.params.resetPAS()
                 
-                if self.params.PRINT_TAPAS_INFO:
+                '''
+                if self.params.pas_flow_mu > 5e-5:
+                    self.params.pas_flow_mu = max(self.params.pas_flow_mu/10, 1e-6) 
+                    
+                elif self.params.pas_cost_epsilon > 5e-6:
+                    self.params.pas_cost_epsilon = max(self.params.pas_cost_epsilon/10, 1e-6) 
+                    
+                    self.params.pas_cost_mu = max(self.params.pas_cost_mu/10, 1e-6)   
+                    
+                elif self.params.bush_gap > 5e-6:
+                    self.params.bush_gap = max(self.params.bush_gap/10, 1e-6)
+                    self.params.resetPAS()
+                '''
+                if self.params.PRINT_PARAM_ADJ:
                     print('TAPAS gap check', self.params.bush_gap, self.params.pas_cost_mu, self.params.pas_flow_mu, self.params.pas_cost_epsilon)
                     print("\t", self.params.good_bush_gap, self.params.good_pas_cost_mu, self.params.good_pas_flow_mu, self.params.good_pas_cost_epsilon)
                 
