@@ -21,19 +21,29 @@ CG = True
 nets = ['SiouxFalls', 'EasternMassachusetts', 'Anaheim', 'BerlinMitteCenter']
 inss = ['SF_CNDP_','EM_CNDP_','A_CNDP_','BMC_CNDP_']
 
+'''
 scale_dems = [
 [1, 0.5],
 [1, 2],
 [1, 2],
 [1, 2]
 ]
+'''
+scale_dems = [
+[1],
+[1],
+[1],
+[1]
+]
+
 
 inflate_costs = [
-[1,5],
-[1,5],
-[1,5],
-[1,5],
+[1,100],
+[1,100],
+[1,100],
+[1,100],
 ]
+
 
 yvarss = [
 [10,30],
@@ -68,18 +78,20 @@ for n in range (0, 1):
         yvars = yvarss[n][j]
 
 
-        for k in range (1, 4):
+        for k in range (1, 3):
             if k == 1:
                 inflate_cost = inflate_costs[n][0]
                 scale_dem = scale_dems[n][0]
             elif k == 2:
-                inflate_cost = inflate_costs[n][0]
-                scale_dem = scale_dems[n][1]
-            elif k == 3:
                 inflate_cost = inflate_costs[n][1]
                 scale_dem = scale_dems[n][0]
+            #elif k == 3:
+            #    inflate_cost = inflate_costs[n][1]
+            #    scale_dem = scale_dems[n][0]
 
-            for i in range (1, 2):
+            for i in range (1, 4):
+                
+                
                 actual_ins = inss[n]+str(yvars)+"_"+str(i)
                 print("\n\n\n", actual_ins, yvars, scale_dem, inflate_cost, CG, "\n\n\n")
 
@@ -94,8 +106,24 @@ for n in range (0, 1):
                 obj, tot_time, tap_time, iter, = test.solve()
 
                 scientific_format = "{:.2e}".format(test.getAvgLinkCost())
-                f.write(str(len(test.varlinks)) + " & "+ str(round(network.TD,1))+ " & " +  str(scientific_format) +  " & "+str(i)+" & " + str(round(obj, 1))+ " & "+ str(round(100*test.gap, 3))+ "\% & " + str(round(test.tstt, 1)) + " & " + str(round(tot_time, 2)) + "s & "+ str(round(tap_time, 2))+ "s &" + str(iter))
+                
+                varlinks_str = str(len(test.varlinks))
+                TD_str = str(round(network.TD,1))
+                
+                if not(k == 1 and i == 1):
+                    varlinks_str = ""
+                    
+                if not(i == 1 and k==1):
+                    TD_str = ""
+                
+                f.write("& "+varlinks_str + " & "+ TD_str+ " & " +str(i) + " & " + str(scientific_format) +  " & " + str("{:.1f}".format(obj))+ " & "+ str("{:.2f}".format(100*test.gap))+ "\% & " + str("{:.2f}".format(test.tstt))  + " & " + str("{:.2f}".format(tot_time)) + "s & "+ str("{:.2f}".format(tap_time))+ "s & " + str(iter)+" \\\\")
                 f.write("\n")
+                
+                if i == 3:
+                    if k==2:
+                        f.write("\cline{2-11}\n")
+                    else:
+                        f.write("\cline{4-11}\n")
 
                 f.flush()
             

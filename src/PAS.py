@@ -32,7 +32,7 @@ class PAS:
         #print(r)
         
     
-    def getTT(self, topshift, type):
+    def getTT(self, topshift, type, params):
         fwdtt = 0
         bwdtt = 0
         #print("\t\t\tsuppose fwd +", topshift, "bwd +", -topshift)
@@ -47,7 +47,8 @@ class PAS:
             bwdtt += l.getTravelTime(l.x - topshift, type)
             #print(output)
         
-        #print("\t\t\tthen fwd cost is ", fwdtt, "bwd cost is ", bwdtt)
+        if  params.PRINT_PAS_DEBUG:
+            print("\t\t\tthen fwd cost is ", fwdtt, "bwd cost is ", bwdtt)
         return fwdtt - bwdtt
         
     def isBackwards(self, type):
@@ -366,7 +367,10 @@ class PAS:
         bot = 0
         top = overallMaxShift
         
-        print("start shift fwd ", forwardcost, "bwd", backwardcost)
+        if params.PRINT_PAS_DEBUG:
+            print("start shift fwd ", forwardcost, "bwd", backwardcost)
+            
+            
         #stop = 1e-6
         #with open('flowShift3.txt', 'a') as file, contextlib.redirect_stdout(file):
         while top - bot > overallMaxShift * stop:
@@ -379,9 +383,10 @@ class PAS:
                 return False
                 
             
-            check = self.getTT(mid * backwards, type)
+            check = self.getTT(mid * backwards, type, params)
             #print(mid * backwards)
-            print("\t\tcheck this "+str(bot)+" "+str(top)+" "+str(mid)+" "+str(check))
+            if params.PRINT_PAS_DEBUG:
+                print("\t\tcheck this "+str(bot)+" "+str(top)+" "+str(mid)+" "+str(check))
             
             if check*backwards < 0:
                 bot = mid
@@ -414,7 +419,7 @@ class PAS:
 
         params.good_pas_cost_epsilon += 1
         
-        if params.PRINT_PAS_INFO:
+        if params.PRINT_PAS_DEBUG:
             print("\tshift", shift, backwards, " up to ", overallMaxShift)
             print("\t\tmax shift fwd", self.maxNumForwardFlowShift(), "bwd", self.maxNumBackwardFlowShift())
             print("\t\tcostdiff fwd", self.getForwardCost(type), "bwd", self.getBackwardCost(type))
