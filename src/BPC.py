@@ -702,44 +702,56 @@ class BPC:
                         
             else:
                 
-                #---add Branch cuts
-                Bcuts0,Bcuts1 = self.addBranchCuts(can)
+                if can.solved == False:
                 
-                if self.params.useValueFunctionCuts2:
-                    VFcut2 = self.addVFCut2(can)
-                
-                #---LB is obtained from LP relaxation of OA MP
-                CG_status,can.LB,yCG = self.CG(can)
-               
-                if CG_status == 'infeasible':
-                    if self.params.PRINT_BB_INFO:
-                        print('--> CG infeasible - prune by feasibility')
-                    prune = True
+                    #---add Branch cuts
+                    Bcuts0,Bcuts1 = self.addBranchCuts(can)
                     
-                elif can.LB >= self.UB:
-                    if self.params.PRINT_BB_INFO:
-                        print('--> prune by bounding')
-                    prune = True
+                    if self.params.useValueFunctionCuts2:
+                        VFcut2 = self.addVFCut2(can)
                     
-                else:
-                    #---RMP solution is feasible ==> runOA
-                    runOA = True
+                    #---LB is obtained from LP relaxation of OA MP
+                    CG_status,can.LB,yCG = self.CG(can)
                    
-                if CG_status == 'integral':
-                    if self.params.PRINT_BB_INFO:
-                        print('--> CG integral')
+                    if CG_status == 'infeasible':
+                        if self.params.PRINT_BB_INFO:
+                            print('--> CG infeasible - prune by feasibility')
+                        prune = True
                         
-                    for a in self.network.links2:
-                        can.y[a] = round(yCG[a])
+                    elif can.LB >= self.UB:
+                        if self.params.PRINT_BB_INFO:
+                            print('--> prune by bounding')
+                        prune = True
                         
-                    if self.params.runUEifCGIntegral:
-                        runUE = True
+                    else:
+                        #---RMP solution is feasible ==> runOA
+                        runOA = True
+                       
+                    if CG_status == 'integral':
+                        if self.params.PRINT_BB_INFO:
+                            print('--> CG integral')
+                            
+                        for a in self.network.links2:
+                            can.y[a] = round(yCG[a])
+                            
+                        if self.params.runUEifCGIntegral:
+                            runUE = True
+                            
+                    #---remove Branch cuts
+                    self.removeBranchCuts(Bcuts0,Bcuts1)
+                    
+                    if self.params.useValueFunctionCuts2:
+                        self.removeVFCut2(VFcut2)
                         
-                #---remove Branch cuts
-                self.removeBranchCuts(Bcuts0,Bcuts1)
-                
-                if self.params.useValueFunctionCuts2:
-                    self.removeVFCut2(VFcut2)
+                else:
+                    if self.params.PRINT_BB_BASIC:
+                        print('already solved')
+                    if can.LB >= self.UB:
+                        if self.params.PRINT_BB_BASIC:
+                            print('--> prune by bounding2')
+                        if self.params.PRINT_BB_INFO:
+                            print('--> prune by bounding2')
+                        prune = True
 
             if runOA:
                 

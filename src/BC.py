@@ -537,38 +537,50 @@ class BC:
                         
             else:
                 
-                #---add Branch cuts
-                Bcuts0,Bcuts1 = self.addBranchCuts(can)
+                if can.solved == False:
                 
-                #---LB is obtained from LP relaxation of OA MP
-                LP_status,can.LB,yLP = self.solveLP(can)
-               
-                if LP_status == 'infeasible':
-                    if self.params.PRINT_BB_INFO:
-                        print('--> LP infeasible - prune by feasibility')
-                    prune = True
+                    #---add Branch cuts
+                    Bcuts0,Bcuts1 = self.addBranchCuts(can)
                     
-                elif can.LB >= self.UB:
-                    if self.params.PRINT_BB_INFO:
-                        print('--> prune by bounding')
-                    prune = True
-                    
-                else:
-                    #---LP solution is feasible ==> runOA
-                    runOA = True                    
+                    #---LB is obtained from LP relaxation of OA MP
+                    LP_status,can.LB,yLP = self.solveLP(can)
                    
-                if LP_status == 'integral':
-                    if self.params.PRINT_BB_INFO:
-                        print('--> LP integral')
+                    if LP_status == 'infeasible':
+                        if self.params.PRINT_BB_INFO:
+                            print('--> LP infeasible - prune by feasibility')
+                        prune = True
                         
-                    for a in self.network.links2:
-                        can.y[a] = round(yLP[a])                        
-                    
-                    if self.params.runUEifCGIntegral:
-                        runUE = True
+                    elif can.LB >= self.UB:
+                        if self.params.PRINT_BB_INFO:
+                            print('--> prune by bounding')
+                        prune = True
                         
-                #---remove Branch cuts
-                self.removeBranchCuts(Bcuts0,Bcuts1)                        
+                    else:
+                        #---LP solution is feasible ==> runOA
+                        runOA = True                    
+                       
+                    if LP_status == 'integral':
+                        if self.params.PRINT_BB_INFO:
+                            print('--> LP integral')
+                            
+                        for a in self.network.links2:
+                            can.y[a] = round(yLP[a])                        
+                        
+                        if self.params.runUEifCGIntegral:
+                            runUE = True
+                            
+                    #---remove Branch cuts
+                    self.removeBranchCuts(Bcuts0,Bcuts1)     
+                
+                else:
+                    if self.params.PRINT_BB_BASIC:
+                        print('already solved')
+                    if can.LB >= self.UB:
+                        if self.params.PRINT_BB_BASIC:
+                            print('--> prune by bounding2')
+                        if self.params.PRINT_BB_INFO:
+                            print('--> prune by bounding2')
+                        prune = True                    
                           
             if runOA:
 
