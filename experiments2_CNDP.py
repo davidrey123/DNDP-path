@@ -70,7 +70,7 @@ scale_dem = 1
 
 
 
-for n in range (0, 1):
+for n in range (3, 4):
     net = nets[n]
     f = open("experiments_"+net+".txt", "w")
     
@@ -116,14 +116,14 @@ for n in range (0, 1):
                 if not(i == 1 and k==1):
                     TD_str = ""
                 
-                f.write("& "+varlinks_str + " & "+ TD_str+ " & " +str(i) + " & " + str(scientific_format) +  " & " + str("{:.1f}".format(obj))+ " & "+ str("{:.2f}".format(100*test.gap))+ "\% & " + str("{:.2f}".format(test.tstt))  + " & " + str("{:.2f}".format(tot_time)) + "s & "+ str("{:.2f}".format(tap_time))+ "s & " + str(iter)+" \\\\")
+                f.write("& "+varlinks_str +  " & " +str(i) + " & " + str(scientific_format) +  " & " + str("{:.1f}".format(obj))+ " & "+ str("{:.2f}".format(100*test.gap))+ "\% & " + str("{:.2f}".format(test.tstt))  + " & " + str("{:.2f}".format(tot_time)) + "s & "+ str("{:.2f}".format(tap_time))+ "s & " + str(iter)+" \\\\")
                 f.write("\n")
                 
                 if i == 3:
                     if k==2:
-                        f.write("\cline{2-11}\n")
+                        f.write("\cline{2-10}\n")
                     else:
-                        f.write("\cline{4-11}\n")
+                        f.write("\cline{4-10}\n")
 
                 f.flush()
             

@@ -90,6 +90,8 @@ class Network:
 
         line = ""
         id = 0
+        
+        print(numLinks)
         while len(line) == 0:
             line = file.readline().strip()
 
@@ -107,6 +109,7 @@ class Network:
             alpha = float(line[5])
             beta = float(line[6])
             
+   
             try:
                 cost = float(line[10])
             except ValueError:

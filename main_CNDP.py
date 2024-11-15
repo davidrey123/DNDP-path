@@ -6,7 +6,7 @@ from src import BPC
 from src import BC
 from src import OA_CNDP
 from src import OA_CNDP_CG
-#from src import HY_CNDP
+from src import HY_CNDP
 from src import DuGP_CNDP
 from src import CNDP_MILP
 from decimal import Decimal
@@ -42,13 +42,13 @@ net = 'SiouxFalls'
 ins = 'SF_CNDP_10_1'
 
 #net = 'EasternMassachusetts'
-#ins = 'EM_CNDP_10_1'
+#ins = 'EM_CNDP_30_1'
 
-#net = 'HarkerFriesz'
-#ins = 'HF_CNDP_1'
+net = 'HarkerFriesz'
+ins = 'HF_CNDP_1'
 
 #net = 'BerlinMitteCenter'
-#ins = 'BMC_CNDP_30_1'
+#ins = 'BMC_CNDP_30_2'
 
 #net = 'Anaheim'
 #ins = 'A_CNDP_30_1'
@@ -69,19 +69,19 @@ print(scale_dem * inflate_trips[net], inflate_cost, scal_flow[net])
 
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 
-network.tapas( "UE", {a:0 for a in network.links})
-print(network.getTSTT("UE"))
+#network.tapas( "UE", {a:0 for a in network.links})
+#print(network.getTSTT("UE"))
 
-exit()
+#exit()
 
-test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
-#test = HY_CNDP.HY_CNDP(network)
+#test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
+test = HY_CNDP.HY_CNDP(network)
 #test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, inflate_cost)
-obj, tot_time, tap_time, iter, = test.solve()
-#test.solve()
-scientific_format = "{:.2e}".format(test.getAvgLinkCost())
-print(scientific_format)
-print(len(test.varlinks), " & ", round(network.TD,1), "&", scientific_format , "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time, 2), "s &", iter)
+#obj, tot_time, tap_time, iter, = test.solve()
+test.solve()
+#scientific_format = "{:.2e}".format(test.getAvgLinkCost())
+#print(scientific_format)
+#print(len(test.varlinks), " & ", round(network.TD,1), "&", scientific_format , "& x &", round(obj, 1), "&", round(100*test.gap, 3), "\% &", round(test.tstt, 1), "&", round(tot_time, 2), "s &", round(tap_time, 2), "s &", iter)
 
 
 

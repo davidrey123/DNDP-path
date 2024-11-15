@@ -34,8 +34,9 @@ class OA_CNDP_CG:
         self.varlinks = []
         
         for a in self.network.links:
+            #print(a, a.cost)
             if a.cost > 1e-6:
-                #print(a, a.cost)
+                
                 self.varlinks.append(a)
                 
         print("yvars", len(self.varlinks))
@@ -94,6 +95,7 @@ class OA_CNDP_CG:
                 SP_status, obj_l, x_l, yhat = self.solveRMP()
             
             if SP_status == "infeasible":
+                elapsed = time.time() - starttime
                 exit()
                 break
             
