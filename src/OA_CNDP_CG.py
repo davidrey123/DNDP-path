@@ -233,7 +233,7 @@ class OA_CNDP_CG:
             if a in self.varlinks:
                 y_ext = y[a]
             
-            output += a.getTravelTimeC(x[a], y_ext, "UE")
+            output += x[a] * a.getTravelTimeC(x[a], y_ext, "UE")
             
             
         return output

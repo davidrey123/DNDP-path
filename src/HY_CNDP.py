@@ -41,8 +41,14 @@ class HY_CNDP:
         
         t1_min = 0
         t1_max = 10
+        
+        t2 = time.time()
         polytope_r = {r: self.constructS0ExtremePoints(r) for r in self.network.origins}
         extreme_r = {r: pc.extreme(polytope_r[r]) for r in self.network.origins}
+        
+        t2 = time.time()-t2
+        
+        print("extreme points", t2)
         
         # step 1 choose tolerance factor delta k > 0
         delta_k = 1

@@ -17,7 +17,7 @@ from src import OA_CNDP_CS
 
 
 runMILP = True
-runOA = False
+runOA = True
 
 net = 'Braess'
 ins = 'Braess_CNDP_1'

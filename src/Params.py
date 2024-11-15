@@ -25,7 +25,7 @@ class Params:
         #---TAP params
         self.msa_max_iter = 500        
         self.tapas_max_iter = 100 
-        self.min_gap = 1E-5
+        self.min_gap = 4E-3
         self.warmstart = False        
         
         #---TAPAS params

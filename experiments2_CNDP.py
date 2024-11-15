@@ -41,7 +41,7 @@ inflate_costs = [
 [1,100],
 [1,100],
 [1,100],
-[1,100],
+[0.01,1],
 ]
 
 
@@ -70,7 +70,7 @@ scale_dem = 1
 
 
 
-for n in range (3, 4):
+for n in range (1, 2):
     net = nets[n]
     f = open("experiments_"+net+".txt", "w")
     
@@ -116,7 +116,7 @@ for n in range (3, 4):
                 if not(i == 1 and k==1):
                     TD_str = ""
                 
-                f.write("& "+varlinks_str +  " & " +str(i) + " & " + str(scientific_format) +  " & " + str("{:.1f}".format(obj))+ " & "+ str("{:.2f}".format(100*test.gap))+ "\% & " + str("{:.2f}".format(test.tstt))  + " & " + str("{:.2f}".format(tot_time)) + "s & "+ str("{:.2f}".format(tap_time))+ "s & " + str(iter)+" \\\\")
+                f.write("& "+varlinks_str +  " & " +str(i) + " & " + str(scientific_format) +  " & " + str("{:.1f}".format(obj))+ " & "+ str("{:.2f}".format(100*test.gap))+ "\% & " + str("{:.1f}".format(test.tstt))  + " & " + str("{:.2f}".format(tot_time)) + "s & "+ str("{:.2f}".format(tap_time))+ "s & " + str(iter)+" \\\\")
                 f.write("\n")
                 
                 if i == 3:
@@ -127,4 +127,4 @@ for n in range (3, 4):
 
                 f.flush()
             
-f.close()
+    f.close()
