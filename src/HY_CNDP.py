@@ -50,6 +50,12 @@ class HY_CNDP:
         
         print("extreme points", t2)
         
+        f = open("HY_time.txt", "w")
+        f.write(str(t2))
+        f.close()
+        
+        '''
+        
         # step 1 choose tolerance factor delta k > 0
         delta_k = 1
         
@@ -77,6 +83,7 @@ class HY_CNDP:
             # compute multicutting plane
             # add linear constraints to 
     
+        '''
             
     def evalExtremePoints(self, extreme_r, t1_min, t1_max):
         # construct combinations

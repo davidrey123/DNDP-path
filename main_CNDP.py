@@ -44,11 +44,11 @@ ins = 'SF_CNDP_10_1'
 #net = 'EasternMassachusetts'
 #ins = 'EM_CNDP_30_1'
 
-net = 'HarkerFriesz'
-ins = 'HF_CNDP_1'
+#net = 'HarkerFriesz'
+#ins = 'HF_CNDP_1'
 
-#net = 'BerlinMitteCenter'
-#ins = 'BMC_CNDP_30_2'
+net = 'BerlinMitteCenter'
+ins = 'BMC_CNDP_30_2'
 
 #net = 'Anaheim'
 #ins = 'A_CNDP_30_1'
@@ -69,10 +69,12 @@ print(scale_dem * inflate_trips[net], inflate_cost, scal_flow[net])
 
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
 
+print("TD", network.TD)
+
 #network.tapas( "UE", {a:0 for a in network.links})
 #print(network.getTSTT("UE"))
 
-#exit()
+exit()
 
 #test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
 test = HY_CNDP.HY_CNDP(network)

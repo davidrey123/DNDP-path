@@ -33,7 +33,7 @@ scale_dems = [
 [1],
 [1],
 [1],
-[1]
+[2]
 ]
 
 
@@ -41,7 +41,7 @@ inflate_costs = [
 [1,100],
 [1,100],
 [1,100],
-[0.01,1],
+[0.1,1],
 ]
 
 
@@ -70,7 +70,7 @@ scale_dem = 1
 
 
 
-for n in range (1, 2):
+for n in range (3, 4):
     net = nets[n]
     f = open("experiments_"+net+".txt", "w")
     

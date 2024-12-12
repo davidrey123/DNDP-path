@@ -6,7 +6,7 @@ from src import BPC
 from src import BC
 from src import OA_CNDP
 from src import OA_CNDP_CG
-#from src import HY_CNDP
+from src import HY_CNDP
 from src import DuGP_CNDP
 from src import CNDP_MILP
 import math
@@ -19,14 +19,7 @@ from src import OA_CNDP_CS
 runMILP = True
 runOA = True
 
-net = 'Braess'
-ins = 'Braess_CNDP_1'
 
-net = 'SiouxFalls'
-ins = 'SF_CNDP_1'
-
-#net = 'EasternMassachusetts'
-#ins = 'EM_CNDP_10_1'
 
 net = 'HarkerFriesz'
 ins = 'HF_CNDP_1'
@@ -37,10 +30,11 @@ inflate_trips = {'SiouxFalls':1,'EasternMassachusetts':4,'BerlinMitteCenter':2,'
 print(net,ins)
 
 network = Network.Network(net,ins,b_prop,1e-0,scal_flow[net],inflate_trips[net])
-#test = OA_CNDP_CG.OA_CNDP_CG(network, inflate_cost, useLinkVF=True)
-test = CNDP_MILP.CNDP_MILP(network, 5, 5, 20, 1)
 
 inflate_cost = 1
+
+#test = HY_CNDP.HY_CNDP(network)
+#test.solve()
 
 
 if runMILP:
@@ -148,7 +142,7 @@ for i in range (1, 5):
                 time_id = "\\tl"
 
             if obj == 1e100:
-                f_milp.write("\tinfeas\t\t")
+                f_milp.write("\tinfeas\t"+str(tot_time)+"\t")
                 f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+time_id+" & ")
             else:
                 f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
@@ -244,7 +238,7 @@ for i in range (0, 5):
                 time_id = "\\tl"
 
             if obj == 1e100:
-                f_milp.write("\tinfeas\t\t")
+                f_milp.write("\tinfeas\t"+str(tot_time)+"\t")
                 f_milp_latex.write(" & inf & "+str(round(tot_time, 2))+time_id+" & ")
             else:
                 f_milp.write("\t"+str(obj)+"\t"+str(tot_time)+"\t"+str(gap))
@@ -276,3 +270,6 @@ if runMILP:
     f_milp_latex.write("\\bottomrule")
     f_milp.close()
     f_milp_latex.close()
+
+
+

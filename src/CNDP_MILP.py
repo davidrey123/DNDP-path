@@ -81,6 +81,7 @@ class CNDP_MILP:
         print(RMP_status)
         
         if RMP_status == 'infeasible':
+            t1 = time.time()-t1
             return 1e100, t1, 1e100
         
         gap = self.rmp.solve_details.mip_relative_gap
