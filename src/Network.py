@@ -695,6 +695,19 @@ class Network:
             
         for r in p.relevant:
             r.bush.relevantPAS.remove(p)
+            
+    def findUsedPaths(self):
+    	output = dict()
+    	
+    	for r in self.origins:
+    		for s in self.zones:
+    			if r.getDemand(s) > 0:
+    				output[(r,s)] = list()
+    			
+    	for r in self.origins:
+    		r.bush.getUsedPaths(output)
+    		
+    	return output
     
     def removePAS(self, iter):
         removed = []

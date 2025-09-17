@@ -70,6 +70,8 @@ class Params:
         self.PRINT_PAS_INFO = False
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
+        self.PRINT_PAS_DEBUG = False
+        self.PRINT_PARAM_ADJ = False
         
         self.PRINT_TAP_ITER = False
 
