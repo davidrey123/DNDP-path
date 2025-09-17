@@ -36,9 +36,7 @@ class BPC:
         
         self.rmp = None
         self.cntUnscaledInf = 0 
-        self.nIcuts = 0
         self.nOAcuts = 0
-        self.nOABcuts = 0
         self.nVFcuts = 0
         self.nInitYvec = len(self.network.links2)
         self.paths = {r:{s:[] for s in self.network.zones} for r in self.network.origins}
@@ -147,7 +145,7 @@ class BPC:
     
     def getOAcuts(self):
         
-        #---determine OA of TSTT function based on link flows and add link-based OA cuts to RMP
+        #---determine OA of x_a^{p_a + 1} and add link-based OA cuts to RMP
         
         for a in self.network.links:
             OAcut = {}
@@ -165,48 +163,19 @@ class BPC:
                 if addOAcut == True:
                     
                     OAcut['x'] = a.x
-                    OAcut['a'] = a.getTravelTime(a.x,'SO')
-                    OAcut['b'] = - pow(a.x, 2) * a.getDerivativeTravelTime(a.x)
+                    OAcut['a'] = (a.beta + 1) * pow(a.x, a.beta)
+                    OAcut['b'] = - (a.beta) * pow(a.x, a.beta + 1)
                                                   
                     a.OAcuts.append(OAcut)
                     
                     #---add OA cut to RMP
                     self.rmp.add_constraint(self.rmp.mu[a] >= self.rmp.x[a]*OAcut['a'] + OAcut['b'])
                     self.nOAcuts += 1
-                
-    def getOABcuts(self):
-        
-        #---determine OA of Beckmann function based on (UE) link flows and add link-based OAB cuts to RMP
-        
-        for a in self.network.links:
-            OABcut = {}
-            
-            if a.y == 1:
-                
-                addOABcut = True
-                for cut in a.OABcuts: 
-                    
-                    #---check if a.x is sufficiently different from existing OABcuts        
-                    if abs(a.x - cut['x']) <= self.params.OAcut_tol*a.C:
-                        addOABcut = False
-                        break
-                
-                if addOABcut == True:
-                    
-                    OABcut['x'] = a.x
-                    OABcut['a'] = a.getTravelTime(a.x,'UE')
-                    OABcut['b'] = a.getPrimitiveTravelTime(a.x) - a.x * a.getTravelTime(a.x,'UE')
-                                                  
-                    a.OABcuts.append(OABcut)
-                    
-                    #---add OAB cut to RMP
-                    self.rmp.add_constraint(self.rmp.muB[a] >= self.rmp.x[a]*OABcut['a'] + OABcut['b'])
-                    self.nOABcuts += 1
-                               
                     
     def getVFcut1(self, beck):
         
-        self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= beck + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
+        #self.rmp.add_constraint(sum((a.t_ff * self.rmp.x[a] + (a.gtilde/(a.beta + 1)) * self.rmp.mu[a]) for a in self.network.links) <= beck + sum(self.M*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
+        self.rmp.add_constraint(sum((a.t_ff * self.rmp.x[a] + (a.gtilde/(a.beta + 1)) * self.rmp.mu[a]) for a in self.network.links) <= beck + sum((self.M - beck)*(1 - self.rmp.y[a]) for a in self.network.links2 if a.x > 1e-4))
         self.nVFcuts += 1
     
     def knapsack(self, yvec):
@@ -215,7 +184,7 @@ class BPC:
         knp.y = {a:knp.binary_var() for a in self.network.links2}
         knp.add_constraint(sum(knp.y[a] * a.cost for a in self.network.links2) <= self.network.B)
         
-        #---Interdiction cuts
+        #---No good cuts
         for yv in yvec:
             knp.add_constraint(sum(knp.y[a] + yv[a] - 2*knp.y[a]*yv[a] for a in self.network.links2) >= 1)
         
@@ -350,9 +319,17 @@ class BPC:
         self.nUE += 1
         self.UB = can.UB
         
-        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
-            beck = self.network.getBeckmannOFV()            
-            self.getOABcuts()
+        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:   
+            
+            beck = self.network.getBeckmannOFV()    
+            
+            # optional?
+            self.getOAcuts()
+            #             
+            
+            if self.params.PRINT_BB_INFO:
+                print("y =",yBest)
+                print("Beckmann value",beck)                     
         
             if self.params.useValueFunctionCuts1:
                 self.getVFcut1(beck)
@@ -360,11 +337,6 @@ class BPC:
             if self.params.useValueFunctionCuts2:
                 self.ydict.insertBeck(yBest, beck)
         
-        #---add best y for which we ran UE
-        if self.params.useInterdictionCuts:
-            self.rmp.add_constraint(sum(self.rmp.y[a] + yBest[a] - 2*self.rmp.y[a]*yBest[a] for a in self.network.links2) >= 1)
-            self.nIcuts += 1
-            
         self.yopt = yBest
     
     def checkIntegral(self, y):
@@ -457,9 +429,6 @@ class BPC:
         rmp.h = {p:rmp.continuous_var(lb=0) for p in self.getPaths()}
         rmp.mu = {a:rmp.continuous_var(lb=0) for a in self.network.links}
         rmp.y = {a:rmp.continuous_var(lb=0,ub=1) for a in self.network.links2}
-        
-        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
-            rmp.muB = {a:rmp.continuous_var(lb=0) for a in self.network.links}
   
         rmp.add_constraint(sum(rmp.y[a] * a.cost for a in self.network.links2) <= self.network.B)                   
             
@@ -470,12 +439,11 @@ class BPC:
     
         for a in self.network.links:
             rmp.add_constraint(rmp.x[a] - sum(rmp.h[p] for p in self.getPaths() if a in p.links) >= 0, 'link_%d_%d' % (a.start.id,a.end.id))
-            #rmp.add_constraint(rmp.mu[a] >= rmp.x[a] * a.t_ff)
                
         for a in self.network.links2:            
             rmp.add_constraint(rmp.x[a] <= rmp.y[a] * self.network.TD)
         
-        rmp.minimize(sum(rmp.mu[a] for a in self.network.links))
+        rmp.minimize(sum((a.t_ff * rmp.x[a] + a.gtilde * rmp.mu[a]) for a in self.network.links))
         
         rmp.parameters.threads = self.params.CPLEX_threads
         rmp.parameters.timelimit = self.params.BB_timelimit
@@ -520,14 +488,19 @@ class BPC:
             tstt = self.network.tapas('UE',yhat)
             self.ydict.insertUE(yhat, tstt)
             beck = self.network.getBeckmannOFV()
+            if self.params.PRINT_BB_INFO:
+                print("y =",yhat)
+                print('--> Beckmann value',beck) 
             self.ydict.insertBeck(yhat, beck)
             self.nUE += 1  
             
-            self.getOABcuts()
+            # optional?
+            self.getOAcuts()
+            #                               
                 
         self.rt_TAP += time.time() - t0_TAP
                        
-        VFcut2 = self.rmp.add_constraint(sum(self.rmp.muB[a] for a in self.network.links) <= beck)
+        VFcut2 = self.rmp.add_constraint(sum((a.t_ff * self.rmp.x[a] + (a.gtilde/(a.beta + 1)) * self.rmp.mu[a]) for a in self.network.links) <= beck)
         
         self.nVFcuts += 1
                 
@@ -629,10 +602,9 @@ class BPC:
             print('---'+self.__class__.__name__+'---')
             
         if self.params.PRINT_LOG:
-            #inss = self.network.ins.split('_')
-            #insshort = inss[0]+'_'+inss[2]+'_'+inss[3]            
-            #filename = 'log_'+insshort+'.txt'
-            filename = 'log_temp.txt'
+            inss = self.network.ins.split('_')
+            insshort = inss[0]+'_'+inss[2]+'_'+inss[3]            
+            filename = 'log_'+insshort+'.txt'
             print('writing log in',filename)
             logfile = open(filename, "w")
         
@@ -655,10 +627,17 @@ class BPC:
             tstt = self.network.tapas('UE',y0)
             self.ydict.insertUE(y0, tstt)
             beck = self.network.getBeckmannOFV()
+            if self.params.PRINT_BB_INFO:
+                print("y = ",y0)
+                print("Beckmann value",beck)
             self.ydict.insertBeck(y0, beck)
-            self.getOABcuts()
-            self.M = beck
             
+            # optional?
+            self.getOAcuts()
+            # 
+                         
+            self.M = beck        
+        
         if self.params.PRINT_LOG:
             npaths = len(self.getPaths())
             logfile.write('NA\t%d\t%d\t%d\t%.1f\t%.1f\t%.2f\n' % (npaths,self.nOA,self.nUE,self.LB,self.UB,self.inf))            
@@ -795,8 +774,14 @@ class BPC:
                     
                     if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
                         beck = self.network.getBeckmannOFV()
+                        if self.params.PRINT_BB_INFO:
+                            print("y =",can.y)
+                            print("Beckmann value",beck)
                         self.ydict.insertBeck(can.y, beck)
-                        self.getOABcuts()
+                        
+                        # optional?
+                        self.getOAcuts()
+                        # 
                         
                         if self.params.useValueFunctionCuts1:
                             self.getVFcut1(beck)
@@ -815,12 +800,6 @@ class BPC:
                     for n in self.BB_nodes:                    
                         if n.active == True and n.LB >= self.UB:
                             n.active = False   
-
-                            
-            #---add interdiction cuts
-            if self.params.useInterdictionCuts and runUE:
-                self.rmp.add_constraint(sum(self.rmp.y[a] + can.y[a] - 2*self.rmp.y[a]*can.y[a] for a in self.network.links2) >= 1)
-                self.nIcuts += 1
 
             if prune == False:
                 
@@ -902,7 +881,7 @@ class BPC:
             print(self.cntUnscaledInf)
             
             if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
-                print(self.nOABcuts,self.nVFcuts)
+                print(self.nVFcuts)
                 
         if self.params.PRINT_LOG:
             logfile.close()
