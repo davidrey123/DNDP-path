@@ -19,6 +19,7 @@ class Link:
         self.OAcuts = []
         self.OABcuts = []
         self.max_add_cap = self.C/2
+        self.gtilde = self.alpha * self.t_ff / (pow(self.C, self.beta))
 
         self.visit_order = -1
         

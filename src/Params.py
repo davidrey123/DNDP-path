@@ -11,7 +11,7 @@ class Params:
         # if this is too large, then we avoid flow shifting in PAS
         # if this is too small, we waste time shifting in PAS that is useless
         self.pas_cost_epsilon = 0.01
-        self.line_search_gap = 1E-8
+        self.line_search_gap = 1E-2
         
         
     def __init__(self):
@@ -25,7 +25,7 @@ class Params:
         #---TAP params
         self.msa_max_iter = 500        
         self.tapas_max_iter = 100 
-        self.min_gap = 1E-4
+        self.min_gap = 1E-3
         self.warmstart = False        
         
         #---TAPAS params
@@ -33,12 +33,12 @@ class Params:
         self.pas_cost_mu = 1e-2     
         self.pas_cost_epsilon = 1e-2
         self.pas_flow_mu = 1e-2       
-        self.line_search_gap = 1E-8
+        self.line_search_gap = 1E-3
         
         self.resetPAS()
         
         self.flow_epsilon = 0.000001
-        self.min_line_search_gap = 1E-8
+        self.min_line_search_gap = 1E-6
         self.tapas_equilibrate_iter = 3
         
         #---used within TAPAS don't change        
@@ -56,10 +56,10 @@ class Params:
         self.OAcut_tol = 0.05
         self.solveSO = False
         self.min_gap_SO_OA_cuts = 1E-1 
-        self.runUEifCGIntegral = True
-        self.useInterdictionCuts = True
+        self.runUEifCGIntegral = False
+        self.useNoGoodCuts = False
         self.useValueFunctionCuts1 = False
-        self.useValueFunctionCuts2 = False
+        self.useValueFunctionCuts2 = True # not working...
         #self.initOAheuristic = 'kBestKNP'
         self.initOAheuristic = 'LocalSearchKNP'
         #self.initOAheuristic = 'LocalSearchY1'
@@ -71,13 +71,11 @@ class Params:
         self.PRINT_BRANCH_INFO = False
         self.PRINT_TAPAS_INFO = False
         
-        self.PRINT_TAP_ITER = True
+        self.PRINT_TAP_ITER = False
 
         self.printBushEquilibrate = False
         self.printReducedCosts = False        
-        self.PRINT_PARAM_ADJ = True
-        self.PRINT_PAS_DEBUG = False
-        
+
         self.PRINT_BB_INFO = True #---prints detailed BB info
         self.PRINT_BB_BASIC = False #---prints only basic BB info        
         
