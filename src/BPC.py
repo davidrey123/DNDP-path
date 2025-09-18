@@ -555,7 +555,7 @@ class BPC:
         self.rt_RMP += (time.time() - t0_RMP)
         
         if self.params.PRINT_BB_INFO:
-            print('nvars: %d, ncons: %d, nOAcuts: %d, nIcuts: %d, cplexTime: %.1f, RMPTime: %.1f' % (self.rmp.number_of_variables,self.rmp.number_of_constraints,self.nOAcuts,self.nIcuts,self.rmp.solve_details.time,(time.time() - t0_RMP)))
+            print('nvars: %d, ncons: %d, nOAcuts: %d, cplexTime: %.1f, RMPTime: %.1f' % (self.rmp.number_of_variables,self.rmp.number_of_constraints,self.nOAcuts,self.rmp.solve_details.time,(time.time() - t0_RMP)))
         
         return RMP_status,OFV,yopt
     
@@ -889,3 +889,4 @@ class BPC:
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+' end---')
         
+
