@@ -13,7 +13,6 @@ from src import Branch
 from src import Zone
 from src import Path
 
-
 import llist
 #print('llist module is available.')
 
@@ -479,14 +478,10 @@ class Bush:
         
         output = {}
         
-        for n in self.sorted:
-        
+        for n in self.sorted:        
             output[n] = n.pred2
-        
-        
+                
         return output
-
-    
 
     
     def tracePath(self, i, j):
@@ -499,21 +494,6 @@ class Bush:
             if curr.pred == None:
                 return None
             output.append(curr.pred)
-            #print(curr, curr.pred, i, j, self.origin, output)
-            curr = curr.pred.start
-        
-        return output
-        
-    def tracePathToObj(self, i, j):
-        output = Path.Path()
-        
-        curr = j
-        #print("tracing", i, j)
-        
-        while curr != i:
-            if curr.pred == None:
-                return None
-            output.add(curr.pred)
             #print(curr, curr.pred, i, j, self.origin, output)
             curr = curr.pred.start
         
@@ -1048,9 +1028,22 @@ class Bush:
     def __str__(self):
         return "bush "+str(self.origin.id)
         
-    def getUsedPaths(self, output):
+    def tracePath3(self, r, s):
+        curr = s
 
-		
+        output = Path.Path()
+        output.r = r
+        output.s = s
+        
+        while curr != r:
+            if curr.pred == None:
+                return None
+            output.add(curr.pred)
+            curr = curr.pred.start
+              
+        return output        
+        
+    def getUsedPaths(self, output):
 		
     	rem_dem = 0
     	self.topologicalSort()
@@ -1062,18 +1055,15 @@ class Bush:
     		if self.origin.getDemand(s) > 0:
     			rem_dem += self.origin.getDemand(s)
     			dem[s] = self.origin.getDemand(s)
-    		
     	
     	while(rem_dem > 1e-4):
     		tree = self.minUsedTree()
-    		
-    		
     		
     		pathadded = False
     		
     		for s in self.network.zones:
     			if self.origin.getDemand(s) > 0:
-    				path = self.tracePathToObj(self.origin, s)
+    				path = self.tracePath3(self.origin, s)
     			
     				if path is None:
     					continue
