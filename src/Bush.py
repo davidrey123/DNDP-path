@@ -11,6 +11,7 @@ from src import Params
 from src import PASList
 from src import Branch
 from src import Zone
+from src import Path
 
 
 import llist
@@ -498,6 +499,21 @@ class Bush:
             if curr.pred == None:
                 return None
             output.append(curr.pred)
+            #print(curr, curr.pred, i, j, self.origin, output)
+            curr = curr.pred.start
+        
+        return output
+        
+    def tracePathToObj(self, i, j):
+        output = Path.Path()
+        
+        curr = j
+        #print("tracing", i, j)
+        
+        while curr != i:
+            if curr.pred == None:
+                return None
+            output.add(curr.pred)
             #print(curr, curr.pred, i, j, self.origin, output)
             curr = curr.pred.start
         
@@ -1057,19 +1073,19 @@ class Bush:
     		
     		for s in self.network.zones:
     			if self.origin.getDemand(s) > 0:
-    				path = self.tracePath(self.origin, s)
+    				path = self.tracePathToObj(self.origin, s)
     			
     				if path is None:
     					continue
     				maxflow = dem[s]
-    				for a in path:
+    				for a in path.links:
     					maxflow = min(maxflow, self.flow[a])
     				
     				if maxflow > 1e-6:
     					output[(self.origin, s)].append(path)
     					dem[s] -= maxflow
     				
-    					for a in path:
+    					for a in path.links:
     						self.flow[a] -= maxflow
     				
     					rem_dem -= maxflow

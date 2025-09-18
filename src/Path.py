@@ -8,10 +8,26 @@ class Path:
         self.next_id += 1
         self.cost = 0
         
-
+        
+    def equals(self, rhs):
+    	if len(self.links) == len(rhs.links):
+    		for a in self.links:
+    			if a not in rhs.links:
+    				return False
+    		return True
+    	else:
+    		return False
         
     def __hash__(self):
-        return hash(self.id)
+        output = 0
+        
+        counter = 1
+        
+        for a in self.links:
+        	output += counter * a.__hash__()
+        	counter += 1
+        
+        return output
         
     def __str__(self):
         return str(self.links)     

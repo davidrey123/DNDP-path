@@ -122,6 +122,9 @@ class Link:
     def __str__(self):
         return "(" + str(self.start.getId()) + ", " + str(self.end.getId()) + ")"
         
+    def __hash__(self):
+        return hash(self.id)
+        
     def addXstar(self, flow):
         self.xstar += flow   
     
