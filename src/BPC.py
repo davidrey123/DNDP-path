@@ -314,29 +314,27 @@ class BPC:
         #---solve UE-TAP(yBest) to get UB
         t0_TAP = time.time()
         can.UB = self.network.tapas('UE',yBest)
+        beck = self.network.getBeckmannOFV()  
+        
+        if self.params.PRINT_BB_INFO:
+            print("y =",yBest)
+            print("TSTT value",can.UB)                             
+            print("Beckmann value",beck)                             
+        
         self.ydict.insertUE(yBest,can.UB)
-        self.rt_TAP += time.time() - t0_TAP
-        self.nUE += 1
+        self.ydict.insertBeck(yBest, beck) #---only used in VF2 cuts
+        self.nUE += 1 
+        self.rt_TAP += time.time() - t0_TAP        
         self.UB = can.UB
         
-        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:   
+        if self.params.useValueFunctionCuts1:   
             
-            beck = self.network.getBeckmannOFV()    
+            # VF1: update path variables?
+            #      get OA cuts at TAP solution?
             
-            # optional?
             self.getOAcuts()
-            #             
-            
-            if self.params.PRINT_BB_INFO:
-                print("y =",yBest)
-                print("Beckmann value",beck)                     
-        
-            if self.params.useValueFunctionCuts1:
-                self.getVFcut1(beck)
-                
-            if self.params.useValueFunctionCuts2:
-                self.ydict.insertBeck(yBest, beck)
-        
+            self.getVFcut1(beck)
+
         self.yopt = yBest
     
     def checkIntegral(self, y):
@@ -365,6 +363,9 @@ class BPC:
                 if r.getDemand(s) > 0:
                 
                     p = self.network.trace(r,s)
+                    
+                    print(r.id,s.id,p)
+                    
                     self.paths[r][s].append(p)               
                     new += 1
                 
@@ -375,7 +376,6 @@ class BPC:
         
         t0_pricing = time.time()
         
-        new = 0
         minrc = self.inf
         
         for a in self.network.links:
@@ -397,7 +397,7 @@ class BPC:
                     if rc < - self.CG_tol:
                         
                         p = self.network.trace(r,s)
-                        self.paths[r][s].append(p) #---is it needed to store paths if directly adding to RMP?
+                        self.paths[r][s].append(p) #---is it needed to store paths if directly adding to RMP? Yes because of VF(2) cuts
                         
                         #---add new path var to RMP                                                
                         self.rmp.h[p] = self.rmp.continuous_var(lb=0)
@@ -409,12 +409,6 @@ class BPC:
                             if a in p.links:
                                 self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).lhs.add_term(self.rmp.h[p], -1)
                         
-                        new += 1
-                        
-                        #plist = list(p.links)
-                        #psorted = sorted(plist, key=lambda tup: tup.id)
-                        #print(r,s,psorted)
-                    
                     if rc < minrc:
                         minrc = rc
                 
@@ -481,34 +475,87 @@ class BPC:
         if self.ydict.hasBeck(yhat) == True:
             beck = self.ydict.getBeck(yhat)
             if self.params.PRINT_BB_INFO:
-                print('--> has Beckmann',yhat,beck)                    
+                print('--> has Beckmann',yhat,beck) 
+
+            self.rt_TAP += time.time() - t0_TAP               
         
         else:
             #---solve UE TAP to get Beckmann value
             tstt = self.network.tapas('UE',yhat)
-            self.ydict.insertUE(yhat, tstt)
             beck = self.network.getBeckmannOFV()
+            
+            self.rt_TAP += time.time() - t0_TAP
+            
             if self.params.PRINT_BB_INFO:
                 print("y =",yhat)
-                print('--> Beckmann value',beck) 
-            self.ydict.insertBeck(yhat, beck)
-            self.nUE += 1  
+                print("TSTT value",tstt)                             
+                print("Beckmann value",beck)             
             
-            # optional?
+            self.ydict.insertUE(yhat, tstt)
+            self.ydict.insertBeck(yhat, beck) #---only used in VF2 cuts
+            self.nUE += 1   
+           
             self.getOAcuts()
-            #                               
+            
+            #---get used paths at UE solution
+            paths = self.network.findUsedPaths()
+            if self.params.PRINT_BB_INFO:
+                print("find used paths")
                 
-        self.rt_TAP += time.time() - t0_TAP
-                       
-        VFcut2 = self.rmp.add_constraint(sum((a.t_ff * self.rmp.x[a] + (a.gtilde/(a.beta + 1)) * self.rmp.mu[a]) for a in self.network.links) <= beck)
-        
+            for r in self.network.origins:
+                for s in self.network.zones:
+                    if r.getDemand(s) > 0:
+                        
+                        if len(paths[(r,s)])==0:
+                            print("ZERO PATHS",r.id,s.id,len(paths[(r,s)]))
+                            
+                        for p in paths[(r,s)]:
+                            print(r.id,s.id,p)
+                            
+                            #---check if path already in RMP
+                            already = False
+                            for pRMP in self.paths[r][s]:
+                                if self.compare_paths(p,pRMP) == True:
+                                    already = True
+                                    break
+                            
+                            if already == False:
+                                #---add path to RMP
+                                self.paths[r][s].append(p)
+                                
+                                #---add new path var to RMP                                                
+                                self.rmp.h[p] = self.rmp.continuous_var(lb=0)
+                                
+                                #---update RMP constraints
+                                self.rmp.get_constraint_by_name('dem_%d_%d' % (r.id,s.id)).lhs.add_term(self.rmp.h[p], 1)
+                                
+                                for a in self.network.links:
+                                    if a in p.links:
+                                        self.rmp.get_constraint_by_name('link_%d_%d' % (a.start.id,a.end.id)).lhs.add_term(self.rmp.h[p], -1)
+                                        
+                                if self.params.PRINT_BB_INFO:
+                                    print("add path to RMP")
+            
+        VFcut2 = self.rmp.add_constraint(sum((a.t_ff * self.rmp.x[a] + (a.gtilde/(a.beta + 1)) * self.rmp.mu[a]) for a in self.network.links) <= beck)        
         self.nVFcuts += 1
-                
+
         return VFcut2
     
     def removeVFCut2(self,VFcut2):
                        
         self.rmp.remove_constraint(VFcut2)
+        
+    def compare_paths(self, p1, p2):
+        
+        if len(p1.links) != len(p2.links):
+            return False
+            
+        for a1 in p1.links:
+            if a1 not in p2.links:
+                return False
+        
+        return True
+            
         
     def solveRMP(self,can):
         
@@ -621,21 +668,25 @@ class BPC:
         #---initialize OA cuts
         self.initOAcuts(self.params.initOAheuristic,self.BB_nodes[0])
         
-        if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:
+        if self.params.useValueFunctionCuts1:
+            
+            # VF1: need to determine big-M based on TAP(y=0) solution
+            #      update path variables?
+            #      get OA cuts at TAP solution?
             
             y0 = {a:0 for a in self.network.links2}
             tstt = self.network.tapas('UE',y0)
-            self.ydict.insertUE(y0, tstt)
-            beck = self.network.getBeckmannOFV()
+            beck = self.network.getBeckmannOFV()  
             if self.params.PRINT_BB_INFO:
-                print("y = ",y0)
-                print("Beckmann value",beck)
-            self.ydict.insertBeck(y0, beck)
+                print("y =",y0)
+                print("TSTT value",tstt)                             
+                print("Beckmann value",beck) 
             
-            # optional?
+            self.ydict.insertUE(y0, tstt)
+            self.ydict.insertBeck(y0, beck) #---only used in VF2 cuts
+            self.nUE += 1 
+            
             self.getOAcuts()
-            # 
-                         
             self.M = beck        
         
         if self.params.PRINT_LOG:
@@ -769,22 +820,24 @@ class BPC:
                 else:
                     #---solve UE TAP to get UB                     
                     can.UB = self.network.tapas('UE',can.y)
-                    self.ydict.insertUE(can.y, can.UB)
-                    self.nUE += 1  
+                    beck = self.network.getBeckmannOFV() #---required for VF cuts
+
+                    if self.params.PRINT_BB_INFO:
+                        print("y =",can.y)
+                        print("TSTT value",can.UB)                             
+                        print("Beckmann value",beck) 
                     
-                    if self.params.useValueFunctionCuts1 or self.params.useValueFunctionCuts2:                        
-                        beck = self.network.getBeckmannOFV()
-                        if self.params.PRINT_BB_INFO:
-                            print("y =",can.y)
-                            print("Beckmann value",beck)
-                        self.ydict.insertBeck(can.y, beck)
+                    self.ydict.insertUE(can.y, can.UB)
+                    self.ydict.insertBeck(can.y, beck) #---only used in VF2 cuts
+                    self.nUE += 1  
+                      
+                    if self.params.useValueFunctionCuts1:  
+
+                        # VF1: update path variables to get UE paths?
+                        #      get OA cuts are TAP solution?
                         
-                        # optional?
                         self.getOAcuts()
-                        # 
-                        
-                        if self.params.useValueFunctionCuts1:
-                            self.getVFcut1(beck)
+                        self.getVFcut1(beck)
                         
                 self.rt_TAP += time.time() - t0_TAP
                 
@@ -889,4 +942,3 @@ class BPC:
         if self.params.PRINT_BB_INFO or self.params.PRINT_BB_BASIC:
             print('---'+self.__class__.__name__+' end---')
         
-
